@@ -1,0 +1,7 @@
+{
+    "sus_lsp.args": [
+        "sus-float/fp_custom.sus",
+        "sus-float/UltraScalePlus/fp_wrappers.sus",
+        "sus-float/UltraScalePlus/extensions.sus"
+    ]
+}
