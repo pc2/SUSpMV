@@ -1,0 +1,4 @@
+**/*.log
+**/*.jou
+**/project_1
+sus_codegen.sv

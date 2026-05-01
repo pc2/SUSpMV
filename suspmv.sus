@@ -1,0 +1,52 @@
+
+module MultiAccumulate {
+    gen int PARALLELISM = 6
+
+    fp64_reduce_sum accumulator
+
+    domain default
+    action valid_set : double[PARALLELISM] values, bool[PARALLELISM] is_lasts -> double[PARALLELISM] partial_sums {
+        split double[PARALLELISM] adder_left_inputs
+        split double[PARALLELISM] adder_outputs
+
+        for int I in 0..6 {
+            when is_lasts[I] {
+                adder_left_inputs[I] = 0.0d
+            } else {
+                adder_left_inputs[I] = adder_outputs[I]
+            }
+        }
+
+        adder_outputs[0] = values[0]
+        for int I in 1..6 {
+            adder_outputs[I] = fp64_add(adder_left_inputs[I-1], values[I])
+        }
+
+        double[PARALLELISM] accumulator_input_selector
+        for int I in 0..6 {
+            accumulator_input_selector[I] = adder_outputs[I]
+        }
+
+        FirstSetBit find_first_bit
+        find_first_bit.find(is_lasts)
+        when find_first_bit.is_nonzero : int index {
+            accumulator.accumulate(accumulator_input_selector[index])
+            double accululated_partial_sum = accumulator.last(accumulator_input_selector[PARALLELISM-1])
+
+            for int I in 0..PARALLELISM {
+                when index == I {
+                    partial_sums[I] = accululated_partial_sum
+                } else {
+                    partial_sums[I] = adder_outputs[I]
+                }
+            }
+        } else {
+            accumulator.accumulate(accumulator_input_selector[PARALLELISM-1])
+        }
+    }
+
+    domain reset
+    action rst {
+        accumulator.rst()
+    }
+}
