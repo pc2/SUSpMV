@@ -21,7 +21,7 @@ FILES += sus-float/UltraScalePlus/extensions.sus
 FILES += sus-float/UltraScalePlus/fp_wrappers.sus
 
 sus_codegen.sv: $(FILES)
-	sus_compiler $(FILES) -o sus_codegen.sv --top MultiAccumulate --gen-tb > tb_stub.sv
+	sus_compiler $(FILES) -o sus_codegen.sv --top SpMVUnit
 
 XOS_VCK := $(BIN_DIR)/suspmv.xo
 LOCAL_XOS := ../suspmv.xo

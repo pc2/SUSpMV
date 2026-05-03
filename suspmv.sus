@@ -51,13 +51,48 @@ module MultiAccumulate {
     }
 }
 
-module Collector {
+module YIndexManager {
+    gen int PARALELLISM = 6
+    gen int Y_TO = 2048 * 16
+    gen int Y_DELTA_TO = 256
+
+    state int#(FROM: 0, TO: Y_TO) cur_y_base
+
+    domain main
+    action push :
+        int#(FROM: 0, TO: Y_DELTA_TO)[PARALELLISM] y_deltas,
+        bool is_last -> int[PARALELLISM] y_indices {
+        
+        split int[7] total_deltas
+        total_deltas[0] = 0
+        for int I in 0..6 {
+            reg total_deltas[I+1] = total_deltas[I] + y_deltas[I]
+        }
+        for int I in 0..6 {
+            reg y_indices[I] = cur_y_base + total_deltas[I] mod Y_TO
+        }
+        
+        when is_last {
+            cur_y_base = cur_y_base + total_deltas[6] mod Y_TO
+        } else {
+            cur_y_base = 0
+        }
+    }
+
+    domain reset
+    action rst {
+        cur_y_base = 0
+    }
+}
+
+module YCollector {
     //DoubleBuffer#(T: type double, DEPTH: 2048, NUM_BUFFERS: 2) buf
     gen int PARALELLISM = 6
     gen int NUM_BUCKETS = 16
-    gen int Y_DELTA_TO = 256
     // The 16 banks are arranged as double buffers. 
     gen int HALF_RAM_DEPTH = 2048
+    gen int Y_DELTA = 256
+    YIndexManager y_index_manager
 
     bool[NUM_BUCKETS] bucket_write = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
     double[NUM_BUCKETS] bucket_write_value
@@ -67,9 +102,15 @@ module Collector {
     domain default
     action push_partial_sums'0 :
         double[PARALELLISM] partial_sums'0,
-        int#(FROM: 0, TO: Y_DELTA_TO)[PARALELLISM] y_indices,
-        bool[PARALELLISM] valids {
-        
+        int#(FROM: 0, TO: Y_DELTA)[PARALELLISM] y_deltas,
+        bool is_last {
+
+        int[PARALELLISM] y_indices = y_index_manager.push(y_deltas, is_last)
+        bool[PARALELLISM] valids
+        for int I in 0..PARALELLISM {
+            reg valids[I] = y_deltas[I] != 0
+        }
+
         int[PARALELLISM] target_buckets
         int[PARALELLISM] target_indices_in_buckets
 
@@ -124,7 +165,6 @@ module Collector {
         output_valids = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
         totals = output_partial_sums
         currently_outputting_index = currently_outputting_index + 1 mod HALF_RAM_DEPTH
-        
     }
 
     domain reset
@@ -133,6 +173,7 @@ module Collector {
         should_be_currently_outputting = false
         current_front_buffer = 0
         current_back_buffer = 0
+        y_index_manager.rst()
     }
 }
 
@@ -159,7 +200,7 @@ module XVectorMemory {
     action multiply_bys : float[PARALLELISM] weights, int#(FROM: 0, TO: X_DEPTH)[PARALLELISM] x_indices, bool is_last -> float[PARALLELISM] terms {
         int[PARALLELISM] ram_idx
         for int I in 0..PARALLELISM {
-            ram_idx[I] = BitwiseIntConcat#(LOWER_BITS: X_DEPTH)(cur_reader_buffer, x_indices[I])
+            ram_idx[I] = BitwiseIntConcat#(LOWER_BITS: clog2#(V: X_DEPTH))(cur_reader_buffer, x_indices[I])
         }
 
         float[1][PARALLELISM] vector_values = [
@@ -183,7 +224,7 @@ module XVectorMemory {
     domain writer
     state int#(FROM: 0, TO: X_DEPTH / X_WRITE_SIZE) cur_write_idx
     action write'0 : float[X_WRITE_SIZE] x_values'0, bool is_last_write'0 {
-        int write_idx = BitwiseIntConcat#(LOWER_BITS: X_DEPTH / X_WRITE_SIZE)(cur_writer_buffer, cur_write_idx)
+        int write_idx = BitwiseIntConcat#(LOWER_BITS: clog2#(V: X_DEPTH / X_WRITE_SIZE))(cur_writer_buffer, cur_write_idx)
         ram1.write(write_idx, x_values)
         ram2.write(write_idx, x_values)
         ram3.write(write_idx, x_values)
@@ -277,20 +318,19 @@ module XVectorMemory {
 ///
 /// `y_steps != 0` means that it `is_last`
 module DecompressCommand {
-    gen int MODE_6 = 6
     gen int X_DEPTH = 1 << 10
     gen int MAX_Y_STEP = 1 << 8
     action DecompressCommand :
         bool[256] bits ->
-        float[MODE_6] weights,
-        int#(FROM: 0, TO: X_DEPTH)[MODE_6] x_indices,
-        int#(FROM: 0, TO: MAX_Y_STEP)[MODE_6] y_steps {
+        float[6] weights,
+        int#(FROM: 0, TO: X_DEPTH)[6] x_indices,
+        int#(FROM: 0, TO: MAX_Y_STEP)[6] y_steps {
 
         int is_last_extra_mode = BitsToUInt(bits[252:256])
 
         bool is_5_float_mode = is_last_extra_mode == 15
 
-        for int I in 0..MODE_6 {
+        for int I in 0..6 {
             reg weights[I] = FromBits(bits[32 * I +: 32])
 
             if I == 5 {
@@ -300,7 +340,7 @@ module DecompressCommand {
                 }
             }
             // x_indices are indexed in reverse, such that 5-float mode creates a nice 
-            x_indices[I] = BitsToUInt(bits[192 + (MODE_6 - 1 - I) * 10 +: 10])
+            x_indices[I] = BitsToUInt(bits[192 + (6 - 1 - I) * 10 +: 10])
         }
 
         when is_5_float_mode {
@@ -328,16 +368,16 @@ module DecompressCommand {
             ]
 
             // In 6-float mode, is_last values are computed from a combination of the last 4 bits, and if ever an x index is lower than its predecessor. 
-            bool[MODE_6] is_lasts = EXTRA_IS_LAST_MAP[IntNarrow#(FROM: 0, TO: 13)(is_last_extra_mode)]
+            bool[6] is_lasts = EXTRA_IS_LAST_MAP[IntNarrow#(FROM: 0, TO: 13)(is_last_extra_mode)]
 
             // Some extra is_last information can be procured from the differences in the x indices. 
-            for int I in 1..MODE_6 {
+            for int I in 1..6 {
                 when x_indices[I] <= x_indices[I - 1] {
                     reg is_lasts[I] = true
                 }
             }
 
-            for int I in 0..MODE_6 {
+            for int I in 0..6 {
                 when is_lasts[I] {
                     y_steps[I] = 1
                 } else {
@@ -348,6 +388,50 @@ module DecompressCommand {
     }
 }
 
+module SpMVUnit {
+    XVectorMemory x_vector_memory
+    MultiAccumulate accumulate
+    YCollector collector
+
+    domain main
+    action push'0: bool[256] packed_matrix_data'0, bool is_last'0 {
+        float[6] weights, int[6] x_indices, int[6] y_deltas = DecompressCommand(packed_matrix_data)
+
+        float[6] terms = x_vector_memory.multiply_bys(weights, x_indices, is_last)
+
+        double[6] high_precision_terms
+        for int I in 0..6 {
+            high_precision_terms[I] = fp32_to_fp64(terms[I])
+        }
+
+        bool[6] is_lasts
+        for int I in 0..6 {
+            is_lasts[I] = y_deltas[I] != 0
+        }
+
+        double[6] partial_sums = accumulate.valid_set(high_precision_terms, is_lasts)
+
+        collector.push_partial_sums(partial_sums, y_deltas, is_last)
+    }
+
+    domain x_vector_loading
+    action write_x_values'0: float[8] x_values'0, bool is_last_write'0 {
+        x_vector_memory.write(x_values, is_last_write)
+    }
+
+    domain totals_taking
+    output bool may_take_totals = collector.may_take_totals
+    action take_totals : -> double[16] totals {
+        totals = collector.take_totals()
+    }
+
+    domain reset
+    action rst {
+        x_vector_memory.rst()
+        accumulate.rst()
+        collector.rst()
+    }
+}
 
 /// OTHER FORMAT?
 /// ## 6 float (for dense sections)
