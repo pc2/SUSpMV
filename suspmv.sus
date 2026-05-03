@@ -136,6 +136,77 @@ module Collector {
     }
 }
 
+
+
+module XVectorMemory {
+    gen int PARALLELISM = 6
+    gen int X_DEPTH = 1024
+    gen int X_NUM_BUFFERS = 4
+    gen int X_WRITE_SIZE = 8
+    gen int RAM_DEPTH = X_DEPTH * X_NUM_BUFFERS
+
+    state int#(FROM: 0, TO: X_NUM_BUFFERS) cur_reader_buffer
+    state int#(FROM: 0, TO: X_NUM_BUFFERS) cur_writer_buffer
+
+    domain reader
+    // TODO Submodule Arrays (https://github.com/pc2/sus-compiler/issues/161)
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) ram1
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) ram2
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) ram3
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) ram4
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) ram5
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) ram6
+    action multiply_bys : float[PARALLELISM] weights, int#(FROM: 0, TO: X_DEPTH)[PARALLELISM] x_indices, bool is_last -> float[PARALLELISM] terms {
+        int[PARALLELISM] ram_idx
+        for int I in 0..PARALLELISM {
+            ram_idx[I] = BitwiseIntConcat#(LOWER_BITS: X_DEPTH)(cur_reader_buffer, x_indices[I])
+        }
+
+        float[1][PARALLELISM] vector_values = [
+            ram1.read(ram_idx[0]),
+            ram2.read(ram_idx[1]),
+            ram3.read(ram_idx[2]),
+            ram4.read(ram_idx[3]),
+            ram5.read(ram_idx[4]),
+            ram6.read(ram_idx[5]),
+        ]
+
+        for int I in 0..PARALLELISM {
+            terms[I] = fp32_mul(weights[I], vector_values[I][0])
+        }
+
+        when is_last {
+            cur_reader_buffer = cur_reader_buffer + 1 mod X_NUM_BUFFERS
+        }
+    }
+
+    domain writer
+    state int#(FROM: 0, TO: X_DEPTH / X_WRITE_SIZE) cur_write_idx
+    action write'0 : float[X_WRITE_SIZE] x_values'0, bool is_last_write'0 {
+        int write_idx = BitwiseIntConcat#(LOWER_BITS: X_DEPTH / X_WRITE_SIZE)(cur_writer_buffer, cur_write_idx)
+        ram1.write(write_idx, x_values)
+        ram2.write(write_idx, x_values)
+        ram3.write(write_idx, x_values)
+        ram4.write(write_idx, x_values)
+        ram5.write(write_idx, x_values)
+        ram6.write(write_idx, x_values)
+
+        when is_last_write {
+            cur_writer_buffer = cur_writer_buffer + 1 mod X_NUM_BUFFERS
+            cur_write_idx = 0
+        } else {
+            cur_write_idx = cur_write_idx + 1 mod X_DEPTH / X_WRITE_SIZE
+        }
+    }
+
+    domain reset
+    action rst {
+        cur_reader_buffer = 0
+        cur_writer_buffer = 0
+        cur_write_idx = 0
+    }
+}
+
 /// There are two possible formats:
 /// ## 6 float (for dense sections)
 /// ```
