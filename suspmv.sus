@@ -135,3 +135,173 @@ module Collector {
         current_back_buffer = 0
     }
 }
+
+/// There are two possible formats:
+/// ## 6 float (for dense sections)
+/// ```
+///   256 bit [
+///     [  0:192] - 6 floats
+///     [192:252] - 6 10-bit x indices in reverse order
+///     [252:256] - is_last_extra bitset
+///   ]
+///   is_last_extra table:
+///     4'b0000: 6'b000000
+///     4'b0001: 6'b000001
+///     4'b0010: 6'b000010
+///     4'b0011: 6'b000100
+///     4'b0100: 6'b001000
+///     4'b0101: 6'b010000
+///     4'b0110: 6'b100000
+///     4'b0111: 6'b100001
+///     4'b1000: 6'b010001
+///     4'b1001: 6'b100010
+///     4'b1010: 6'b001001
+///     4'b1011: 6'b010010
+///     4'b1100: 6'b100100
+///     4'b1101: UNUSED
+///     4'b1110: UNUSED
+///     4'b1111: Signifies 5 float mode
+/// ```
+/// ## 5 float (for sparse sections)
+/// ```
+///   256 bit [
+///     [  0:160] - 5 floats
+///     [160:200] - 5 8-bit y deltas
+///     [200:202] - UNUSED
+///     [202:252] - 5 10-bit x indices in reverse order
+///     [252:256] - 4'b1111
+///   ]
+/// ```
+///
+/// `y_steps != 0` means that it `is_last`
+module DecompressCommand {
+    gen int MODE_6 = 6
+    gen int X_DEPTH = 1 << 10
+    gen int MAX_Y_STEP = 1 << 8
+    action DecompressCommand :
+        bool[256] bits ->
+        float[MODE_6] weights,
+        int#(FROM: 0, TO: X_DEPTH)[MODE_6] x_indices,
+        int#(FROM: 0, TO: MAX_Y_STEP)[MODE_6] y_steps {
+
+        int is_last_extra_mode = BitsToUInt(bits[252:256])
+
+        bool is_5_float_mode = is_last_extra_mode == 15
+
+        for int I in 0..MODE_6 {
+            reg weights[I] = FromBits(bits[32 * I +: 32])
+
+            if I == 5 {
+                // In 5-float mode, so that we can reuse most of the wires, we 
+                when is_5_float_mode {
+                    reg weights[I] = 0.0
+                }
+            }
+            // x_indices are indexed in reverse, such that 5-float mode creates a nice 
+            x_indices[I] = BitsToUInt(bits[192 + (MODE_6 - 1 - I) * 10 +: 10])
+        }
+
+        when is_5_float_mode {
+            // In 5-float mode, is_last values are purely 
+
+            for int I in 0..5 {
+                y_steps[I] = BitsToUInt(bits[160 + 8 * I +: 8])
+            }
+            y_steps[5] = 0 // No 6th float, so weight = 0.0 and no is_last
+        } else {
+            gen bool[6][13] EXTRA_IS_LAST_MAP = [
+                6'b000000,
+                6'b000001,
+                6'b000010,
+                6'b000100,
+                6'b001000,
+                6'b010000,
+                6'b100000,
+                6'b100001,
+                6'b010001,
+                6'b100010,
+                6'b001001,
+                6'b010010,
+                6'b100100
+            ]
+
+            // In 6-float mode, is_last values are computed from a combination of the last 4 bits, and if ever an x index is lower than its predecessor. 
+            bool[MODE_6] is_lasts = EXTRA_IS_LAST_MAP[IntNarrow#(FROM: 0, TO: 13)(is_last_extra_mode)]
+
+            // Some extra is_last information can be procured from the differences in the x indices. 
+            for int I in 1..MODE_6 {
+                when x_indices[I] <= x_indices[I - 1] {
+                    reg is_lasts[I] = true
+                }
+            }
+
+            for int I in 0..MODE_6 {
+                when is_lasts[I] {
+                    y_steps[I] = 1
+                } else {
+                    y_steps[I] = 0
+                }
+            }
+        }
+    }
+}
+
+
+/// OTHER FORMAT?
+/// ## 6 float (for dense sections)
+/// ```
+///   256 bit [
+///     [  0: 32] - weights[0]
+///     [ 32: 42] - x_idx[0]
+///     [ 42: 74] - weights[1]
+///     [ 74: 84] - x_idx[1]
+///     [ 84:116] - weights[2]
+///     [116:126] - x_idx[2]
+///     [126:158] - weights[3]
+///     [158:168] - x_idx[3]
+///     [168:200] - weights[4]
+///     [200:210] - x_idx[4]
+///     [210:242] - weights[5]
+///     [242:252] - x_idx[5]
+///     [252:256] - is_last_extra bitset
+///   ]
+///   is_last_extra table:
+///     4'b0000: 6'b000000
+///     4'b0001: 6'b000001
+///     4'b0010: 6'b000010
+///     4'b0011: 6'b000100
+///     4'b0100: 6'b001000
+///     4'b0101: 6'b010000
+///     4'b0110: 6'b100000
+///     4'b0111: 6'b100001
+///     4'b1000: 6'b010001
+///     4'b1001: 6'b100010
+///     4'b1010: 6'b001001
+///     4'b1011: 6'b010010
+///     4'b1100: 6'b100100
+///     4'b1101: UNUSED
+///     4'b1110: UNUSED
+///     4'b1111: Signifies 5 float mode
+/// ```
+/// ## 5 float (for sparse sections)
+/// ```
+///   256 bit [
+///     [  0: 32] - weights[0]
+///     [ 32: 42] - x_idx[0]
+///     [ 42: 74] - weights[1]
+///     [ 74: 84] - x_idx[1]
+///     [ 84:116] - weights[2]
+///     [116:126] - x_idx[2]
+///     [126:158] - weights[3]
+///     [158:168] - x_idx[3]
+///     [168:200] - weights[4]
+///     [200:210] - x_idx[4]
+///     [210:218] - y_delta[0]
+///     [218:226] - y_delta[1]
+///     [226:234] - y_delta[2]
+///     [234:242] - y_delta[3]
+///     [242:250] - y_delta[4]
+///     [250:252] - UNUSED
+///     [252:256] - is_last_extra MUST BE 4'b1111
+///   ]
+/// ```
