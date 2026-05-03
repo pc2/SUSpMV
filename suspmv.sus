@@ -50,3 +50,88 @@ module MultiAccumulate {
         accumulator.rst()
     }
 }
+
+module Collector {
+    //DoubleBuffer#(T: type double, DEPTH: 2048, NUM_BUFFERS: 2) buf
+    gen int PARALELLISM = 6
+    gen int NUM_BUCKETS = 16
+    gen int Y_DELTA_TO = 256
+    // The 16 banks are arranged as double buffers. 
+    gen int HALF_RAM_DEPTH = 2048
+
+    bool[NUM_BUCKETS] bucket_write = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
+    double[NUM_BUCKETS] bucket_write_value
+    int[NUM_BUCKETS] bucket_write_index
+    int[NUM_BUCKETS] bucket_mux_from
+
+    domain default
+    action push_partial_sums'0 :
+        double[PARALELLISM] partial_sums'0,
+        int#(FROM: 0, TO: Y_DELTA_TO)[PARALELLISM] y_indices,
+        bool[PARALELLISM] valids {
+        
+        int[PARALELLISM] target_buckets
+        int[PARALELLISM] target_indices_in_buckets
+
+        for int CHANNEL in 0..PARALELLISM {
+            target_buckets[CHANNEL] = y_indices[CHANNEL] mod NUM_BUCKETS
+            target_indices_in_buckets[CHANNEL] = y_indices[CHANNEL] / NUM_BUCKETS
+        }
+        
+        for int BUCKET_I in 0..NUM_BUCKETS {
+            for int CHANNEL in 0..PARALELLISM {
+                when valids[CHANNEL] & target_buckets[CHANNEL] == BUCKET_I {
+                    bucket_write[BUCKET_I] = true
+                    bucket_mux_from[BUCKET_I] = CHANNEL
+                }
+            }
+        }
+        for int BUCKET_I in 0..NUM_BUCKETS {
+            when bucket_write[BUCKET_I] {
+                int mux_from = bucket_mux_from[BUCKET_I]
+                bucket_write_index[BUCKET_I] = target_indices_in_buckets[mux_from]
+                bucket_write_value[BUCKET_I] = partial_sums[mux_from]
+            }
+        }
+    }
+
+    state double[NUM_BUCKETS] output_partial_sums
+    state bool[NUM_BUCKETS] output_valids
+    state int#(FROM: 0, TO: HALF_RAM_DEPTH) currently_outputting_index
+    state bool should_be_currently_outputting
+
+    state int#(FROM: 0, TO: 2) current_front_buffer
+    state int#(FROM: 0, TO: 2) current_back_buffer
+
+    for int BUCKET in 0..NUM_BUCKETS {
+        RAM#(DEPTH: HALF_RAM_DEPTH * 2) bucket_ram
+        when bucket_write[BUCKET] {
+            int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer, bucket_write_index[BUCKET])
+            double prev_value = bucket_ram.read(front_index)
+            double new_value = fp64_add(prev_value, bucket_write_value[BUCKET])
+            bucket_ram.write(front_index, new_value)
+        } else when should_be_currently_outputting & !output_valids[BUCKET] {
+            int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer, currently_outputting_index)
+            output_partial_sums[BUCKET] = bucket_ram.read(back_index)
+            output_valids[BUCKET] = true
+            bucket_ram.write(back_index, 0.0d)
+        }
+    }
+
+    domain total_taking
+    output bool may_take_totals = &output_valids
+    action take_totals : -> double[NUM_BUCKETS] totals {
+        output_valids = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
+        totals = output_partial_sums
+        currently_outputting_index = currently_outputting_index + 1 mod HALF_RAM_DEPTH
+        
+    }
+
+    domain reset
+    action rst {
+        output_valids = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
+        should_be_currently_outputting = false
+        current_front_buffer = 0
+        current_back_buffer = 0
+    }
+}
