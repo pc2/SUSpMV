@@ -162,6 +162,19 @@ module Collector {
 ///     4'b1110: UNUSED
 ///     4'b1111: Signifies 5 float mode
 /// ```
+/// Equivalent to:
+/// ```c
+/// struct Float6 {
+///   float[6] weights;
+///   uint64_t x_index_5 : 10;
+///   uint64_t x_index_4 : 10;
+///   uint64_t x_index_3 : 10;
+///   uint64_t x_index_2 : 10;
+///   uint64_t x_index_1 : 10;
+///   uint64_t x_index_0 : 10;
+///   uint64_t mode      : 4;
+/// }
+/// ```
 /// ## 5 float (for sparse sections)
 /// ```
 ///   256 bit [
@@ -171,6 +184,24 @@ module Collector {
 ///     [202:252] - 5 10-bit x indices in reverse order
 ///     [252:256] - 4'b1111
 ///   ]
+/// ```
+/// Equivalent to:
+/// ```c
+/// struct Float5 {
+///   float[5] weights;
+///   uint8_t y_delta0;
+///   uint8_t y_delta1;
+///   uint8_t y_delta2;
+///   uint8_t y_delta3;
+///   uint64_t y_delta4  : 8;
+///   uint64_t _UNUSED   : 2;
+///   uint64_t x_index_4 : 10;
+///   uint64_t x_index_3 : 10;
+///   uint64_t x_index_2 : 10;
+///   uint64_t x_index_1 : 10;
+///   uint64_t x_index_0 : 10;
+///   uint64_t mode      : 4; // == 4'b1111
+/// }
 /// ```
 ///
 /// `y_steps != 0` means that it `is_last`
