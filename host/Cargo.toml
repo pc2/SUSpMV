@@ -1,0 +1,17 @@
+[package]
+name = "SuSpMV"
+version = "0.0.0"
+description = "SuSpMV"
+edition = "2021"
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = "fat"
+
+[dependencies]
+tapasco = { path = "runtime/libtapasco" }
+clap = { version = "4.5.4", features = ["derive"] }
+env_logger = "0.9.0"
+log = "0.4.22"
+thiserror = "1.0"
