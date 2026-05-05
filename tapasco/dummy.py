@@ -23,9 +23,9 @@ module suspmv (
 """
 
 ports = list()
-for i in range(1):
+for i in range(4):
     ports.append(f"ddr{str(i).zfill(2)}")
-for i in range(0):
+for i in range(64):
     ports.append(f"hbm{str(i).zfill(2)}")
 
 for port in ports:

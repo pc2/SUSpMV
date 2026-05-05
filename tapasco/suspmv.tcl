@@ -1,5 +1,8 @@
-# run `tapasco compose [suspmv x1]@400MHz -p v80 --deleteProjects false --skipSynthesis`
-# run suspmv::generate
+# This is a plugin for TaPaSCo, which effects the PE AXI4-Master connections.
+# It will instantiate the V80 HBM-NoC and DDR-NoC and connect the PE as desired.
+# How to use:
+#   1. Copy this plugin file to $TAPASCO_HOME_TOOLFLOW/vivado/platform/v80/plugins/
+#   2. Run `tapasco --jobsFile job.json` using the job.json file from this directory.
 
 namespace eval suspmv {
 
@@ -216,8 +219,14 @@ namespace eval suspmv {
         return $noc
     }
 
+    proc remove_ports { pe unused } {
+        set group [current_bd_instance .]
+        delete_bd_objs [get_bd_intf_pins -of_objects $group -filter {MODE == Master && VLNV == xilinx.com:interface:aximm_rtl:1.0}]
+    }
+
 }
 
 if {[tapasco::is_feature_enabled "suspmv"]} {
-    tapasco::register_plugin "platform::suspmv::generate" "post-address-map"
+    tapasco::register_plugin "platform::suspmv::generate" "pre-wrapper"
+    tapasco::register_plugin "platform::suspmv::remove_ports" "post-pe-create"
 }
