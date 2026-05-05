@@ -8,11 +8,11 @@ module MultiAccumulate_tb;
 	// {clk} input bool #() valid_set'0
 	logic valid_set;
 	// {clk} input double #()[6] values'0
-	logic[63:0] values[5:0];
+	logic[63:0] values[0:5];
 	// {clk} input bool #()[6] is_lasts'0
 	logic[5:0] is_lasts;
 	// {clk} output double #()[6] partial_sums'154
-	wire[63:0] partial_sums[5:0];
+	wire[63:0] partial_sums[0:5];
 	// {clk} input bool #() rst'1000
 	logic rst;
 

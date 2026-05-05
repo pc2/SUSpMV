@@ -122,3 +122,6 @@ VCK5000/reset:
 
 testMultiAccumulate: sus_codegen.sv
 	cd tests/MultiAccumulate && vivado -mode batch -script sim.tcl
+
+testSpMVUnit: sus_codegen.sv
+	cd tests/SpMVUnit && vivado -mode batch -script sim.tcl

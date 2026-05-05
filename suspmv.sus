@@ -73,9 +73,9 @@ module YIndexManager {
         }
         
         when is_last {
-            cur_y_base = cur_y_base + total_deltas[6] mod Y_TO
-        } else {
             cur_y_base = 0
+        } else {
+            cur_y_base = cur_y_base + total_deltas[6] mod Y_TO
         }
     }
 
@@ -85,6 +85,8 @@ module YIndexManager {
     }
 }
 
+/// Collects and sums up y values. 
+/// reset must be held for 4096 cycles to fully reset the Y vector memory
 module YCollector {
     //DoubleBuffer#(T: type double, DEPTH: 2048, NUM_BUFFERS: 2) buf
     gen int PARALELLISM = 6
@@ -93,6 +95,13 @@ module YCollector {
     gen int HALF_RAM_DEPTH = 2048
     gen int Y_DELTA = 256
     YIndexManager y_index_manager
+
+    state double[NUM_BUCKETS] output_partial_sums
+    state bool[NUM_BUCKETS] output_valids
+    state int#(FROM: 0, TO: HALF_RAM_DEPTH) currently_outputting_index
+
+    state int#(FROM: 0, TO: 4) current_front_buffer
+    state int#(FROM: 0, TO: 4) current_back_buffer
 
     bool[NUM_BUCKETS] bucket_write = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
     double[NUM_BUCKETS] bucket_write_value
@@ -103,9 +112,14 @@ module YCollector {
     action push_partial_sums'0 :
         double[PARALELLISM] partial_sums'0,
         int#(FROM: 0, TO: Y_DELTA)[PARALELLISM] y_deltas,
-        bool is_last {
+        bool end_of_x_block,
+        bool full_end {
 
-        int[PARALELLISM] y_indices = y_index_manager.push(y_deltas, is_last)
+        when full_end {
+            current_front_buffer = current_front_buffer + 1 mod 4
+        }
+
+        int[PARALELLISM] y_indices = y_index_manager.push(y_deltas, end_of_x_block)
         bool[PARALELLISM] valids
         for int I in 0..PARALELLISM {
             reg valids[I] = y_deltas[I] != 0
@@ -136,23 +150,23 @@ module YCollector {
         }
     }
 
-    state double[NUM_BUCKETS] output_partial_sums
-    state bool[NUM_BUCKETS] output_valids
-    state int#(FROM: 0, TO: HALF_RAM_DEPTH) currently_outputting_index
-    state bool should_be_currently_outputting
+    // Required to slowly reset the memory
+    bool is_rst
+    state int#(FROM: 0, TO: 2 * HALF_RAM_DEPTH) reset_rotator
+    initial reset_rotator = 0
 
-    state int#(FROM: 0, TO: 2) current_front_buffer
-    state int#(FROM: 0, TO: 2) current_back_buffer
-
+    bool may_be_outputting = current_back_buffer != current_front_buffer
     for int BUCKET in 0..NUM_BUCKETS {
         RAM#(DEPTH: HALF_RAM_DEPTH * 2) bucket_ram
-        when bucket_write[BUCKET] {
-            int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer, bucket_write_index[BUCKET])
+        when is_rst {
+            bucket_ram.write(reset_rotator, 0.0d)
+        } else when bucket_write[BUCKET] {
+            int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer mod 2, bucket_write_index[BUCKET])
             double prev_value = bucket_ram.read(front_index)
             double new_value = fp64_add(prev_value, bucket_write_value[BUCKET])
             bucket_ram.write(front_index, new_value)
-        } else when should_be_currently_outputting & !output_valids[BUCKET] {
-            int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer, currently_outputting_index)
+        } else when may_be_outputting & !output_valids[BUCKET] {
+            int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer mod 2, currently_outputting_index)
             output_partial_sums[BUCKET] = bucket_ram.read(back_index)
             output_valids[BUCKET] = true
             bucket_ram.write(back_index, 0.0d)
@@ -161,19 +175,28 @@ module YCollector {
 
     domain total_taking
     output bool may_take_totals = &output_valids
-    action take_totals : -> double[NUM_BUCKETS] totals {
+    action take_totals : bool end_totals -> double[NUM_BUCKETS] totals {
         output_valids = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
         totals = output_partial_sums
-        currently_outputting_index = currently_outputting_index + 1 mod HALF_RAM_DEPTH
+        when end_totals {
+            currently_outputting_index = 0
+            current_back_buffer = current_back_buffer + 1 mod 4
+        } else {
+            currently_outputting_index = currently_outputting_index + 1 mod HALF_RAM_DEPTH
+        }
     }
 
     domain reset
     action rst {
         output_valids = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
-        should_be_currently_outputting = false
         current_front_buffer = 0
         current_back_buffer = 0
+        reset_rotator = reset_rotator + 1 mod 2 * HALF_RAM_DEPTH
+        is_rst = true
+        currently_outputting_index = 0
         y_index_manager.rst()
+    } else {
+        is_rst = false
     }
 }
 
@@ -182,8 +205,8 @@ module YCollector {
 module XVectorMemory {
     gen int PARALLELISM = 6
     gen int X_DEPTH = 1024
-    gen int X_NUM_BUFFERS = 4
-    gen int X_WRITE_SIZE = 8
+    gen int X_NUM_BUFFERS = 8
+    gen int X_WRITE_SIZE = 16
     gen int RAM_DEPTH = X_DEPTH * X_NUM_BUFFERS
 
     state int#(FROM: 0, TO: X_NUM_BUFFERS) cur_reader_buffer
@@ -270,8 +293,8 @@ module XVectorMemory {
 ///     4'b1010: 6'b001001
 ///     4'b1011: 6'b010010
 ///     4'b1100: 6'b100100
-///     4'b1101: UNUSED
-///     4'b1110: UNUSED
+///     4'b1101: 6'b101000 // Some extra possibilities for a "last" first elem, because the deltas don't work to detect the first is_last. 
+///     4'b1110: 6'b110000
 ///     4'b1111: Signifies 5 float mode
 /// ```
 /// Equivalent to:
@@ -351,7 +374,7 @@ module DecompressCommand {
             }
             y_steps[5] = 0 // No 6th float, so weight = 0.0 and no is_last
         } else {
-            gen bool[6][13] EXTRA_IS_LAST_MAP = [
+            gen bool[6][15] EXTRA_IS_LAST_MAP = [
                 6'b000000,
                 6'b000001,
                 6'b000010,
@@ -364,21 +387,23 @@ module DecompressCommand {
                 6'b100010,
                 6'b001001,
                 6'b010010,
-                6'b100100
+                6'b100100,
+                6'b101000,
+                6'b110110
             ]
 
             // In 6-float mode, is_last values are computed from a combination of the last 4 bits, and if ever an x index is lower than its predecessor. 
-            bool[6] is_lasts = EXTRA_IS_LAST_MAP[IntNarrow#(FROM: 0, TO: 13)(is_last_extra_mode)]
+            bool[6] extra_is_lasts = EXTRA_IS_LAST_MAP[IntNarrow#(FROM: 0, TO: 15)(is_last_extra_mode)]
 
+            bool[6] delta_is_lasts
+            delta_is_lasts[0] = false
             // Some extra is_last information can be procured from the differences in the x indices. 
             for int I in 1..6 {
-                when x_indices[I] <= x_indices[I - 1] {
-                    reg is_lasts[I] = true
-                }
+                delta_is_lasts[I] = x_indices[I] <= x_indices[I - 1]
             }
 
             for int I in 0..6 {
-                when is_lasts[I] {
+                when extra_is_lasts[I] | delta_is_lasts[I] {
                     y_steps[I] = 1
                 } else {
                     y_steps[I] = 0
@@ -394,10 +419,10 @@ module SpMVUnit {
     YCollector collector
 
     domain main
-    action push'0: bool[256] packed_matrix_data'0, bool is_last'0 {
+    action push'0: bool[256] packed_matrix_data'0, bool end_of_x_chunk'0, bool full_end'0 {
         float[6] weights, int[6] x_indices, int[6] y_deltas = DecompressCommand(packed_matrix_data)
 
-        float[6] terms = x_vector_memory.multiply_bys(weights, x_indices, is_last)
+        float[6] terms = x_vector_memory.multiply_bys(weights, x_indices, end_of_x_chunk)
 
         double[6] high_precision_terms
         for int I in 0..6 {
@@ -411,18 +436,22 @@ module SpMVUnit {
 
         double[6] partial_sums = accumulate.valid_set(high_precision_terms, is_lasts)
 
-        collector.push_partial_sums(partial_sums, y_deltas, is_last)
+        collector.push_partial_sums(partial_sums, y_deltas, end_of_x_chunk, full_end)
     }
 
     domain x_vector_loading
-    action write_x_values'0: float[8] x_values'0, bool is_last_write'0 {
+    action write_x_values'0: float[16] x_values'0, bool is_last_write'0 {
         x_vector_memory.write(x_values, is_last_write)
     }
 
     domain totals_taking
     output bool may_take_totals = collector.may_take_totals
-    action take_totals : -> double[16] totals {
-        totals = collector.take_totals()
+    /*action take_totals : int#(FROM: 0, TO: 16) temporary_reduce_pins_idx -> double temporary_totals {
+        double[16] totals = collector.take_totals()
+        reg temporary_totals = totals[temporary_reduce_pins_idx]
+    }*/
+    action take_totals : bool end_totals -> double[16] totals {
+        totals = collector.take_totals(end_totals)
     }
 
     domain reset

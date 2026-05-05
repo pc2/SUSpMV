@@ -9,29 +9,41 @@ module SpMVUnit_tb;
 	logic push;
 	// {clk} input bool #()[256] packed_matrix_data'0
 	logic[255:0] packed_matrix_data;
-	// {clk} input bool #() is_last'0
-	logic is_last;
+	// {clk} input bool #() end_of_x_chunk'0
+	logic end_of_x_chunk;
+	// {clk} input bool #() full_end'0
+	logic full_end;
 	// {clk} input bool #() write_x_values'0
 	logic write_x_values;
-	// {clk} input float #()[8] x_values'0
-	logic[31:0] x_values[7:0];
+	// {clk} input float #()[16] x_values'0
+	logic[31:0] x_values[0:15];
 	// {clk} input bool #() is_last_write'0
 	logic is_last_write;
 	// {clk} output bool #() may_take_totals'1000
 	wire may_take_totals;
 	// {clk} input bool #() take_totals'1000
 	logic take_totals;
+	// {clk} input bool #() end_totals'1000
+	logic end_totals;
 	// {clk} output double #()[16] totals'1001
-	wire[63:0] totals[15:0];
+	wire[63:0] totals[0:15];
 	// {clk} input bool #() rst'2000
 	logic rst;
-
+    
+    logic[31:0] matrix_data_as_floats[7:0];
+    always @(*) begin
+        for(int i = 0; i < 8; i++) begin
+            matrix_data_as_floats[i] = packed_matrix_data[i*32 +: 32];
+        end
+    end
+    
 	// Latency Registers
 	/*latency*/ logic _may_take_totals_D1001; always_ff @(posedge clk) begin _may_take_totals_D1001 <= may_take_totals; end
 	/*latency*/ logic _take_totals_D1001; always_ff @(posedge clk) begin _take_totals_D1001 <= take_totals; end
+	/*latency*/ logic _end_totals_D1001; always_ff @(posedge clk) begin _end_totals_D1001 <= end_totals; end
 
 	function automatic logic [255:0] pack_float6(
-		input logic [31:0] weights [6],
+		input shortreal    weights [6],
 		input logic [9:0]  x_idx   [6], // x_idx[0] = lowest index
 		input logic [3:0]  mode
 	);
@@ -40,7 +52,7 @@ module SpMVUnit_tb;
 
 		// --- Floats [0:192]
 		for (int i = 0; i < 6; i++) begin
-			data[i*32 +: 32] = weights[i];
+			data[i*32 +: 32] = $shortrealtobits(weights[i]);
 		end
 
 		// --- X indices [192:252] (reverse order)
@@ -55,16 +67,16 @@ module SpMVUnit_tb;
 	endfunction
 
 	function automatic logic [255:0] pack_float5(
-		input logic [31:0] weights [5],
-		input logic [7:0]  y_delta [5],
-		input logic [9:0]  x_idx   [5]
+		input shortreal    weights [5],
+    	input logic [9:0]  x_idx   [5],
+		input logic [7:0]  y_delta [5]
 	);
 		logic [255:0] data;
 		data = '0;
 
 		// --- Floats [0:160]
 		for (int i = 0; i < 5; i++) begin
-			data[i*32 +: 32] = weights[i];
+			data[i*32 +: 32] = $shortrealtobits(weights[i]);
 		end
 
 		// --- Y deltas [160:200]
@@ -90,33 +102,168 @@ module SpMVUnit_tb;
 		.clk(clk),
 		.push(push),
 		.packed_matrix_data(packed_matrix_data),
-		.is_last(is_last),
+		.end_of_x_chunk(end_of_x_chunk),
+		.full_end(full_end),
 		.write_x_values(write_x_values),
 		.x_values(x_values),
 		.is_last_write(is_last_write),
 		.may_take_totals(may_take_totals),
 		.take_totals(take_totals),
+		.end_totals(end_totals),
 		.totals(totals),
 		.rst(rst)
 	);
+
+	shortreal x_vec_values[1024];
+
+	task automatic load_x_vector();
+		int cur_idx = 0;
+		repeat(64) begin
+			@(posedge clk);
+			write_x_values <= 1;
+			for(int i = 0; i < 16; i++) begin
+				shortreal x_val = $urandom_range(1, 10) * 1.0;
+				x_values[i] <= $shortrealtobits(x_val);
+				x_vec_values[cur_idx++] = x_val;
+			end
+			is_last_write <= 0;
+		end
+		is_last_write <= 1;
+		@(posedge clk);
+		write_x_values <= 0;
+		is_last_write <= 0;
+	endtask
+
+	real expected_y_values[16*2048];
+	real current_total;
+	int cur_y_value_idx;
+	int cur_output_idx;
 
 	initial begin
 		rst <= 1;
 		push <= 0;
 		write_x_values <= 0;
 		take_totals <= 0;
-
-		repeat(200) @(posedge clk);
+        
+        // 4096 cycles of reset required to clear out the Y vector RAM
+		repeat(4100) @(posedge clk);
 
 		rst <= 0;
 		repeat(10) @(posedge clk);
 
-		write_x_values <= 1;
-		repeat(64) begin
+		load_x_vector();
 
+		repeat(10) @(posedge clk);
 
-			@(posedge clk);
+		cur_y_value_idx = 0;
+		current_total = 0.0;
+		for(int i = 0; i < 16*2048; i++) begin
+			expected_y_values[i] = 0.0;
 		end
-		write_x_values <= 0;
+        
+        
+        
+		repeat(100) begin
+			@(posedge clk);
+
+			push <= 1;
+			end_of_x_chunk <= 0;
+			full_end <= 0;
+			if($urandom_range(0, 1) == 1) begin
+			    shortreal weights[5];
+			    logic[9:0] x_indices[5];
+			    logic[7:0] y_deltas[5];
+			    for(int i = 0; i < 5; i++) begin
+			        shortreal this_term;
+			        
+                    weights[i] = $urandom_range(1, 10) * 1.0;
+                    x_indices[i] = $urandom_range(0, 1 << 10);
+                    if($urandom_range(0, 10) == 0) begin
+                        y_deltas[i] = $urandom_range(1, 1 << 8);
+                    end else begin
+                        y_deltas[i] = 0;
+                    end
+                    
+                    this_term = weights[i] * x_vec_values[x_indices[i]];
+					current_total += this_term;
+					
+					if(y_deltas[i] != 0) begin
+					    //$display("Term %d is %f*[%d]%f=%f LAST   Total for Y:%d is %f", i, weights[i], x_indices[i], x_vec_values[x_indices[i]], this_term, cur_y_value_idx, current_total);
+						expected_y_values[cur_y_value_idx] += current_total;
+						current_total = 0.0;
+						cur_y_value_idx += y_deltas[i];
+					end else begin
+					    //$display("Term %d is %f*[%d]%f=%f", i, weights[i], x_indices[i], x_vec_values[x_indices[i]], this_term);
+					end
+			    end
+				packed_matrix_data <= pack_float5(weights, x_indices, y_deltas);
+			end else begin
+			    shortreal weights[6];
+			    logic[9:0] x_indices[6];
+
+				automatic logic[31:0] prev_x_index = 0;
+			    for(int i = 0; i < 6; i++) begin
+			        shortreal this_term;
+			        
+                    weights[i] = $urandom_range(1, 10) * 1.0;
+                    x_indices[i] = $urandom_range(0, 1 << 10);
+					
+                    this_term = weights[i] * x_vec_values[x_indices[i]];
+					current_total += this_term;
+
+					if(i != 0 && x_indices[i] <= prev_x_index) begin
+					    //$display("Term %d is %f*[%d]%f=%f LAST   Total for Y:%d is %f", i, weights[i], x_indices[i], x_vec_values[x_indices[i]], this_term, cur_y_value_idx, current_total);
+						expected_y_values[cur_y_value_idx] += current_total;
+						current_total = 0.0;
+						cur_y_value_idx += 1;
+					end else begin
+					    //$display("Term %d is %f*[%d]%f=%f", i, weights[i], x_indices[i], x_vec_values[x_indices[i]], this_term);
+					end
+					prev_x_index = x_indices[i];
+			    end
+				packed_matrix_data <= pack_float6(weights, x_indices, 4'b0000);
+			end
+		end
+		end_of_x_chunk <= 1;
+        full_end <= 1;
+		@(posedge clk);
+		push <= 0;
+		end_of_x_chunk <= 0;
+        full_end <= 0;
+	end
+	
+	assign take_totals = may_take_totals;
+	int cur_totals_idx = 0;
+	assign end_totals = cur_totals_idx == 50;
+	always @(posedge clk) begin
+	    if(take_totals) begin
+	        cur_totals_idx <= cur_totals_idx + 1;
+	    end
+	end
+	
+	initial begin
+	    cur_output_idx = 0;
+	    forever begin
+            @(posedge clk);
+            if(_take_totals_D1001) begin
+                for(int i = 0; i < 16; i++) begin
+                    automatic real found = $bitstoreal(totals[i]);
+                    automatic real exp = expected_y_values[cur_output_idx];
+                    automatic real diff = found - exp;
+                    if(diff < -1e6 || diff > 1e6) begin
+                        $fatal("FATAL @%0t [%0d]: found=%f exp=%f",
+                            $time, cur_output_idx, found, exp);
+                    end/* else begin
+                        $display("RIGHT @%0t [%0d]: found=%f exp=%f",
+                            $time, cur_output_idx, found, exp);
+                    end*/
+                    cur_output_idx++;
+                end
+                if(_end_totals_D1001) begin
+                    repeat(50) @(posedge clk);
+                    $finish();
+                end
+            end
+	    end
 	end
 endmodule // SpMVUnit_tb

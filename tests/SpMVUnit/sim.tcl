@@ -17,6 +17,6 @@ set_property top SpMVUnit_tb [get_filesets sim_1]
 # set_property top proj [get_filesets sim_1]
 # set_property top_lib xil_defaultlib [get_filesets sim_1]
 
-# start_gui
+start_gui
 launch_simulation
-run all
+# run all
