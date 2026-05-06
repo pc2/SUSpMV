@@ -87,7 +87,7 @@ module YIndexManager {
 
 /// Collects and sums up y values. 
 /// reset must be held for 4096 cycles to fully reset the Y vector memory
-module YCollector {
+module YCollector#(int REQUEST_Y_LATENCY) {
     //DoubleBuffer#(T: type double, DEPTH: 2048, NUM_BUFFERS: 2) buf
     gen int PARALELLISM = 6
     gen int NUM_BUCKETS = 16
@@ -95,10 +95,6 @@ module YCollector {
     gen int HALF_RAM_DEPTH = 2048
     gen int Y_DELTA = 256
     YIndexManager y_index_manager
-
-    state double[NUM_BUCKETS] output_partial_sums
-    state bool[NUM_BUCKETS] output_valids
-    state int#(FROM: 0, TO: HALF_RAM_DEPTH) currently_outputting_index
 
     state int#(FROM: 0, TO: 4) current_front_buffer
     state int#(FROM: 0, TO: 4) current_back_buffer
@@ -155,6 +151,46 @@ module YCollector {
     state int#(FROM: 0, TO: 2 * HALF_RAM_DEPTH) reset_rotator
     initial reset_rotator = 0
 
+    // We can load a single Y value at a time. It's not supremely bandwidth-critical to get them out as fast as possible,
+    // so we save on SLR crossings by muxing them together here
+    state int#(FROM: 0, TO: NUM_BUCKETS) output_request_bucket
+    state int#(FROM: 0, TO: HALF_RAM_DEPTH) output_request_idx
+    state bool request_bucket_is_last
+    state bool request_bucket_valid
+
+    domain y_requests_taking
+    Tuple2 pack_y_command
+    FWFT#(DEPTH: nextPow2#(V: REQUEST_Y_LATENCY * 2)) y_output_request_fifo
+    output bool may_request_y'-REQUEST_Y_LATENCY = y_output_request_fifo.may_push
+    action request_y'0 : int#(FROM: 0, TO: HALF_RAM_DEPTH * NUM_BUCKETS) y_index'0, bool last'0 {
+        y_output_request_fifo.push(pack_y_command.pack(y_index, last))
+    }
+    
+    when !request_bucket_valid {
+        when y_output_request_fifo.pop_available : bool[] packed_y_command {
+            int index, bool last = pack_y_command.unpack(packed_y_command)
+            output_request_bucket = index mod NUM_BUCKETS
+            output_request_idx = index / NUM_BUCKETS
+            request_bucket_is_last = last
+            request_bucket_valid = true
+            y_output_request_fifo.pop()
+        }
+    }
+
+    domain y_taking
+    bool is_getting_y
+    action try_get_y {
+        is_getting_y = true
+    } else {
+        is_getting_y = false
+    }
+    trigger y_valid : double y, bool last_y {
+        request_bucket_valid = false
+        when request_bucket_is_last {
+            current_back_buffer = current_back_buffer + 1 mod 4
+        }
+    }
+    
     bool may_be_outputting = current_back_buffer != current_front_buffer
     for int BUCKET in 0..NUM_BUCKETS {
         RAM#(DEPTH: HALF_RAM_DEPTH * 2) bucket_ram
@@ -162,39 +198,26 @@ module YCollector {
             bucket_ram.write(reset_rotator, 0.0d)
         } else when bucket_write[BUCKET] {
             int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer mod 2, bucket_write_index[BUCKET])
-            double prev_value = bucket_ram.read(front_index)
+            reg double prev_value = bucket_ram.read(front_index)
             double new_value = fp64_add(prev_value, bucket_write_value[BUCKET])
             bucket_ram.write(front_index, new_value)
-        } else when may_be_outputting & !output_valids[BUCKET] {
-            int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer mod 2, currently_outputting_index)
-            output_partial_sums[BUCKET] = bucket_ram.read(back_index)
-            output_valids[BUCKET] = true
+        } else when may_be_outputting & output_request_bucket == BUCKET & request_bucket_valid & is_getting_y {
+            int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer mod 2, output_request_idx)
+            reg double read_value = bucket_ram.read(back_index)
+            y_valid(read_value, request_bucket_is_last)
             bucket_ram.write(back_index, 0.0d)
-        }
-    }
-
-    domain total_taking
-    output bool may_take_totals = &output_valids
-    action take_totals : bool end_totals -> double[NUM_BUCKETS] totals {
-        output_valids = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
-        totals = output_partial_sums
-        when end_totals {
-            currently_outputting_index = 0
-            current_back_buffer = current_back_buffer + 1 mod 4
-        } else {
-            currently_outputting_index = currently_outputting_index + 1 mod HALF_RAM_DEPTH
         }
     }
 
     domain reset
     action rst {
-        output_valids = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
+        request_bucket_valid = false
         current_front_buffer = 0
         current_back_buffer = 0
         reset_rotator = reset_rotator + 1 mod 2 * HALF_RAM_DEPTH
         is_rst = true
-        currently_outputting_index = 0
         y_index_manager.rst()
+        y_output_request_fifo.rst()
     } else {
         is_rst = false
     }
@@ -414,9 +437,13 @@ module DecompressCommand {
 }
 
 module SpMVUnit {
+    gen int REQUEST_Y_LATENCY = 5
+
+    gen int MAX_NUM_YS = 2048 * 16 // HALF_RAM_DEPTH * NUM_BUCKETS
+
     XVectorMemory x_vector_memory
     MultiAccumulate accumulate
-    YCollector collector
+    YCollector#(REQUEST_Y_LATENCY) collector
 
     domain main
     action push'0: bool[256] packed_matrix_data'0, bool end_of_x_chunk'0, bool full_end'0 {
@@ -444,14 +471,19 @@ module SpMVUnit {
         x_vector_memory.write(x_values, is_last_write)
     }
 
-    domain totals_taking
-    output bool may_take_totals = collector.may_take_totals
-    /*action take_totals : int#(FROM: 0, TO: 16) temporary_reduce_pins_idx -> double temporary_totals {
-        double[16] totals = collector.take_totals()
-        reg temporary_totals = totals[temporary_reduce_pins_idx]
-    }*/
-    action take_totals : bool end_totals -> double[16] totals {
-        totals = collector.take_totals(end_totals)
+    domain y_requests_taking
+    output bool may_request_y'-REQUEST_Y_LATENCY = collector.may_request_y
+    action request_y'0 : int#(FROM: 0, TO: MAX_NUM_YS) y_index'0, bool is_last_y_req'0 {
+        collector.request_y(y_index, is_last_y_req)
+    }
+
+    domain y_taking
+    action try_get_y {
+        collector.try_get_y()
+    }
+    trigger y_valid'0 : double y'0, bool last_y'0
+    when collector.y_valid : double y, bool last_y {
+        y_valid(y, last_y)
     }
 
     domain reset

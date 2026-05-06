@@ -1,35 +1,43 @@
 // Testbench for module SpMVUnit #()
 module SpMVUnit_tb;
 	// Clocks
-	logic clk = 0;
-	initial #0 forever #5 clk = !clk;
+    logic clk = 0;
+    initial #0 forever #5 clk = !clk;
 
-	// Ports
-	// {clk} input bool #() push'0
-	logic push;
-	// {clk} input bool #()[256] packed_matrix_data'0
-	logic[255:0] packed_matrix_data;
-	// {clk} input bool #() end_of_x_chunk'0
-	logic end_of_x_chunk;
-	// {clk} input bool #() full_end'0
-	logic full_end;
-	// {clk} input bool #() write_x_values'0
-	logic write_x_values;
-	// {clk} input float #()[16] x_values'0
-	logic[31:0] x_values[0:15];
-	// {clk} input bool #() is_last_write'0
-	logic is_last_write;
-	// {clk} output bool #() may_take_totals'1000
-	wire may_take_totals;
-	// {clk} input bool #() take_totals'1000
-	logic take_totals;
-	// {clk} input bool #() end_totals'1000
-	logic end_totals;
-	// {clk} output double #()[16] totals'1001
-	wire[63:0] totals[0:15];
-	// {clk} input bool #() rst'2000
-	logic rst;
-    
+    // Ports
+    // {clk} input bool #() push'0
+    logic push;
+    // {clk} input bool #()[256] packed_matrix_data'0
+    logic[255:0] packed_matrix_data;
+    // {clk} input bool #() end_of_x_chunk'0
+    logic end_of_x_chunk;
+    // {clk} input bool #() full_end'0
+    logic full_end;
+    // {clk} input bool #() write_x_values'0
+    logic write_x_values;
+    // {clk} input float #()[16] x_values'0
+    logic[31:0] x_values[0:15];
+    // {clk} input bool #() is_last_write'0
+    logic is_last_write;
+    // {clk} output bool #() may_request_y'-5
+    wire may_request_y;
+    // {clk} input bool #() request_y'0
+    logic request_y;
+    // {clk} input int #(FROM: 0, TO: 32768) y_index'0
+    logic[14:0] y_index;
+    // {clk} input bool #() is_last_y_req'0
+    logic is_last_y_req;
+    // {clk} input bool #() try_get_y'-2
+    logic try_get_y;
+    // {clk} output bool #() y_valid'0
+    wire y_valid;
+    // {clk} output double #() y'0
+    wire[63:0] y;
+    // {clk} output bool #() last_y'0
+    wire last_y;
+    // {clk} input bool #() rst'1000
+    logic rst;
+
     logic[31:0] matrix_data_as_floats[7:0];
     always @(*) begin
         for(int i = 0; i < 8; i++) begin
@@ -37,11 +45,6 @@ module SpMVUnit_tb;
         end
     end
     
-	// Latency Registers
-	/*latency*/ logic _may_take_totals_D1001; always_ff @(posedge clk) begin _may_take_totals_D1001 <= may_take_totals; end
-	/*latency*/ logic _take_totals_D1001; always_ff @(posedge clk) begin _take_totals_D1001 <= take_totals; end
-	/*latency*/ logic _end_totals_D1001; always_ff @(posedge clk) begin _end_totals_D1001 <= end_totals; end
-
 	function automatic logic [255:0] pack_float6(
 		input shortreal    weights [6],
 		input logic [9:0]  x_idx   [6], // x_idx[0] = lowest index
@@ -97,23 +100,27 @@ module SpMVUnit_tb;
 		return data;
 	endfunction
 
-	// DUT
-	SpMVUnit dut(
-		.clk(clk),
-		.push(push),
-		.packed_matrix_data(packed_matrix_data),
-		.end_of_x_chunk(end_of_x_chunk),
-		.full_end(full_end),
-		.write_x_values(write_x_values),
-		.x_values(x_values),
-		.is_last_write(is_last_write),
-		.may_take_totals(may_take_totals),
-		.take_totals(take_totals),
-		.end_totals(end_totals),
-		.totals(totals),
-		.rst(rst)
-	);
-
+    // DUT
+    SpMVUnit dut(
+        .clk(clk),
+        .push(push),
+        .packed_matrix_data(packed_matrix_data),
+        .end_of_x_chunk(end_of_x_chunk),
+        .full_end(full_end),
+        .write_x_values(write_x_values),
+        .x_values(x_values),
+        .is_last_write(is_last_write),
+        .may_request_y(may_request_y),
+        .request_y(request_y),
+        .y_index(y_index),
+        .is_last_y_req(is_last_y_req),
+        .try_get_y(try_get_y),
+        .y_valid(y_valid),
+        .y(y),
+        .last_y(last_y),
+        .rst(rst)
+    );
+    
 	shortreal x_vec_values[1024];
 
 	task automatic load_x_vector();
@@ -143,7 +150,6 @@ module SpMVUnit_tb;
 		rst <= 1;
 		push <= 0;
 		write_x_values <= 0;
-		take_totals <= 0;
         
         // 4096 cycles of reset required to clear out the Y vector RAM
 		repeat(4100) @(posedge clk);
@@ -232,38 +238,50 @@ module SpMVUnit_tb;
         full_end <= 0;
 	end
 	
-	assign take_totals = may_take_totals;
-	int cur_totals_idx = 0;
-	assign end_totals = cur_totals_idx == 50;
-	always @(posedge clk) begin
-	    if(take_totals) begin
-	        cur_totals_idx <= cur_totals_idx + 1;
-	    end
-	end
-	
+	// Gathering of totals
 	initial begin
-	    cur_output_idx = 0;
-	    forever begin
-            @(posedge clk);
-            if(_take_totals_D1001) begin
-                for(int i = 0; i < 16; i++) begin
-                    automatic real found = $bitstoreal(totals[i]);
-                    automatic real exp = expected_y_values[cur_output_idx];
-                    automatic real diff = found - exp;
-                    if(diff < -1e6 || diff > 1e6) begin
-                        $fatal("FATAL @%0t [%0d]: found=%f exp=%f",
-                            $time, cur_output_idx, found, exp);
-                    end/* else begin
-                        $display("RIGHT @%0t [%0d]: found=%f exp=%f",
-                            $time, cur_output_idx, found, exp);
-                    end*/
-                    cur_output_idx++;
-                end
-                if(_end_totals_D1001) begin
-                    repeat(50) @(posedge clk);
-                    $finish();
-                end
-            end
-	    end
+	    try_get_y <= 0;
+	    wait(!rst);
+	    repeat(10) @(posedge clk);
+	    
+	    fork
+	        begin
+	            automatic int cur_y_request_idx = 0;
+	            forever @(posedge clk) begin
+	                if(may_request_y) begin
+	                    request_y <= 1;
+	                    y_index <= cur_y_request_idx;
+	                    is_last_y_req <= cur_y_request_idx == 1000;
+	                    cur_y_request_idx += 1;
+	                end else begin
+	                    request_y <= 0;
+	                end
+	            end
+	        end
+	        begin
+	            automatic int cur_output_idx = 0;
+	            try_get_y <= 1;
+	            forever @(posedge clk) begin
+                    if(y_valid) begin
+                        automatic real found = $bitstoreal(y);
+                        automatic real exp = expected_y_values[cur_output_idx];
+                        automatic real diff = found - exp;
+                        if(diff < -1e6 || diff > 1e6) begin
+                            $fatal("FATAL @%0t [%0d]: found=%f exp=%f",
+                                $time, cur_output_idx, found, exp);
+                        end/* else begin
+                            $display("RIGHT @%0t [%0d]: found=%f exp=%f",
+                                $time, cur_output_idx, found, exp);
+                        end*/
+                        cur_output_idx++;
+                        
+                        if(last_y) begin
+                            repeat(50) @(posedge clk);
+                            $finish();
+                        end
+                    end
+	            end
+	        end
+	    join
 	end
 endmodule // SpMVUnit_tb
