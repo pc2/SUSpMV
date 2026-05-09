@@ -298,9 +298,9 @@ module XVectorMemory {
 /// ## 6 float (for dense sections)
 /// ```
 ///   256 bit [
-///     [  0:192] - 6 floats
-///     [192:252] - 6 10-bit x indices in reverse order
-///     [252:256] - is_last_extra bitset
+///     [  0..192] - 6 floats
+///     [192..252] - 6 10-bit x indices in reverse order
+///     [252..256] - is_last_extra bitset
 ///   ]
 ///   is_last_extra table:
 ///     4'b0000: 6'b000000
@@ -336,11 +336,12 @@ module XVectorMemory {
 /// ## 5 float (for sparse sections)
 /// ```
 ///   256 bit [
-///     [  0:160] - 5 floats
-///     [160:200] - 5 8-bit y deltas
-///     [200:202] - UNUSED
-///     [202:252] - 5 10-bit x indices in reverse order
-///     [252:256] - 4'b1111
+///     [  0..160] - 5 floats
+///     [160..200] - 5 8-bit y deltas
+///     [200]      - last_in_x
+///     [201]      - last_in_y
+///     [202..252] - 5 10-bit x indices in reverse order
+///     [252..256] - 4'b1111
 ///   ]
 /// ```
 /// Equivalent to:
@@ -352,7 +353,8 @@ module XVectorMemory {
 ///   uint8_t y_delta2;
 ///   uint8_t y_delta3;
 ///   uint64_t y_delta4  : 8;
-///   uint64_t _UNUSED   : 2;
+///   uint64_t last_in_x : 1;
+///   uint64_t last_in_y : 1;
 ///   uint64_t x_index_4 : 10;
 ///   uint64_t x_index_3 : 10;
 ///   uint64_t x_index_2 : 10;
@@ -370,7 +372,9 @@ module DecompressCommand {
         bool[256] bits ->
         float[6] weights,
         int#(FROM: 0, TO: X_DEPTH)[6] x_indices,
-        int#(FROM: 0, TO: MAX_Y_STEP)[6] y_steps {
+        int#(FROM: 0, TO: MAX_Y_STEP)[6] y_steps,
+        bool last_in_x,
+        bool last_in_y {
 
         int is_last_extra_mode = BitsToUInt(bits[252:256])
 
@@ -396,6 +400,9 @@ module DecompressCommand {
                 y_steps[I] = BitsToUInt(bits[160 + 8 * I +: 8])
             }
             y_steps[5] = 0 // No 6th float, so weight = 0.0 and no is_last
+
+            last_in_x = bits[200]
+            last_in_y = bits[201]
         } else {
             gen bool[6][15] EXTRA_IS_LAST_MAP = [
                 6'b000000,
@@ -432,43 +439,124 @@ module DecompressCommand {
                     y_steps[I] = 0
                 }
             }
+
+            last_in_x = false
+            last_in_y = false
         }
+    }
+}
+
+module DecompressXLastYLast {
+    action DecompressXLastYLast: bool[256] compressed -> bool[2] last_xy {
+        int mode = BitsToUInt(compressed[256:256])
+        bool is_5float_mode = mode == 15
+        when is_5float_mode {
+            last_xy = [compressed[200], compressed[201]]
+        } else {
+            last_xy = [false, false]
+        }
+    }
+}
+
+/// The Semaphore is a construct for distributing a limited resource,
+/// such as memory buffers or compute units. 
+/// It has an internal counter called the "permits" counter which keeps track of
+/// how many of the guarded resource have been given out thus far. 
+/// 
+/// With `may_acquire` and `acquire()`, you request a "permit" for a resource. 
+/// You use the resource for a while, and when you're done with it, you return it with `release()`
+/// 
+/// For this mode of operation, you start the Semaphore out with `INITIAL_PERMITS=MAX` permits. 
+/// 
+/// You can also use the Semaphore in reverse mode, acting somewhat akin to a FIFO. 
+/// In this case, the Semaphore should be set to `INITIAL_PERMITS=0`, and then when a compute job becomes available `release()` first
+module Semaphore#(int MAX, int INITIAL_PERMITS) {
+    domain write
+    state int#(FROM: 0, TO: MAX+1) available_permits
+    output bool may_acquire'0 = available_permits != 0
+    int do_acquire = 0
+    action acquire'0 {
+        do_acquire = 1
+    }
+
+    domain read
+    int do_release = 0
+    action release'0 {
+        do_release = 1
+    }
+
+    available_permits = IntNarrow#(FROM: 0, TO: MAX+1)(available_permits - do_acquire + do_release)
+
+    domain reset
+    action rst {
+        available_permits = INITIAL_PERMITS
     }
 }
 
 module SpMVUnit {
     gen int REQUEST_Y_LATENCY = 5
+    gen int MAY_PUSH_LATENCY = 200
+
+    gen int MAX_X_BUFS = 8
+    gen int MAX_Y_BUFS = 2
 
     gen int MAX_NUM_YS = 2048 * 16 // HALF_RAM_DEPTH * NUM_BUCKETS
 
     XVectorMemory x_vector_memory
     MultiAccumulate accumulate
     YCollector#(REQUEST_Y_LATENCY) collector
+    FWFT#(DEPTH: 512, T: type bool[256]) packed_data_fifo
 
     domain main
-    action push'0: bool[256] packed_matrix_data'0, bool end_of_x_chunk'0, bool full_end'0 {
-        float[6] weights, int[6] x_indices, int[6] y_deltas = DecompressCommand(packed_matrix_data)
+    output bool may_push'-MAY_PUSH_LATENCY = packed_data_fifo.may_push
+    action push'0: bool[256] packed_matrix_data'0 {
+        packed_data_fifo.push(packed_matrix_data)
+    }
 
-        float[6] terms = x_vector_memory.multiply_bys(weights, x_indices, end_of_x_chunk)
+    Semaphore#(MAX: MAX_X_BUFS, INITIAL_PERMITS: 0) num_x_bufs_in_use
+    Semaphore#(MAX: MAX_Y_BUFS, INITIAL_PERMITS: MAX_Y_BUFS) num_y_bufs_in_use
 
-        double[6] high_precision_terms
-        for int I in 0..6 {
-            high_precision_terms[I] = fp32_to_fp64(terms[I])
+    domain x_buffer_releases
+    // Called when the last element of the x buffer has been used, to signal to the x vector producer more x elements may be sent. 
+    output bool release_x_buffer = false
+
+    when packed_data_fifo.pop_available : bool[256] packed_matrix_data {
+        when num_x_bufs_in_use.may_acquire & num_y_bufs_in_use.may_acquire {
+            packed_data_fifo.pop()
+            float[6] weights, int[6] x_indices, int[6] y_deltas, bool end_of_x, bool end_of_y = DecompressCommand(packed_matrix_data)
+
+            when end_of_x {
+                num_x_bufs_in_use.acquire()
+                release_x_buffer = true
+            }
+            when end_of_y {
+                num_y_bufs_in_use.acquire()
+            }
+
+            float[6] terms = x_vector_memory.multiply_bys(weights, x_indices, end_of_x)
+
+            double[6] high_precision_terms
+            for int I in 0..6 {
+                high_precision_terms[I] = fp32_to_fp64(terms[I])
+            }
+
+            bool[6] is_lasts
+            for int I in 0..6 {
+                is_lasts[I] = y_deltas[I] != 0
+            }
+
+            double[6] partial_sums = accumulate.valid_set(high_precision_terms, is_lasts)
+
+            collector.push_partial_sums(partial_sums, y_deltas, end_of_x, end_of_y)
         }
-
-        bool[6] is_lasts
-        for int I in 0..6 {
-            is_lasts[I] = y_deltas[I] != 0
-        }
-
-        double[6] partial_sums = accumulate.valid_set(high_precision_terms, is_lasts)
-
-        collector.push_partial_sums(partial_sums, y_deltas, end_of_x_chunk, full_end)
     }
 
     domain x_vector_loading
     action write_x_values'0: float[16] x_values'0, bool is_last_write'0 {
         x_vector_memory.write(x_values, is_last_write)
+        when is_last_write {
+            num_x_bufs_in_use.release()
+        }
     }
 
     domain y_requests_taking
@@ -484,6 +572,9 @@ module SpMVUnit {
     trigger y_valid'0 : double y'0, bool last_y'0
     when collector.y_valid : double y, bool last_y {
         y_valid(y, last_y)
+        when last_y {
+            num_y_bufs_in_use.release()
+        }
     }
 
     domain reset
@@ -491,6 +582,9 @@ module SpMVUnit {
         x_vector_memory.rst()
         accumulate.rst()
         collector.rst()
+        num_x_bufs_in_use.rst()
+        num_y_bufs_in_use.rst()
+        packed_data_fifo.rst()
     }
 }
 
