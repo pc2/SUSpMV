@@ -53,6 +53,7 @@ struct Float6 {
   uint64_t mode      : 4;
 }
 ```
+Each `is_last` assertion pushes the `y` index forward by one. 
 ## 5 float (for sparse sections)
 ```
   256 bit [
@@ -83,10 +84,21 @@ struct Float5 {
   uint64_t mode      : 4; // == 4'b1111
 }
 ```
-`y_steps != 0` means that it `is_last`
+`y_deltaN != 0` means that it `is_last`, and the `y` index is pushed forward by `y_deltaN`
 
 ### Extra constraints
 - When crossing between `last_in_x` blocks, the same `y` index must not be written to twice in a row within 16 blocks. (This is because the latency for accumulating to y block URAMs is 15 cycles.)
+  Delay the second write by adding "zero" blocks *before* the second write. It's okay to start accumulating for the same y value again, but the `is_last` assertions must be 16 blocks apart. 
+- Within a block, no two `y` indices may be the same `mod 16`, due to y bank conflicts. If a `y` equal `mod 16` to a previous one in this block, fill the rest with zeros, to push the `is_last` for the conflicting `y` to the next block. This can of course only occur for the 5-float mode, since 6-float mode only allows consecutive y indices. 
+
+| #is_last | Conflict Odds |
+| --- | --- |
+| 0 | 0.0 |
+| 1 | 0.0 |
+| 2 | 0.0625 |
+| 3 | 0.1797 |
+| 4 | 0.3335 |
+| 5 | 0.5001 |
 
 ## Authors
 - Lennart Van Hirtum

@@ -125,15 +125,18 @@ module SpMVUnit_tb;
         .rst(rst)
     );
     
-    localparam NUM_X_CHUNKS = 20;
+    localparam NUM_X_CHUNKS = 10;
+    localparam NUM_Y_BUFFERS = 5;
 	shortreal x_vec_values[1024][NUM_X_CHUNKS];
 	int cur_write_x_buf_idx;
 	int cur_read_x_buf_idx;
 
-	real expected_y_values[16*2048];
+	real expected_y_values[16*2048][NUM_Y_BUFFERS];
 	real current_total;
 	int cur_y_value_idx;
-	int cur_output_idx;
+	int cur_y_buffer_idx;
+	int cur_y_value_output_idx;
+	int cur_y_buffer_output_idx;
 
 	initial begin
 		rst <= 1;
@@ -170,7 +173,7 @@ module SpMVUnit_tb;
 	    wait(!rst);
 	    repeat(10) @(posedge clk);
         
-        repeat(NUM_X_CHUNKS) begin
+        repeat(NUM_X_CHUNKS * NUM_Y_BUFFERS) begin
             automatic int cur_idx_in_x = 0;
             
             wait(x_in_use < 8);
@@ -200,12 +203,15 @@ module SpMVUnit_tb;
 	    wait(!rst);
 	    repeat(10) @(posedge clk);
         
-		cur_y_value_idx = 0;
-		current_total = 0.0;
-		for(int i = 0; i < 16*2048; i++) begin
-			expected_y_values[i] = 0.0;
+		for(int buf_i = 0; buf_i < NUM_Y_BUFFERS; buf_i++) begin
+			for(int i = 0; i < 16*2048; i++) begin
+				expected_y_values[i][buf_i] = 0.0;
+			end
 		end
         
+		cur_y_value_idx = 0;
+	    cur_y_buffer_idx = 0;
+		current_total = 0.0;
 		forever begin
 			@(posedge clk);
 
@@ -234,7 +240,7 @@ module SpMVUnit_tb;
 						
 						if(y_deltas[i] != 0) begin
 							//$display("Term %d is %f*[%d]%f=%f LAST   Total for Y:%d is %f", i, weights[i], x_indices[i], x_vec_values[x_indices[i]], this_term, cur_y_value_idx, current_total);
-							expected_y_values[cur_y_value_idx] += current_total;
+							expected_y_values[cur_y_value_idx][cur_y_buffer_idx] += current_total;
 							current_total = 0.0;
 							cur_y_value_idx += y_deltas[i];
 						end else begin
@@ -249,7 +255,10 @@ module SpMVUnit_tb;
 						cur_y_value_idx = 0;
 					end
 					if(last_y) begin
-					    break;
+						cur_y_buffer_idx = cur_y_buffer_idx + 1;
+						if(cur_y_buffer_idx == NUM_Y_BUFFERS) begin
+							break;
+						end
 					end
 				end else begin
 					shortreal weights[6];
@@ -267,7 +276,7 @@ module SpMVUnit_tb;
 
 						if(i != 0 && x_indices[i] <= prev_x_index) begin
 							//$display("Term %d is %f*[%d]%f=%f LAST   Total for Y:%d is %f", i, weights[i], x_indices[i], x_vec_values[x_indices[i]], this_term, cur_y_value_idx, current_total);
-							expected_y_values[cur_y_value_idx] += current_total;
+							expected_y_values[cur_y_value_idx][cur_y_buffer_idx] += current_total;
 							current_total = 0.0;
 							cur_y_value_idx += 1;
 						end else begin
@@ -287,6 +296,7 @@ module SpMVUnit_tb;
 	// Requesting totals
 	initial begin
         automatic int cur_y_request_idx = 0;
+        automatic int cur_y_request_buffer_idx = 0;
         
 	    try_get_y <= 0;
 	    wait(!rst);
@@ -296,8 +306,13 @@ module SpMVUnit_tb;
             if(may_request_y) begin
                 request_y <= 1;
                 y_index <= cur_y_request_idx;
-                is_last_y_req <= cur_y_request_idx == 1000;
-                cur_y_request_idx += 1;
+				if(cur_y_request_idx == 500) begin
+					is_last_y_req <= 1;
+					cur_y_request_idx = 0;
+				end else begin
+					is_last_y_req <= 0;
+                	cur_y_request_idx += 1;
+				end
             end else begin
                 request_y <= 0;
             end
@@ -305,31 +320,36 @@ module SpMVUnit_tb;
     end
 	// Receiving totals
 	initial begin
-        automatic int cur_output_idx = 0;
+        cur_y_value_output_idx = 0;
+		cur_y_buffer_output_idx = 0;
         
 	    try_get_y <= 0;
 	    wait(!rst);
 	    repeat(10) @(posedge clk);
     
-    
+        #200000 // Wait a long time, to make sure the kernel has to stop once due to undelivered y values first. 
         try_get_y <= 1;
         forever @(posedge clk) begin
             if(y_valid) begin
                 automatic real found = $bitstoreal(y);
-                automatic real exp = expected_y_values[cur_output_idx];
+                automatic real exp = expected_y_values[cur_y_value_output_idx][cur_y_buffer_output_idx];
                 automatic real diff = found - exp;
                 if(diff < -1e6 || diff > 1e6) begin
                     $fatal("FATAL @%0t [%0d]: found=%f exp=%f",
-                        $time, cur_output_idx, found, exp);
+                        $time, cur_y_value_output_idx, found, exp);
                 end/* else begin
                     $display("RIGHT @%0t [%0d]: found=%f exp=%f",
-                        $time, cur_output_idx, found, exp);
+                        $time, cur_y_value_output_idx, found, exp);
                 end*/
-                cur_output_idx++;
+                cur_y_value_output_idx++;
                 
                 if(last_y) begin
-                    repeat(50) @(posedge clk);
-                    $finish();
+					cur_y_buffer_output_idx++;
+					cur_y_value_output_idx = 0;
+					if(cur_y_buffer_output_idx == NUM_Y_BUFFERS) begin
+						repeat(50) @(posedge clk);
+						$finish();
+					end
                 end
             end
         end
