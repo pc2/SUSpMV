@@ -119,8 +119,8 @@ module SpMVUnit_tb;
 		return data;
 	endfunction
     
-    localparam NUM_X_CHUNKS = 10;
-    localparam NUM_Y_BUFFERS = 5;
+    localparam NUM_X_CHUNKS = 3;
+    localparam NUM_Y_BUFFERS = 100;
 	shortreal x_vec_values[1024][NUM_X_CHUNKS];
 	int cur_write_x_buf_idx;
 	int cur_read_x_buf_idx;
@@ -131,6 +131,7 @@ module SpMVUnit_tb;
 	int cur_y_buffer_idx;
 	int cur_y_value_output_idx;
 	int cur_y_buffer_output_idx;
+	int last_y_values[NUM_Y_BUFFERS];
 
 	initial begin
 		rst <= 1;
@@ -205,6 +206,9 @@ module SpMVUnit_tb;
         
 		cur_y_value_idx = 0;
 	    cur_y_buffer_idx = 0;
+	    for(int i = 0; i < NUM_Y_BUFFERS; i++) begin
+	        last_y_values[i] = 0;
+	    end
 		current_accumulator = 0.0;
 		forever begin
 			@(posedge clk);
@@ -240,7 +244,7 @@ module SpMVUnit_tb;
 						if(y_deltas[i] != 0) begin
                             automatic real prev_total_total = expected_y_values[cur_y_value_idx][cur_y_buffer_idx];
                             automatic real new_total_total = prev_total_total + current_accumulator;
-							if(cur_y_value_idx == 16) begin
+							if(cur_y_value_idx == 160) begin
 							    automatic logic x;
 							    automatic real new_total = expected_y_values[cur_y_value_idx][cur_y_buffer_idx];
 							    $display("Float5 Subtotal %d to add is %f    Current Running Total is %f => %f", cur_y_value_idx, current_accumulator, prev_total_total, new_total_total);
@@ -248,6 +252,9 @@ module SpMVUnit_tb;
 							end
 							expected_y_values[cur_y_value_idx][cur_y_buffer_idx] = new_total_total;
 							current_accumulator = 0.0;
+							if(cur_y_value_idx > last_y_values[cur_y_buffer_idx]) begin
+							    last_y_values[cur_y_buffer_idx] = cur_y_value_idx;
+                            end
 							cur_y_value_idx += y_deltas[i];
 						end else begin
 							//$display("Term %d is %f*[%d]%f=%f", i, weights[i], x_indices[i], x_vec_values[x_indices[i]], this_term);
@@ -284,7 +291,7 @@ module SpMVUnit_tb;
 							
                             automatic real prev_total_total = expected_y_values[cur_y_value_idx][cur_y_buffer_idx];
                             automatic real new_total_total = prev_total_total + current_accumulator;
-							if(cur_y_value_idx == 16) begin
+							if(cur_y_value_idx == 160) begin
 							    automatic logic x;
 							    automatic real new_total = expected_y_values[cur_y_value_idx][cur_y_buffer_idx];
 							    $display("Float6 Subtotal %d to add is %f    Current Running Total is %f => %f", cur_y_value_idx, current_accumulator, prev_total_total, new_total_total);
@@ -292,6 +299,9 @@ module SpMVUnit_tb;
 							end
 							expected_y_values[cur_y_value_idx][cur_y_buffer_idx] = new_total_total;
 							current_accumulator = 0.0;
+							if(cur_y_value_idx > last_y_values[cur_y_buffer_idx]) begin
+							    last_y_values[cur_y_buffer_idx] = cur_y_value_idx;
+                            end
 							cur_y_value_idx += 1;
 						end else begin
 							//$display("Term %d is %f*[%d]%f=%f", i, weights[i], x_indices[i], x_vec_values[x_indices[i]], this_term);
@@ -327,7 +337,7 @@ module SpMVUnit_tb;
 	    wait(!rst);
 	    repeat(10) @(posedge clk);
         
-        #200000 // Wait a long time, to make sure the kernel has to stop once due to undelivered y values first. 
+        #50000 // Wait a long time, to make sure the kernel has to stop once due to undelivered y values first. 
         
         @(posedge clk);
         start_y_burst <= 1;
@@ -336,6 +346,15 @@ module SpMVUnit_tb;
 
         forever @(posedge clk) begin
             if(_y_valid_D2) begin
+                if(_is_last_y_D2) begin
+                    automatic int found_total_ys = cur_y_value_output_idx + _num_y_valid_D2;
+                    automatic int expected_num_ys = last_y_values[cur_y_buffer_output_idx] + 1;
+                    
+                    if(expected_num_ys != found_total_ys) begin
+                        $fatal("NUMBER OF RESULTS: @%0t, Expected Y section %0d to be of length %0d, but actually was of length %0d",
+                            $time, cur_y_buffer_output_idx, expected_num_ys, found_total_ys);
+                    end
+                end
                 for(int i = 0; i < 16; i++) begin
                     automatic shortreal found = $bitstoshortreal(output_y_values[i]);
                     automatic real exp = expected_y_values[cur_y_value_output_idx][cur_y_buffer_output_idx];

@@ -301,7 +301,7 @@ module YCollector {
             }
         }
         int next_highest_y
-        when |valids {
+        when |valids & max_y_seen > highest_y {
             next_highest_y = max_y_seen
         } else {
             next_highest_y = highest_y
