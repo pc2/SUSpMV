@@ -31,7 +31,7 @@ module MultiAccumulate {
         find_first_bit.find(is_lasts)
         when find_first_bit.is_nonzero : int index {
             accumulator.accumulate(accumulator_input_selector[index])
-            double accululated_partial_sum = accumulator.last(accumulator_input_selector[PARALLELISM-1])
+            double accululated_partial_sum = accumulator.last(adder_left_inputs[PARALLELISM-1])
 
             for int I in 0..PARALLELISM {
                 when index == I {
@@ -61,7 +61,8 @@ module YIndexManager {
     domain main
     action push :
         int#(FROM: 0, TO: Y_DELTA_TO)[PARALELLISM] y_deltas,
-        bool is_last -> int[PARALELLISM] y_indices {
+        bool is_last_x ->
+        int[PARALELLISM] y_indices {
         
         split int[7] total_deltas
         total_deltas[0] = 0
@@ -72,7 +73,7 @@ module YIndexManager {
             reg y_indices[I] = cur_y_base + total_deltas[I] mod Y_TO
         }
         
-        when is_last {
+        when is_last_x {
             cur_y_base = 0
         } else {
             cur_y_base = cur_y_base + total_deltas[6] mod Y_TO
@@ -85,35 +86,181 @@ module YIndexManager {
     }
 }
 
+module TreeMax#(int SIZE, int FROM, int TO) {
+    action TreeMax : int#(FROM, TO)[SIZE] values -> int max {
+        if SIZE == 0 {
+            max = FROM
+        } else if SIZE == 1 {
+            max = values[0]
+        } else {
+            split int[][clog2#(V: SIZE)] inter_maxes
+
+            for int I in 0..SIZE {
+                inter_maxes[0] = values
+            }
+            gen int CUR_SIZE = SIZE
+            for int LAYER in 0..clog2#(V: SIZE) {
+                gen int NEXT_SIZE = (CUR_SIZE + 1) / 2
+                int[CUR_SIZE] cur_maxes = inter_maxes[LAYER]
+                int[NEXT_SIZE] next_maxes
+
+                for int I in 0..NEXT_SIZE {
+                    if I == CUR_SIZE / 2 {
+                        next_maxes[I] = cur_maxes[I * 2]
+                    } else {
+                        when cur_maxes[I * 2] > cur_maxes[I * 2 + 1] {
+                            next_maxes[I] = cur_maxes[I * 2]
+                        } else {
+                            next_maxes[I] = cur_maxes[I * 2 + 1]
+                        }
+                    }
+                }
+                inter_maxes[LAYER+1] = next_maxes
+                CUR_SIZE = NEXT_SIZE
+            }
+            int[1] last = inter_maxes[clog2#(V: SIZE)]
+            max = last[0]
+        }
+    }
+}
+
+module TreeMin#(int SIZE, int FROM, int TO) {
+    action TreeMin'0 : int#(FROM, TO)[SIZE] values'0 -> int min {
+        if SIZE == 0 {
+            min = TO-1
+        } else if SIZE == 1 {
+            min = values[0]
+        } else {
+            split int[][clog2#(V: SIZE)+1] inter_mins
+
+            for int I in 0..SIZE {
+                inter_mins[0] = values
+            }
+            gen int CUR_SIZE = SIZE
+            for int LAYER in 0..clog2#(V: SIZE) {
+                gen int NEXT_SIZE = (CUR_SIZE + 1) / 2
+                int[CUR_SIZE] cur_mins = inter_mins[LAYER]
+                int[NEXT_SIZE] next_mins
+
+                for int I in 0..NEXT_SIZE {
+                    if I == CUR_SIZE / 2 {
+                        next_mins[I] = cur_mins[I * 2]
+                    } else {
+                        when cur_mins[I * 2] < cur_mins[I * 2 + 1] {
+                            next_mins[I] = cur_mins[I * 2]
+                        } else {
+                            next_mins[I] = cur_mins[I * 2 + 1]
+                        }
+                    }
+                }
+                inter_mins[LAYER+1] = next_mins
+                CUR_SIZE = NEXT_SIZE
+            }
+            int[1] last = inter_mins[clog2#(V: SIZE)]
+            min = last[0]
+        }
+    }
+}
+
+module LatencyCut#(T) {
+    domain a
+    input T din
+
+    domain b
+    output T dout = din
+}
+
+module JoiningFIFO#(T, int NUM_FIFOS, int DEPTH, int MAY_PUSH_LATENCY) {
+    state int#(FROM: 0, TO: DEPTH * 2)[NUM_FIFOS] write_addrs'0
+    state int#(FROM: 0, TO: DEPTH * 2) read_addr'0
+    
+    state bool[sizeof#(T)][DEPTH][NUM_FIFOS] memory
+
+    domain push_side
+    output bool[NUM_FIFOS] may_pushes'-MAY_PUSH_LATENCY
+    input bool[NUM_FIFOS] pushes'0
+    input T[NUM_FIFOS] datas'0
+
+    bool[NUM_FIFOS] internal_may_pushes
+    may_pushes = LatencyOffset #(OFFSET: -MAY_PUSH_LATENCY-1)(internal_may_pushes)
+
+    for int I in 0..NUM_FIFOS {
+	    int space_remaining = (read_addr mod DEPTH) - (write_addrs[I] mod DEPTH) - 1 mod DEPTH
+        reg internal_may_pushes[I] = space_remaining > MAY_PUSH_LATENCY + 1
+
+        when pushes[I] {
+            memory[I][write_addrs[I] mod DEPTH] = ToBits(datas[I])
+            write_addrs[I] = write_addrs[I] + 1 mod DEPTH * 2
+        }
+    }
+
+    int#(FROM: 0, TO: DEPTH * 2)[NUM_FIFOS] relative_write_addrs
+    bool read_addr_in_second_half = read_addr >= DEPTH
+    for int I in 0..NUM_FIFOS {
+        when read_addr_in_second_half {
+            relative_write_addrs[I] = (write_addrs[I] - DEPTH) mod DEPTH
+        } else {
+            relative_write_addrs[I] = write_addrs[I]
+        }
+    }
+    /// We don't actually care about the pipelining of minimum_write_addr
+    /// because it is monotonically ascending, 
+    LatencyCut cut_minimum_write_addr
+    cut_minimum_write_addr.din = TreeMin(relative_write_addrs)
+    int minimum_write_addr = cut_minimum_write_addr.dout
+
+
+    domain pop_side
+    output bool may_pop'0 = (minimum_write_addr mod DEPTH) != (read_addr mod DEPTH)
+    action pop'0 : -> T[NUM_FIFOS] pop_data {
+        for int I in 0..NUM_FIFOS {
+            reg pop_data[I] = FromBits(memory[I][read_addr mod DEPTH])
+        }
+        read_addr = read_addr + 1 mod DEPTH * 2
+    }
+
+    domain reset
+    action rst {
+        read_addr = 0
+        for int I in 0..NUM_FIFOS {
+            write_addrs[I] = 0
+        }
+    }
+}
+
 /// Collects and sums up y values. 
 /// reset must be held for 4096 cycles to fully reset the Y vector memory
-module YCollector#(int REQUEST_Y_LATENCY) {
+module YCollector {
+    gen int NUM_Y_BUFFERS = 2
     //DoubleBuffer#(T: type double, DEPTH: 2048, NUM_BUFFERS: 2) buf
     gen int PARALELLISM = 6
     gen int NUM_BUCKETS = 16
     // The 16 banks are arranged as double buffers. 
     gen int HALF_RAM_DEPTH = 2048
+    gen int NUM_Y_INDICES = HALF_RAM_DEPTH * NUM_BUCKETS
     gen int Y_DELTA = 256
     YIndexManager y_index_manager
 
-    state int#(FROM: 0, TO: 4) current_front_buffer
-    state int#(FROM: 0, TO: 4) current_back_buffer
+    state int#(FROM: 0, TO: NUM_Y_BUFFERS) current_front_buffer
+    state int#(FROM: 0, TO: NUM_Y_BUFFERS) current_back_buffer
 
     bool[NUM_BUCKETS] bucket_write = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
     double[NUM_BUCKETS] bucket_write_value
     int[NUM_BUCKETS] bucket_write_index
     int[NUM_BUCKETS] bucket_mux_from
 
+    /// With highest_y and y_ends_fifo, we find how many y values there are in this block. That way, this information doesn't need to be provided by the parent. 
+    /// Since there are only 2 y buffers, that's the maximum number of y pages that can be in flight at the same time. the number of y pages in use can only be decreased after pulling from this fifo. 
+    RippleFIFO#(DEPTH: NUM_Y_BUFFERS) y_ends_fifo
+    bool _ = y_ends_fifo.may_push // We'll never exceed this FIFO, because max 2 y buffers can be in flight anyway. 
+    state int highest_y
+
     domain default
     action push_partial_sums'0 :
-        double[PARALELLISM] partial_sums'0,
-        int#(FROM: 0, TO: Y_DELTA)[PARALELLISM] y_deltas,
-        bool end_of_x_block,
-        bool full_end {
-
-        when full_end {
-            current_front_buffer = current_front_buffer + 1 mod 4
-        }
+        double[PARALELLISM] partial_sums'7,
+        int#(FROM: 0, TO: Y_DELTA)[PARALELLISM] y_deltas'0,
+        bool end_of_x_block'0,
+        bool end_of_y_block'0 {
 
         int[PARALELLISM] y_indices = y_index_manager.push(y_deltas, end_of_x_block)
         bool[PARALELLISM] valids
@@ -144,80 +291,105 @@ module YCollector#(int REQUEST_Y_LATENCY) {
                 bucket_write_value[BUCKET_I] = partial_sums[mux_from]
             }
         }
+
+        
+        // Grab the rightmost y value, using the assignment order trick. 
+        int max_y_seen
+        for int I in 0..PARALELLISM {
+            when valids[I] {
+                max_y_seen = y_indices[I]
+            }
+        }
+        int next_highest_y
+        when |valids {
+            next_highest_y = max_y_seen
+        } else {
+            next_highest_y = highest_y
+        }
+
+        when end_of_y_block {
+            current_front_buffer = current_front_buffer + 1 mod NUM_Y_BUFFERS
+            // Delay y_end_value by 16 cycles, such that the last y writes have time to be committed before starting to read them again on the other side. 
+            reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg int y_end_value = next_highest_y
+            y_ends_fifo.push(y_end_value)
+            highest_y = 0
+        } else {
+            highest_y = next_highest_y mod NUM_Y_INDICES
+        }
     }
 
     // Required to slowly reset the memory
     bool is_rst
-    state int#(FROM: 0, TO: 2 * HALF_RAM_DEPTH) reset_rotator
+    state int#(FROM: 0, TO: NUM_Y_BUFFERS * HALF_RAM_DEPTH) reset_rotator
     initial reset_rotator = 0
 
-    // We can load a single Y value at a time. It's not supremely bandwidth-critical to get them out as fast as possible,
-    // so we save on SLR crossings by muxing them together here
-    state int#(FROM: 0, TO: NUM_BUCKETS) output_request_bucket
-    state int#(FROM: 0, TO: HALF_RAM_DEPTH) output_request_idx
-    state bool request_bucket_is_last
-    state bool request_bucket_valid
+    state bool currently_outputting
+    state int#(FROM: 0, TO: NUM_Y_INDICES + 1) num_ys_left_to_output
+    state int#(FROM: 0, TO: HALF_RAM_DEPTH + 1)[NUM_BUCKETS] num_ys_left_per_bucket
+    state int#(FROM: 0, TO: HALF_RAM_DEPTH)[NUM_BUCKETS] cur_output_y_per_bucket
 
-    domain y_requests_taking
-    Tuple2 pack_y_command
-    FWFT#(DEPTH: nextPow2#(V: REQUEST_Y_LATENCY * 2)) y_output_request_fifo
-    output bool may_request_y'-REQUEST_Y_LATENCY = y_output_request_fifo.may_push
-    action request_y'0 : int#(FROM: 0, TO: HALF_RAM_DEPTH * NUM_BUCKETS) y_index'0, bool last'0 {
-        y_output_request_fifo.push(pack_y_command.pack(y_index, last))
-    }
-    
-    when !request_bucket_valid {
-        when y_output_request_fifo.pop_available : bool[] packed_y_command {
-            int index, bool last = pack_y_command.unpack(packed_y_command)
-            output_request_bucket = index mod NUM_BUCKETS
-            output_request_idx = index / NUM_BUCKETS
-            request_bucket_is_last = last
-            request_bucket_valid = true
-            y_output_request_fifo.pop()
-        }
-    }
-
-    domain y_taking
-    bool is_getting_y
-    action try_get_y {
-        is_getting_y = true
-    } else {
-        is_getting_y = false
-    }
-    trigger y_valid : double y, bool last_y {
-        request_bucket_valid = false
-        when request_bucket_is_last {
-            current_back_buffer = current_back_buffer + 1 mod 4
-        }
-    }
-    
-    bool may_be_outputting = current_back_buffer != current_front_buffer
+    JoiningFIFO#(DEPTH: 32, NUM_FIFOS: NUM_BUCKETS) output_fifo
+    output_fifo.pushes = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
     for int BUCKET in 0..NUM_BUCKETS {
-        RAM#(DEPTH: HALF_RAM_DEPTH * 2) bucket_ram
+        RAM#(T: type double, DEPTH: HALF_RAM_DEPTH * NUM_Y_BUFFERS) bucket_ram
         when is_rst {
             bucket_ram.write(reset_rotator, 0.0d)
         } else when bucket_write[BUCKET] {
-            int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer mod 2, bucket_write_index[BUCKET])
+            int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer, bucket_write_index[BUCKET])
             reg double prev_value = bucket_ram.read(front_index)
             double new_value = fp64_add(prev_value, bucket_write_value[BUCKET])
             bucket_ram.write(front_index, new_value)
-        } else when may_be_outputting & output_request_bucket == BUCKET & request_bucket_valid & is_getting_y {
-            int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer mod 2, output_request_idx)
+        } else when num_ys_left_per_bucket[BUCKET] != 0 & output_fifo.may_pushes[BUCKET] {
+            int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer, cur_output_y_per_bucket[BUCKET])
             reg double read_value = bucket_ram.read(back_index)
-            y_valid(read_value, request_bucket_is_last)
             bucket_ram.write(back_index, 0.0d)
+            output_fifo.datas[BUCKET] = fp64_to_fp32(read_value)
+            output_fifo.pushes[BUCKET] = true
+            cur_output_y_per_bucket[BUCKET] = cur_output_y_per_bucket[BUCKET] + 1 mod HALF_RAM_DEPTH
+            num_ys_left_per_bucket[BUCKET] = num_ys_left_per_bucket[BUCKET] - 1 mod HALF_RAM_DEPTH
+        }
+    }
+
+    when !currently_outputting {
+        when y_ends_fifo.pop_available : int last_y_value {
+            y_ends_fifo.pop()
+
+            currently_outputting = true
+            num_ys_left_to_output = last_y_value + 1
+            for int BUCKET in 0..NUM_BUCKETS {
+                num_ys_left_per_bucket[BUCKET] = (last_y_value / NUM_BUCKETS) + 1
+                cur_output_y_per_bucket[BUCKET] = 0
+            }
+        }
+    }
+
+    domain y_returning
+    input bool may_y_valid'0
+    trigger y_valid'0 : float[16] output_y_values, int#(FROM: 0, TO: 17) num_y_valid, bool is_last_y
+    
+    when output_fifo.may_pop & may_y_valid {
+        reg float[NUM_BUCKETS] floats_out = output_fifo.pop()
+        when num_ys_left_to_output > NUM_BUCKETS {
+            y_valid(floats_out, NUM_BUCKETS, false)
+            num_ys_left_to_output = IntNarrow#(FROM: 0, TO: NUM_Y_INDICES)(num_ys_left_to_output - NUM_BUCKETS)
+        } else {
+            y_valid(floats_out, IntNarrow#(FROM: 0, TO: NUM_BUCKETS+1)(num_ys_left_to_output), true)
+            currently_outputting = false
+            current_back_buffer = current_back_buffer + 1 mod NUM_Y_BUFFERS
         }
     }
 
     domain reset
     action rst {
-        request_bucket_valid = false
         current_front_buffer = 0
         current_back_buffer = 0
-        reset_rotator = reset_rotator + 1 mod 2 * HALF_RAM_DEPTH
+        highest_y = 0
+        reset_rotator = reset_rotator + 1 mod HALF_RAM_DEPTH * NUM_Y_BUFFERS
         is_rst = true
+        currently_outputting = false
         y_index_manager.rst()
-        y_output_request_fifo.rst()
+        output_fifo.rst()
+        y_ends_fifo.rst()
     } else {
         is_rst = false
     }
@@ -423,17 +595,14 @@ module Semaphore#(int MAX, int INITIAL_PERMITS) {
 }
 
 module SpMVUnit {
-    gen int REQUEST_Y_LATENCY = 5
     gen int MAY_PUSH_LATENCY = 200
 
     gen int MAX_X_BUFS = 8
     gen int MAX_Y_BUFS = 2
 
-    gen int MAX_NUM_YS = 2048 * 16 // HALF_RAM_DEPTH * NUM_BUCKETS
-
     XVectorMemory x_vector_memory
     MultiAccumulate accumulate
-    YCollector#(REQUEST_Y_LATENCY) collector
+    YCollector collector
     FWFT#(DEPTH: 512, T: type bool[256]) packed_data_fifo
 
     domain main
@@ -488,26 +657,34 @@ module SpMVUnit {
         }
     }
 
-    domain y_requests_taking
-    output bool may_request_y'-REQUEST_Y_LATENCY = collector.may_request_y
-    action request_y'0 : int#(FROM: 0, TO: MAX_NUM_YS) y_index'0, bool is_last_y_req'0 {
-        collector.request_y(y_index, is_last_y_req)
+    /// To coordinate the y storage bursts, only a single SpMV unit may be outputting y values onto the shared bus at a time
+    /// If the Unit receives a token from start_y_burst, it is allowed to push data onto the y_valid channel. 
+    /// The token is returned when a y_valid transaction is given with is_last_y set. 
+    domain y_bus_tokens
+    state bool has_y_burst_token
+    action start_y_burst'0 {
+        has_y_burst_token = true
     }
 
-    domain y_taking
-    action try_get_y {
-        collector.try_get_y()
-    }
-    trigger y_valid'0 : double y'0, bool last_y'0
-    when collector.y_valid : double y, bool last_y {
-        y_valid(y, last_y)
-        when last_y {
+    /// Serves as regular backpressure for y_valid. This is in contrast to start_y_burst, which is called once and grants
+    /// the unit the right to push onto the y_valid channel. 
+    /// start_y_burst and may_y_valid are separate, because doing so allows us to pipeline both signals freely,
+    /// something that is quite important for the SLR crossing we'll be doing
+    domain y_valid_channel
+    input bool may_y_valid'0
+    collector.may_y_valid = may_y_valid & has_y_burst_token
+    trigger y_valid'0 : float[16] output_y_values, int#(FROM: 0, TO: 17) num_y_valid'0, bool is_last_y'0
+    when collector.y_valid : float[16] output_y_values, int#(FROM: 0, TO: 17) num_y_valid, bool is_last_y {
+        y_valid(output_y_values, num_y_valid, is_last_y)
+        when is_last_y {
+            has_y_burst_token = false
             num_y_bufs_in_use.release()
         }
     }
 
     domain reset
     action rst {
+        has_y_burst_token = false
         x_vector_memory.rst()
         accumulate.rst()
         collector.rst()
