@@ -37,28 +37,27 @@ module SpMVUnit_tb;
     // DUT
     SpMVUnit dut(
         .clk(clk),
+		// matrix data domain
         .may_push(may_push),
         .push(push),
         .packed_matrix_data(packed_matrix_data),
+		// Release a single x buffer. If all Units release an X buffer, the X reader will read in another X buffer. 
         .release_x_buffer(release_x_buffer),
+		// x data
         .write_x_values(write_x_values),
         .x_values(x_values),
         .is_last_write(is_last_write),
+		// Grant the shared y bus token to this SpMVUnit
         .start_y_burst(start_y_burst),
+		// y data
         .may_y_valid(may_y_valid),
         .y_valid(y_valid),
         .output_y_values(output_y_values),
         .num_y_valid(num_y_valid),
         .is_last_y(is_last_y),
+		// reset domain
         .rst(rst)
     );
-    
-    logic[31:0] matrix_data_as_floats[7:0];
-    always @(*) begin
-        for(int i = 0; i < 8; i++) begin
-            matrix_data_as_floats[i] = packed_matrix_data[i*32 +: 32];
-        end
-    end
     
 	function automatic logic [255:0] pack_float6(
 		input shortreal    weights [6],
@@ -277,18 +276,16 @@ module SpMVUnit_tb;
 					shortreal weights[6];
 					logic[9:0] x_indices[6];
 
-					automatic logic[31:0] prev_x_index = 0;
 					for(int i = 0; i < 6; i++) begin
-						shortreal this_term;
-						
 						weights[i] = $urandom_range(1, 10) * 1.0;
 						x_indices[i] = $urandom_range(0, 1 << 10);
-						
-						this_term = weights[i] * x_vec_values[x_indices[i]][cur_read_x_buf_idx];
+				    end
+				    
+					for(int i = 0; i < 6; i++) begin
+						automatic shortreal this_term = weights[i] * x_vec_values[x_indices[i]][cur_read_x_buf_idx];
 						current_accumulator += this_term;
 
-						if(i != 0 && x_indices[i] <= prev_x_index) begin
-							
+						if(i != 5 && x_indices[i+1] <= x_indices[i]) begin
                             automatic real prev_total_total = expected_y_values[cur_y_value_idx][cur_y_buffer_idx];
                             automatic real new_total_total = prev_total_total + current_accumulator;
 							if(cur_y_value_idx == 160) begin
@@ -306,7 +303,6 @@ module SpMVUnit_tb;
 						end else begin
 							//$display("Term %d is %f*[%d]%f=%f", i, weights[i], x_indices[i], x_vec_values[x_indices[i]], this_term);
 						end
-						prev_x_index = x_indices[i];
 					end
 					push <= 1;
 					packed_matrix_data <= pack_float6(weights, x_indices, 4'b0000);

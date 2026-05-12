@@ -505,6 +505,7 @@ module DecompressCommand {
             last_in_x = bits[200]
             last_in_y = bits[201]
         } else {
+            /// NOTE: The rightmost bit maps to the first float. 
             gen bool[6][15] EXTRA_IS_LAST_MAP = [
                 6'b000000,
                 6'b000001,
@@ -520,17 +521,17 @@ module DecompressCommand {
                 6'b010010,
                 6'b100100,
                 6'b101000,
-                6'b110110
+                6'b110000
             ]
 
             // In 6-float mode, is_last values are computed from a combination of the last 4 bits, and if ever an x index is lower than its predecessor. 
             bool[6] extra_is_lasts = EXTRA_IS_LAST_MAP[IntNarrow#(FROM: 0, TO: 15)(is_last_extra_mode)]
 
             bool[6] delta_is_lasts
-            delta_is_lasts[0] = false
+            delta_is_lasts[5] = false
             // Some extra is_last information can be procured from the differences in the x indices. 
-            for int I in 1..6 {
-                delta_is_lasts[I] = x_indices[I] <= x_indices[I - 1]
+            for int I in 0..5 {
+                delta_is_lasts[I] = x_indices[I + 1] <= x_indices[I]
             }
 
             for int I in 0..6 {

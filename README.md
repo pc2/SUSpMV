@@ -40,6 +40,8 @@ To separate sections to target the next x block, or the next y block, you must e
     4'b1110: 6'b110000
     4'b1111: Signifies 5 float mode
 ```
+**Note that the rightmost bit of table elements represents weights[0]**
+
 Equivalent to:
 ```c
 struct Float6 {
@@ -85,6 +87,8 @@ struct Float5 {
 }
 ```
 `y_deltaN != 0` means that it `is_last`, and the `y` index is pushed forward by `y_deltaN`
+
+**Note: The y_deltas apply to the change in Y *after* this element. So the *next* element's Y is currentY + delta_y**
 
 ### Extra constraints
 - When crossing between `last_in_x` blocks, the same `y` index must not be written to twice in a row within 16 blocks. (This is because the latency for accumulating to y block URAMs is 15 cycles.)
