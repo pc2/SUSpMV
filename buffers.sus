@@ -1,0 +1,83 @@
+
+module SimpleDoubleBuffer#(T, int DEPTH, int NUM_BUFFERS) {
+    RAM#(T, DEPTH: DEPTH * NUM_BUFFERS) backing_store
+
+    state int#(FROM: 0, TO: NUM_BUFFERS) cur_front_buffer
+    state int#(FROM: 0, TO: NUM_BUFFERS) cur_back_buffer
+
+    domain front_write
+	action write_front'0 : int#(FROM: 0, TO: DEPTH) write_addr_front'0, T write_data_front'0, bool is_last_write_front'0 {
+		backing_store.write(write_addr_front, write_data_front)
+	}
+
+    domain back_read
+	action read_back: int#(FROM: 0, TO: DEPTH) read_addr_back, bool is_last_read_back'0 -> T read_data_back {
+        read_data_back = backing_store.read(read_addr_back)
+	}
+
+    domain reset
+    action rst {
+        cur_front_buffer = 0
+        cur_back_buffer = 0
+    }
+}
+
+/// 
+module PriorityDoubleBuffer#(T, int DEPTH, int NUM_BUFFERS) {
+    RAM#(T, DEPTH: DEPTH * NUM_BUFFERS) backing_store
+    gen int DEPTH_BITS = clog2#(V: DEPTH)
+    assert#(C: DEPTH == pow2#(E: DEPTH_BITS))
+
+    state int#(FROM: 0, TO: NUM_BUFFERS) cur_wr_front_buffer
+    state int#(FROM: 0, TO: NUM_BUFFERS) cur_rd_front_buffer
+    state int#(FROM: 0, TO: NUM_BUFFERS) cur_wr_back_buffer
+    state int#(FROM: 0, TO: NUM_BUFFERS) cur_rd_back_buffer
+
+    bool front_currently_writing
+    bool front_currently_reading
+    domain front_write
+	action write_front'0 : int#(FROM: 0, TO: DEPTH) write_addr_front'0, T write_data_front'0 {
+        int full_wr_addr_front = BitwiseIntConcat#(LOWER_BITS: DEPTH_BITS)(cur_wr_front_buffer, write_addr_front)
+		backing_store.write(full_wr_addr_front, write_data_front)
+	}
+    action finish_write_front {
+        cur_wr_front_buffer = cur_wr_front_buffer + 1 mod NUM_BUFFERS
+    }
+
+    domain front_read
+	action read_front: int#(FROM: 0, TO: DEPTH) read_addr_front -> T read_data_front {
+        int full_rd_addr_front = BitwiseIntConcat#(LOWER_BITS: DEPTH_BITS)(cur_rd_front_buffer, read_addr_front)
+        read_data_front = backing_store.read(full_rd_addr_front)
+	}
+    action finish_read_front {
+        cur_rd_front_buffer = cur_rd_front_buffer + 1 mod NUM_BUFFERS
+    }
+
+    domain back_write
+    output bool may_write_back = !front_currently_writing
+	action write_back'0 : int#(FROM: 0, TO: DEPTH) write_addr_back'0, T write_data_back'0 {
+        int full_wr_addr_back = BitwiseIntConcat#(LOWER_BITS: DEPTH_BITS)(cur_wr_back_buffer, write_addr_back)
+		backing_store.write(full_wr_addr_back, write_data_back)
+	}
+    action finish_write_back {
+        cur_wr_back_buffer = cur_wr_back_buffer + 1 mod NUM_BUFFERS
+    }
+
+    domain back_read
+    output bool may_read_back = !front_currently_reading
+	action read_back: int#(FROM: 0, TO: DEPTH) read_addr_back -> T read_data_back {
+        int full_rd_addr_back = BitwiseIntConcat#(LOWER_BITS: DEPTH_BITS)(cur_rd_back_buffer, read_addr_back)
+        read_data_back = backing_store.read(full_rd_addr_back)
+	}
+    action finish_read_back {
+        cur_rd_back_buffer = cur_rd_back_buffer + 1 mod NUM_BUFFERS
+    }
+
+    domain reset
+    action rst {
+        cur_wr_front_buffer = 0
+        cur_rd_front_buffer = 0
+        cur_wr_back_buffer = 0
+        cur_rd_back_buffer = 0
+    }
+}

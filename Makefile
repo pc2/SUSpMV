@@ -16,12 +16,14 @@ U280/%: PLATFORM := xilinx_u280_gen3x16_xdma_1_202211_1
 
 FILES := 
 FILES += suspmv.sus
+FILES += suspmv_io.sus
 FILES += sus-float/fp_custom.sus
 FILES += sus-float/UltraScalePlus/extensions.sus
 FILES += sus-float/UltraScalePlus/fp_wrappers.sus
+FILES += sus-xrt/axi.sus
 
 sus_codegen.sv: $(FILES)
-	sus_compiler $(FILES) -o sus_codegen.sv --top SpMVUnit --gen-tb
+	sus_compiler $(FILES) -o sus_codegen.sv --top SUSpMV_Full
 
 XOS_VCK := $(BIN_DIR)/suspmv.xo
 LOCAL_XOS := ../suspmv.xo
