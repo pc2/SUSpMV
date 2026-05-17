@@ -52,7 +52,7 @@ void Tile::append(std::vector<uint8_t> &data) {
             }
         }
         // - the last bits must be representable by a combination of mode and x values
-        //   => compute the last mask by setting every neccessary last bits (smaller new x value implies last bit)
+        //   => compute the last mask by setting every necessary last bits (smaller new x value implies last bit)
         uint8_t last_mask = 0;
         for (uint64_t i = 0; i < 6; i++) {
             if (dy[i] == 1 && (i == 0 || x[i] > x[i-1])) {
