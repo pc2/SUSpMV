@@ -5,11 +5,12 @@
 #define SUSPMV_PE_ID 100
 
 int main(int argc, char **argv) {
-    if (argc != 2) {
-        std::cout << "usage: ./suspmv <path to .mtx>" << std::endl;
+    if (argc != 3) {
+        std::cout << "usage: ./suspmv <path to .mtx> <iterations>" << std::endl;
         return 0;
     }
     std::string path(argv[1]);
+    uint64_t iterations = std::stoi(argv[2]);
 
     // initialize TaPaSCo
     //tapasco::Tapasco tapasco;
@@ -34,7 +35,7 @@ int main(int argc, char **argv) {
         //tapasco.copy_to(data.data(), hbm_addr, data.size());
     }
 
-    for (uint64_t iter = 0; iter < 1; iter++) {
+    for (uint64_t iter = 0; iter < iterations; iter++) {
         // generate & upload test vector
         std::vector<float> v(m.width, 0.0);
         std::vector<float> result(m.height);
