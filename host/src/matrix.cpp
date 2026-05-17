@@ -267,6 +267,10 @@ Matrix Matrix::load(std::string path, uint64_t tile_height) {
     // Read entries
     // ------------------------------------------------------------
 
+    // Note:
+    // Entries are read and directly inserted into the correct tile as opposed to storing all entries in a large array and distributing them later.
+    // This is because I anticipate that this matrix is very large and we don't want to store it in memory twice.
+
     std::string line;
     while (std::getline(file, line)) {
         auto first = line.find_first_not_of(" \t\r\n");
