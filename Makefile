@@ -127,3 +127,6 @@ testMultiAccumulate: sus_codegen.sv
 
 testSpMVUnit: sus_codegen.sv
 	cd tests/SpMVUnit && vivado -mode batch -script sim.tcl
+
+testIO: sus_codegen.sv
+	cd tests/IO && vivado -mode batch -script sim.tcl
