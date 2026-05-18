@@ -9,29 +9,37 @@
 #include <string>
 #include <cstring>
 #include <cassert>
+#include <format>
 
 void Tile::append(std::vector<uint8_t> &data) {
     uint64_t first_entry_idx = 0;
     bool tile_last = false;
 
     while (!tile_last) {
-        uint16_t used_banks = 0;
         float    val[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         uint64_t x[6]   = {0, 0, 0, 0, 0, 0};
+        uint64_t y[6]   = {0, 0, 0, 0, 0, 0};
         uint64_t dy[6]  = {0, 0, 0, 0, 0, 0};
         uint64_t count  = 0;
         for (uint64_t i = 0; i < 6 && first_entry_idx + i < entries.size(); i++) {
-            tile_last = first_entry_idx + i + 1 == entries.size();
-            dy[i] = tile_last ? 255 : entries[i+1].y - entries[i].y;
-            x[i] = entries[i].x % 1024;
-            val[i] = entries[i].val;
+            uint64_t j = i + first_entry_idx;
+            tile_last = j + 1 == entries.size();
+            dy[i] = tile_last ? 255 : entries[j+1].y - entries[j].y;
+            x[i] = entries[j].x % 1024;
+            y[i] = entries[j].y;
+            val[i] = entries[j].val;
 
             // check for bank conflicts
-            uint16_t bank = entries[i].y % 16;
-            if (used_banks & (1 << bank)) {
+            bool bank_conflict = false;
+            for (uint64_t k = 0; k < i; k++) {
+                if (y[i] % 16 == y[k] % 16 && y[i] != y[k]) {
+                    // bank conflict
+                    bank_conflict = true;
+                    break;
+                }
+            }
+            if (bank_conflict) {
                 break;
-            } else {
-                used_banks |= (1 << bank);
             }
             count += 1;
         }
