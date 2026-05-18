@@ -1,8 +1,25 @@
 //#include <tapasco.hpp>
 #include "matrix.h"
 #include <random>
+#include <format>
+#include <iostream>
+#include <iomanip>
 
 #define SUSPMV_PE_ID 100
+
+void store(std::string path, std::vector<uint8_t> &data) {
+    std::ofstream out(path);
+
+    for (size_t i = 0; i < data.size(); ++i) {
+        out << std::format("{:02x}", data[i]);
+
+        if (i % 32 == 31 || i == data.size()-1) {
+            out << '\n';
+        }
+    }
+
+    out.close();
+}
 
 int main(int argc, char **argv) {
     if (argc != 3) {
@@ -16,7 +33,7 @@ int main(int argc, char **argv) {
     //tapasco::Tapasco tapasco;
 
     // accelerator config
-    uint64_t compute_units = 32;
+    uint64_t compute_units = 1;
     uint64_t tile_height = 1024 * 32;
 
     // load matrix from file
@@ -33,6 +50,11 @@ int main(int argc, char **argv) {
         std::vector<uint8_t> data = m.get_compute_unit_data(i, compute_units);
         uint64_t hbm_addr = hbm_base + hbm_stride * i;
         //tapasco.copy_to(data.data(), hbm_addr, data.size());
+
+        if (iterations == 0) {
+            // cue to store the compute unit data in files
+            store(std::format("data{}.hex", i), data);
+        }
     }
 
     for (uint64_t iter = 0; iter < iterations; iter++) {
