@@ -190,14 +190,26 @@ Matrix Matrix::load(std::string path, uint64_t tile_height) {
     }
 
     if (format != "coordinate") {
+        // other options are:
+        // - array: for dense matrices (we don't need those)
         throw std::runtime_error("Only coordinate format supported");
     }
 
     if (field != "real") {
+        // other options are:
+        // - integer (would be possible to support with rounding errors)
+        // - complex (not supported by hardware)
+        // - pattern (not supported by hardware)
         throw std::runtime_error("Only real matrices supported");
     }
 
+    if (symmetry != "general" && symmetry != "symmetric" && symmetry != "skew-symmetric") {
+        // other options are:
+        // - hermitian
+        throw std::runtime_error("Only general, symmetric, and skew-symmetric matrices supported");
+    }
     bool symmetric = (symmetry == "symmetric");
+    bool skew_symmetric = (symmetry == "skew-symmetric");
 
     // ------------------------------------------------------------
     // Skip comments and read size line
@@ -302,9 +314,9 @@ Matrix Matrix::load(std::string path, uint64_t tile_height) {
         uint64_t tile_idx = (row / m.tile_height * tiles_per_row) + (col / tile_width);
         m.tiles[tile_idx].entries.push_back(Entry{ x: row, y: col, val: value });
         // Expand symmetry
-        if (symmetric && row != col) {
+        if ((symmetric || skew_symmetric) && row != col) {
             uint64_t tile_idx = (col / m.tile_height * tiles_per_row) + (row / tile_width);
-            m.tiles[tile_idx].entries.push_back(Entry{ x: col, y: row, val: value });
+            m.tiles[tile_idx].entries.push_back(Entry{ x: col, y: row, val: skew_symmetric ? -value : value });
         }
     }
 
