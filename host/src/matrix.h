@@ -53,7 +53,7 @@ public:
     uint64_t height;
     std::vector<Entry> entries;
 
-    void append(std::vector<uint8_t> &data);
+    void append(std::vector<uint8_t> &data, uint64_t min_blocks_per_tile);
 
     void rearrange_entries();
 
@@ -70,6 +70,6 @@ public:
 
     static Matrix load(std::string path, uint64_t tile_height);
     std::vector<float> mul(std::vector<float> &v);
-    std::vector<uint8_t> get_compute_unit_data(uint64_t i, uint64_t compute_units);
+    std::vector<uint8_t> get_compute_unit_data(uint64_t i, uint64_t compute_units, uint64_t min_blocks_per_tile);
 
 };

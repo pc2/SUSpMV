@@ -35,6 +35,7 @@ int main(int argc, char **argv) {
     // accelerator config
     uint64_t compute_units = 1;
     uint64_t tile_height = 1024 * 32;
+    uint64_t min_blocks_per_tile = 16;
 
     // load matrix from file
     Matrix m = Matrix::load(path, tile_height);
@@ -47,7 +48,7 @@ int main(int argc, char **argv) {
 
     // upload matrix to device distributed across hbm banks
     for (uint64_t i = 0; i < compute_units; i++) {
-        std::vector<uint8_t> data = m.get_compute_unit_data(i, compute_units);
+        std::vector<uint8_t> data = m.get_compute_unit_data(i, compute_units, min_blocks_per_tile);
         uint64_t hbm_addr = hbm_base + hbm_stride * i;
         //tapasco.copy_to(data.data(), hbm_addr, data.size());
 

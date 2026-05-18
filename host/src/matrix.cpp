@@ -11,11 +11,13 @@
 #include <cassert>
 #include <format>
 
-void Tile::append(std::vector<uint8_t> &data) {
+void Tile::append(std::vector<uint8_t> &data, uint64_t min_blocks_per_tile) {
     uint64_t first_entry_idx = 0;
     bool tile_last = false;
+    uint64_t block_count = 0;
 
     while (!tile_last) {
+        block_count += 1;
         float    val[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         uint64_t x[6]   = {0, 0, 0, 0, 0, 0};
         uint64_t y[6]   = {0, 0, 0, 0, 0, 0};
@@ -23,7 +25,7 @@ void Tile::append(std::vector<uint8_t> &data) {
         uint64_t count  = 0;
         for (uint64_t i = 0; i < 6 && first_entry_idx + i < entries.size(); i++) {
             uint64_t j = i + first_entry_idx;
-            tile_last = j + 1 == entries.size();
+            tile_last = j + 1 == entries.size() && block_count >= min_blocks_per_tile;
             dy[i] = tile_last ? 255 : entries[j+1].y - entries[j].y;
             x[i] = entries[j].x % 1024;
             y[i] = entries[j].y;
@@ -132,6 +134,29 @@ void Tile::append(std::vector<uint8_t> &data) {
             data.insert(data.end(), ptr, ptr + sizeof(Float5));
             first_entry_idx += count > 5 ? 5 : count;
         }
+    }
+
+    // in case the tile is very empty, we must add some filler blocks to prevent conflicts with the next tile.
+    while (block_count < 16) {
+        block_count += 1;
+        Float5 block{
+            weights: { 0.0, 0.0, 0.0, 0.0, 0.0 },
+            y_delta0 : 0,
+            y_delta1 : 0,
+            y_delta2 : 0,
+            y_delta3 : 0,
+            y_delta4 : 0,
+            last_in_x : block_count == 16,
+            last_in_y : block_count == 16,
+            x_index_4: 0,
+            x_index_3: 0,
+            x_index_2: 0,
+            x_index_1: 0,
+            x_index_0: 0,
+            mode     : 0b1111,
+        };
+        const uint8_t* ptr = reinterpret_cast<const uint8_t*>(&block);
+        data.insert(data.end(), ptr, ptr + sizeof(Float5));
     }
 }
 
@@ -348,13 +373,13 @@ std::vector<float> Matrix::mul(std::vector<float> &v) {
     return r;
 }
 
-std::vector<uint8_t> Matrix::get_compute_unit_data(uint64_t i, uint64_t compute_units) {
+std::vector<uint8_t> Matrix::get_compute_unit_data(uint64_t i, uint64_t compute_units, uint64_t min_blocks_per_tile) {
     uint64_t tiles_per_row = (width + tile_width - 1) / tile_width;
     std::vector<uint8_t> blocks;
 
     for (Tile &tile : tiles) {
         if (tile.ty % compute_units == i) {
-            tile.append(blocks);
+            tile.append(blocks, min_blocks_per_tile);
         }
     }
 
