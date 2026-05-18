@@ -1,0 +1,28 @@
+[{
+    "Job": "Compose",
+    "Design Frequency": 400,
+    "SkipSynthesis": false,
+    "DeleteProjects": false,
+    "Platforms": [
+      "v80"
+    ],
+    "Architectures": [
+      "axi4mm"
+    ],
+    "Composition": {
+      "Composition": [
+        {
+          "Kernel": "suspmv",
+          "Count": 1
+        }
+      ]
+    },
+    "Features" : [
+      {
+        "Feature" : "suspmv",
+        "Properties" : {
+          "enabled" : "true"
+        }
+      }
+    ]
+}]
