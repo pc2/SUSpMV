@@ -10,8 +10,10 @@ Download by using:
 python3 -m venv venv
 source venv/bin/activate
 pip install ssgetpy
-# download
-python3 download.py
+# download all supported matrices
+ssgetpy --format MM --data-type real --outdir test/
+# download some matrices
+ssgetpy --format MM --data-type real --outdir test/ --limit 1 --group HB --max-nnzs 1000
 ```
 
 ## Run single
@@ -22,5 +24,7 @@ cd build
 cmake ..
 make
 # ./suspmv <path to .mtx> <iterations>
-./suspmv test/ash85/ash85.mtx 2
+./suspmv test/bcsstk01/bcsstk01.mtx 2
+# iterations=0 will save the compute unit data to a hex file to be used in simulation
+./suspmv test/bcsstk01/bcsstk01.mtx 0
 ```
