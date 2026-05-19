@@ -9,10 +9,12 @@ $(TMPDIR):
 VCK5000/%: BIN_DIR ?= VCK5000
 VCK5000/%: PART := xcvc1902-vsvd1760-2MP-e-S
 VCK5000/%: PLATFORM := xilinx_vck5000_gen4x8_qdma_2_202220_1
+VCK5000/%: SUS_FLOAT_LIB_PATH := sus-float/Versal
 
 U280/%: BIN_DIR ?= U280
 U280/%: PART := xcu280-fsvh2892-2L-e
 U280/%: PLATFORM := xilinx_u280_gen3x16_xdma_1_202211_1
+U280/%: SUS_FLOAT_LIB_PATH := sus-float/UltraScalePlus
 
 FILES := 
 FILES += suspmv.sus
@@ -22,19 +24,19 @@ FILES += sus-float/UltraScalePlus/extensions.sus
 FILES += sus-float/UltraScalePlus/fp_wrappers.sus
 FILES += sus-xrt/axi.sus
 
-sus_codegen.sv: $(FILES)
-	sus_compiler $(FILES) -o sus_codegen.sv --top SUSpMV_Full
+U280/sus_codegen.sv: $(FILES)
+	mkdir -p $(BIN_DIR)
+	sus_compiler $(FILES) -o $(BIN_DIR)/sus_codegen.sv --top SUSpMV_Full
 
 XOS_VCK := $(BIN_DIR)/suspmv.xo
 LOCAL_XOS := ../suspmv.xo
 
-$(BIN_DIR)/suspmv.xo: pack_kernel.tcl sus_codegen.sv
-	mkdir -p $(BIN_DIR)
+U280/suspmv.xo: pack_kernel.tcl U280/sus_codegen.sv
 	rm -f $(BIN_DIR)/suspmv.xo
-	rm -rf $(BIN_DIR)/pack_prj$*
-	mkdir $(BIN_DIR)/pack_prj$*
-	cd $(BIN_DIR)/pack_prj$*;\
-	vivado -mode batch -source ../../pack_kernel.tcl -tclargs $(PART) $* ../suspmv.xo
+	rm -rf $(BIN_DIR)/pack_prj
+	mkdir $(BIN_DIR)/pack_prj
+	cd $(BIN_DIR)/pack_prj;\
+	vivado -mode batch -source ../../pack_kernel.tcl -tclargs $(PART) ../suspmv.xo $(SUS_FLOAT_LIB_PATH)
 
 VCK5000/overlay_hw_emu.xclbin: vck5000_connectivity.cfg $(XOS_VCK)
 	rm -f $(BIN_DIR)/overlay_hw_emu.xclbin
@@ -105,7 +107,6 @@ VCK5000/run: _run
 clean: cleantmp
 	rm -rf VCK5000
 	rm -rf U280
-	rm -f sus_codegen.sv
 	rm -f main.x
 	
 cleantmp:
@@ -122,11 +123,11 @@ U280/reset:
 VCK5000/reset: 
 	xbutil reset -d 0000:a1:00.1 --force
 
-testMultiAccumulate: sus_codegen.sv
+testMultiAccumulate: U280/sus_codegen.sv
 	cd tests/MultiAccumulate && vivado -mode batch -script sim.tcl
 
-testSpMVUnit: sus_codegen.sv
+testSpMVUnit: U280/sus_codegen.sv
 	cd tests/SpMVUnit && vivado -mode batch -script sim.tcl
 
-testIO: sus_codegen.sv
+testIO: U280/sus_codegen.sv
 	cd tests/IO && vivado -mode batch -script sim.tcl

@@ -439,32 +439,32 @@ module SUSpMV_Full {
     //  AXI4-Lite Control interface  //
     // ============================= //
     domain axi_control
-    input  int#(FROM: 0, TO: 1 << CTRL_ADDR_WIDTH)    saxil_awaddr
-    input  bool                                       saxil_awvalid
-    output bool                                       saxil_awready = ctrl.awready
-    input  bool[CTRL_AXI_WIDTH]                       saxil_wdata
-    input  bool[CTRL_AXI_WIDTH / 8]                   saxil_wstrb
-    input  bool                                       saxil_wvalid
-    output bool                                       saxil_wready  = ctrl.wready
-    output bool[2]                                    saxil_bresp   = ctrl.bresp
-    output bool                                       saxil_bvalid  = ctrl.bvalid
-    input  bool                                       saxil_bready
-    input  int#(FROM: 0, TO: 1 << CTRL_ADDR_WIDTH)    saxil_araddr
-    input  bool                                       saxil_arvalid
-    output bool                                       saxil_arready = ctrl.arready
-    output bool[CTRL_AXI_WIDTH]                       saxil_rdata   = ctrl.rdata
-    output bool[2]                                    saxil_rresp   = ctrl.rresp
-    output bool                                       saxil_rvalid  = ctrl.rvalid
-    input  bool                                       saxil_rready
-    ctrl.awaddr  =                                    saxil_awaddr
-    ctrl.awvalid =                                    saxil_awvalid
-    ctrl.wdata   =                                    saxil_wdata
-    ctrl.wstrb   =                                    saxil_wstrb
-    ctrl.wvalid  =                                    saxil_wvalid
-    ctrl.bready  =                                    saxil_bready
-    ctrl.araddr  =                                    saxil_araddr
-    ctrl.arvalid =                                    saxil_arvalid
-    ctrl.rready  =                                    saxil_rready
+    input  int#(FROM: 0, TO: 1 << CTRL_ADDR_WIDTH)    s_axi_control_awaddr
+    input  bool                                       s_axi_control_awvalid
+    output bool                                       s_axi_control_awready = ctrl.awready
+    input  bool[CTRL_AXI_WIDTH]                       s_axi_control_wdata
+    input  bool[CTRL_AXI_WIDTH / 8]                   s_axi_control_wstrb
+    input  bool                                       s_axi_control_wvalid
+    output bool                                       s_axi_control_wready  = ctrl.wready
+    output bool[2]                                    s_axi_control_bresp   = ctrl.bresp
+    output bool                                       s_axi_control_bvalid  = ctrl.bvalid
+    input  bool                                       s_axi_control_bready
+    input  int#(FROM: 0, TO: 1 << CTRL_ADDR_WIDTH)    s_axi_control_araddr
+    input  bool                                       s_axi_control_arvalid
+    output bool                                       s_axi_control_arready = ctrl.arready
+    output bool[CTRL_AXI_WIDTH]                       s_axi_control_rdata   = ctrl.rdata
+    output bool[2]                                    s_axi_control_rresp   = ctrl.rresp
+    output bool                                       s_axi_control_rvalid  = ctrl.rvalid
+    input  bool                                       s_axi_control_rready
+    ctrl.awaddr  =                                    s_axi_control_awaddr
+    ctrl.awvalid =                                    s_axi_control_awvalid
+    ctrl.wdata   =                                    s_axi_control_wdata
+    ctrl.wstrb   =                                    s_axi_control_wstrb
+    ctrl.wvalid  =                                    s_axi_control_wvalid
+    ctrl.bready  =                                    s_axi_control_bready
+    ctrl.araddr  =                                    s_axi_control_araddr
+    ctrl.arvalid =                                    s_axi_control_arvalid
+    ctrl.rready  =                                    s_axi_control_rready
     domain tapasco_interrupt
     output bool intr = false
 

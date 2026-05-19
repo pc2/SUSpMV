@@ -1,5 +1,6 @@
 set PART [lindex $argv 0]
 set XO_FILE [lindex $argv 1]
+set SUS_FLOAT_LIB_PATH [lindex $argv 2]
 
 # set PART xcvc1902-vsvd1760-2MP-e-S
 
@@ -10,10 +11,10 @@ create_project ${KERNEL_NAME} ./${KERNEL_NAME} -part $PART
 
 add_files -norecurse \
 {
-    sus_codegen.sv \
+    ../sus_codegen.sv \
 }
 
-import_ip [glob -type f sus-float/UltraScalePlus/xci_files/*.xci]
+import_ip [glob -type f ../../$SUS_FLOAT_LIB_PATH/xci_files/*.xci]
 
 set_property top SUSpMV_Full [current_fileset]
 
@@ -36,9 +37,10 @@ set_property vitis_drc {ctrl_protocol ap_ctrl_hs} [ipx::current_core]
 set_property ipi_drc {ignore_freq_hz true} [ipx::current_core]
 
 # Control Registers
-set CTRL_ADDR_BLOCK [ipx::get_address_blocks reg0 -of_objects [ipx::get_memory_maps saxil -of_objects [ipx::current_core]]]
+set CTRL_ADDR_BLOCK [ipx::get_address_blocks reg0 -of_objects [ipx::get_memory_maps s_axi_control -of_objects [ipx::current_core]]]
 
-proc add_ctrl_arg { name description address_offset size } {
+proc add_ctrl_reg { name description address_offset size } {
+    global CTRL_ADDR_BLOCK
     ipx::add_register $name $CTRL_ADDR_BLOCK
     set_property description    $description    [ipx::get_registers $name -of_objects $CTRL_ADDR_BLOCK]
     set_property address_offset $address_offset [ipx::get_registers $name -of_objects $CTRL_ADDR_BLOCK]
@@ -52,6 +54,7 @@ proc add_bus_interface { name width } {
 }
 
 proc associate_bus_interface { name on_reg } {
+    global CTRL_ADDR_BLOCK
     set ADDR_REG [ipx::get_registers $on_reg -of_objects $CTRL_ADDR_BLOCK]
     ipx::add_register_parameter ASSOCIATED_BUSIF $ADDR_REG
     set_property value          $name          [ipx::get_register_parameters ASSOCIATED_BUSIF -of_objects $ADDR_REG]
@@ -74,6 +77,12 @@ add_ctrl_reg HBM00_COUNT {Number of 256-bit blocks to be read from HBM00} 0x030 
 
 add_bus_interface maxi_hbm00 256
 associate_bus_interface maxi_hbm00 HBM00_ADDR
+
+add_ctrl_reg HBM01_ADDR {Start addr of HBM01 memory} 0x038 64
+add_ctrl_reg HBM01_COUNT {Number of 256-bit blocks to be read from HBM01} 0x040 32
+
+add_bus_interface maxi_hbm01 256
+associate_bus_interface maxi_hbm01 HBM01_ADDR
 
 set_property core_revision 2 [ipx::current_core]
 ipx::create_xgui_files [ipx::current_core]

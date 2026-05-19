@@ -22,4 +22,6 @@
 **/project_*
 tests/*/VCK5000*/
 tests/*/U280*/
+VCK5000*/
+U280*/
 .vscode/
