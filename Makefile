@@ -5,6 +5,13 @@ TMPDIR := /tmp/vivado_$(USER)
 $(TMPDIR):
 	mkdir -p $(TMPDIR)
 
+FILES := 
+FILES += suspmv.sus
+FILES += suspmv_io.sus
+FILES += sus-float/fp_custom.sus
+FILES += sus-xrt/axi.sus
+FILES += sus-tapasco/sus/tapasco_ctrl_slave.sus
+
 # Configurations that change based on the platform
 VCK5000/%: BIN_DIR ?= VCK5000
 VCK5000/%: PART := xcvc1902-vsvd1760-2MP-e-S
@@ -15,28 +22,22 @@ U280/%: BIN_DIR ?= U280
 U280/%: PART := xcu280-fsvh2892-2L-e
 U280/%: PLATFORM := xilinx_u280_gen3x16_xdma_1_202211_1
 U280/%: SUS_FLOAT_LIB_PATH := sus-float/UltraScalePlus
-
-FILES := 
-FILES += suspmv.sus
-FILES += suspmv_io.sus
-FILES += sus-float/fp_custom.sus
-FILES += sus-float/UltraScalePlus/extensions.sus
-FILES += sus-float/UltraScalePlus/fp_wrappers.sus
-FILES += sus-xrt/axi.sus
+U280/%: FILES += sus-float/UltraScalePlus/extensions.sus
+U280/%: FILES += sus-float/UltraScalePlus/fp_wrappers.sus
 
 U280/sus_codegen.sv: $(FILES)
 	mkdir -p $(BIN_DIR)
 	sus_compiler $(FILES) -o $(BIN_DIR)/sus_codegen.sv --top SUSpMV_Full
 
-XOS_VCK := $(BIN_DIR)/suspmv.xo
-LOCAL_XOS := ../suspmv.xo
+XOS_VCK := $(BIN_DIR)/SUSpMV_Full.xo
+LOCAL_XOS := ../SUSpMV_Full.xo
 
-U280/suspmv.xo: pack_kernel.tcl U280/sus_codegen.sv
-	rm -f $(BIN_DIR)/suspmv.xo
+U280/SUSpMV_Full.xo: pack_kernel.tcl U280/sus_codegen.sv
+	rm -f $(BIN_DIR)/SUSpMV_Full.xo
 	rm -rf $(BIN_DIR)/pack_prj
 	mkdir $(BIN_DIR)/pack_prj
 	cd $(BIN_DIR)/pack_prj;\
-	vivado -mode batch -source ../../pack_kernel.tcl -tclargs $(PART) ../suspmv.xo $(SUS_FLOAT_LIB_PATH)
+	vivado -mode batch -source ../../pack_kernel.tcl -tclargs $(PART) ../SUSpMV_Full.xo $(SUS_FLOAT_LIB_PATH)
 
 VCK5000/overlay_hw_emu.xclbin: vck5000_connectivity.cfg $(XOS_VCK)
 	rm -f $(BIN_DIR)/overlay_hw_emu.xclbin
@@ -131,3 +132,11 @@ testSpMVUnit: U280/sus_codegen.sv
 
 testIO: U280/sus_codegen.sv
 	cd tests/IO && vivado -mode batch -script sim.tcl
+
+U280/tapasco: U280/SUSpMV_Full.xo
+	rm -f $(BIN_DIR)/SUSpMV_Full.zip
+	cd $(BIN_DIR)/pack_prj && zip -r ../SUSpMV_Full.zip SUSpMV_Full_ip
+	tapasco import $(BIN_DIR)/SUSpMV_Full.zip as 100 -p AU280
+	tapasco compose [SUSpMV_Full x1]@450 MHz -p AU280 --deleteProjects false
+
+.PHONY: U280/tapasco

@@ -25,3 +25,7 @@ tests/*/U280*/
 VCK5000*/
 U280*/
 .vscode/
+host/CMakeFiles
+host/suspmv
+host/Makefile
+host/cmake_install.cmake

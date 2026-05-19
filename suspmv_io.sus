@@ -423,7 +423,7 @@ module SUSpMV_Full {
     gen int X_ELEMS_PER_PAGE = 1024
     gen int PARALLEL_X_READ = 16
 
-    gen int CTRL_AXI_WIDTH = 32
+    gen int CTRL_AXI_WIDTH = 64
     gen int CTRL_ADDR_WIDTH = 12
 
     gen int MEM_ADDR_WIDTH = 64
@@ -433,7 +433,8 @@ module SUSpMV_Full {
 
     gen int NUM_HBMS = 2
 
-    axi_ctrl_slave #(NUM_INPUT_REGS: 6 + 4 * NUM_HBMS, NUM_OUTPUT_REGS: 0, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
+    //xrt_ctrl_slave #(NUM_INPUT_REGS: 6 + 4 * NUM_HBMS, NUM_OUTPUT_REGS: 0, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
+    tapasco_ctrl_slave #(INPUT_REGS: 6 + 3 * NUM_HBMS, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
 
     // ============================= //
     //  AXI4-Lite Control interface  //
@@ -442,6 +443,7 @@ module SUSpMV_Full {
     input  int#(FROM: 0, TO: 1 << CTRL_ADDR_WIDTH)    s_axi_control_awaddr
     input  bool                                       s_axi_control_awvalid
     output bool                                       s_axi_control_awready = ctrl.awready
+    input bool[3]                                     s_axi_control_awprot
     input  bool[CTRL_AXI_WIDTH]                       s_axi_control_wdata
     input  bool[CTRL_AXI_WIDTH / 8]                   s_axi_control_wstrb
     input  bool                                       s_axi_control_wvalid
@@ -452,21 +454,23 @@ module SUSpMV_Full {
     input  int#(FROM: 0, TO: 1 << CTRL_ADDR_WIDTH)    s_axi_control_araddr
     input  bool                                       s_axi_control_arvalid
     output bool                                       s_axi_control_arready = ctrl.arready
+    input bool[3]                                     s_axi_control_arprot
     output bool[CTRL_AXI_WIDTH]                       s_axi_control_rdata   = ctrl.rdata
     output bool[2]                                    s_axi_control_rresp   = ctrl.rresp
     output bool                                       s_axi_control_rvalid  = ctrl.rvalid
     input  bool                                       s_axi_control_rready
     ctrl.awaddr  =                                    s_axi_control_awaddr
     ctrl.awvalid =                                    s_axi_control_awvalid
+    ctrl.awprot  =                                    s_axi_control_awprot
     ctrl.wdata   =                                    s_axi_control_wdata
     ctrl.wstrb   =                                    s_axi_control_wstrb
     ctrl.wvalid  =                                    s_axi_control_wvalid
     ctrl.bready  =                                    s_axi_control_bready
     ctrl.araddr  =                                    s_axi_control_araddr
     ctrl.arvalid =                                    s_axi_control_arvalid
+    ctrl.arprot  =                                    s_axi_control_arprot
     ctrl.rready  =                                    s_axi_control_rready
-    domain tapasco_interrupt
-    output bool intr = false
+    output bool intr = ctrl.intr
 
     // ======================================================== //
     //  AXI4-Full DDR interface for X vector & result Y vector  //
@@ -633,30 +637,19 @@ module SUSpMV_Full {
     //  Addresses  //
     // =========== //
 
-    bool[64] x_vector_addr_bits
-    x_vector_addr_bits[:32] = ctrl.input_regs[0]
-    x_vector_addr_bits[32:] = ctrl.input_regs[1]
-    int x_vector_addr = BitsToUInt(x_vector_addr_bits)
+    int x_vector_addr = BitsToUInt(ctrl.input_regs[0])
+    int y_vector_addr = BitsToUInt(ctrl.input_regs[1])
 
-    bool[64] y_vector_addr_bits
-    y_vector_addr_bits[:32] = ctrl.input_regs[2]
-    y_vector_addr_bits[32:] = ctrl.input_regs[3]
-    int y_vector_addr = BitsToUInt(y_vector_addr_bits)
-
-    int num_x_elements = BitsToUInt(ctrl.input_regs[4])
+    int num_x_elements = BitsToUInt(ctrl.input_regs[2]) mod 1 << 32
     int num_x_pages = (num_x_elements + (X_ELEMS_PER_PAGE - 1) mod 1 << 32) / X_ELEMS_PER_PAGE
 
-    int num_y_repetitions = BitsToUInt(ctrl.input_regs[5])
+    int num_y_repetitions = BitsToUInt(ctrl.input_regs[3]) mod 1 << 32
 
     int[NUM_HBMS] matrix_data_start_addrs
     int[NUM_HBMS] matrix_data_element_counts
     for int HBM_I in 0..NUM_HBMS {
-        bool[64] addr_bits
-         // Use a delta of 4, even though we only need 96 bits, so that later 64-bit addrs aren't misaligned. 
-        addr_bits[:32] = ctrl.input_regs[6 + HBM_I * 4]
-        addr_bits[32:] = ctrl.input_regs[7 + HBM_I * 4]
-        matrix_data_start_addrs[HBM_I] = BitsToUInt(addr_bits)
-        matrix_data_element_counts[HBM_I] = BitsToUInt(ctrl.input_regs[8 + HBM_I * 4])
+        matrix_data_start_addrs[HBM_I] = BitsToUInt(ctrl.input_regs[4 + HBM_I * 2])
+        matrix_data_element_counts[HBM_I] = BitsToUInt(ctrl.input_regs[5 + HBM_I * 2]) mod 1 << 32
     }
 
     bool _hbm0_reader_may_request = hbm00_reader.may_request_new_read
@@ -669,8 +662,7 @@ module SUSpMV_Full {
     }
     
     when y_result_writer.write_has_been_committed {
-        ctrl.finish([])
-        intr = true
+        ctrl.finish(64'b0)
     }
 
     // Shared data for SLRs
