@@ -434,7 +434,7 @@ module SUSpMV_Full {
     gen int NUM_HBMS = 2
 
     //xrt_ctrl_slave #(NUM_INPUT_REGS: 6 + 4 * NUM_HBMS, NUM_OUTPUT_REGS: 0, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
-    tapasco_ctrl_slave #(INPUT_REGS: 6 + 3 * NUM_HBMS, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
+    tapasco_ctrl_slave #(NUM_INPUT_REGS: 4 + 2 * NUM_HBMS, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
 
     // ============================= //
     //  AXI4-Lite Control interface  //

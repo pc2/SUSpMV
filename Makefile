@@ -125,13 +125,13 @@ VCK5000/reset:
 	xbutil reset -d 0000:a1:00.1 --force
 
 testMultiAccumulate: U280/sus_codegen.sv
-	cd tests/MultiAccumulate && vivado -mode batch -script sim.tcl
+	cd tests/MultiAccumulate && vivado -mode batch -source sim.tcl
 
 testSpMVUnit: U280/sus_codegen.sv
-	cd tests/SpMVUnit && vivado -mode batch -script sim.tcl
+	cd tests/SpMVUnit && vivado -mode batch -source sim.tcl
 
 testIO: U280/sus_codegen.sv
-	cd tests/IO && vivado -mode batch -script sim.tcl
+	cd tests/IO && vivado -mode batch -source sim.tcl
 
 U280/tapasco: U280/SUSpMV_Full.xo
 	rm -f $(BIN_DIR)/SUSpMV_Full.zip

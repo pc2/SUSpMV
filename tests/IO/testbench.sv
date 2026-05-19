@@ -7,41 +7,45 @@ module SUSpMV_Full_tb;
 	// Ports
 	// {aclk} input bool #() aresetn'1000
 	logic aresetn;
-	// {aclk} input int #(FROM: 0, TO: 4096) saxil_awaddr'2000
-	logic[11:0] saxil_awaddr;
-	// {aclk} input bool #() saxil_awvalid'2000
-	logic saxil_awvalid;
-	// {aclk} output bool #() saxil_awready'2000
-	wire saxil_awready;
-	// {aclk} input bool #()[32] saxil_wdata'2000
-	logic[31:0] saxil_wdata;
-	// {aclk} input bool #()[4] saxil_wstrb'2000
-	logic[3:0] saxil_wstrb;
-	// {aclk} input bool #() saxil_wvalid'2000
-	logic saxil_wvalid;
-	// {aclk} output bool #() saxil_wready'2000
-	wire saxil_wready;
-	// {aclk} output bool #()[2] saxil_bresp'2000
-	wire[1:0] saxil_bresp;
-	// {aclk} output bool #() saxil_bvalid'2000
-	wire saxil_bvalid;
-	// {aclk} input bool #() saxil_bready'2000
-	logic saxil_bready;
-	// {aclk} input int #(FROM: 0, TO: 4096) saxil_araddr'2000
-	logic[11:0] saxil_araddr;
-	// {aclk} input bool #() saxil_arvalid'2000
-	logic saxil_arvalid;
-	// {aclk} output bool #() saxil_arready'2000
-	wire saxil_arready;
-	// {aclk} output bool #()[32] saxil_rdata'2000
-	wire[31:0] saxil_rdata;
-	// {aclk} output bool #()[2] saxil_rresp'2000
-	wire[1:0] saxil_rresp;
-	// {aclk} output bool #() saxil_rvalid'2000
-	wire saxil_rvalid;
-	// {aclk} input bool #() saxil_rready'2000
-	logic saxil_rready;
-	// {aclk} output bool #() intr'4000
+	// {aclk} input int #(FROM: 0, TO: 4096) s_axi_control_awaddr'2000
+	logic[11:0] s_axi_control_awaddr;
+	// {aclk} input bool #() s_axi_control_awvalid'2000
+	logic s_axi_control_awvalid;
+	// {aclk} output bool #() s_axi_control_awready'2000
+	wire s_axi_control_awready;
+	// {aclk} input bool #()[3] s_axi_control_awprot'2000
+	logic[2:0] s_axi_control_awprot;
+	// {aclk} input bool #()[64] s_axi_control_wdata'2000
+	logic[63:0] s_axi_control_wdata;
+	// {aclk} input bool #()[8] s_axi_control_wstrb'2000
+	logic[7:0] s_axi_control_wstrb;
+	// {aclk} input bool #() s_axi_control_wvalid'2000
+	logic s_axi_control_wvalid;
+	// {aclk} output bool #() s_axi_control_wready'2000
+	wire s_axi_control_wready;
+	// {aclk} output bool #()[2] s_axi_control_bresp'2000
+	wire[1:0] s_axi_control_bresp;
+	// {aclk} output bool #() s_axi_control_bvalid'2000
+	wire s_axi_control_bvalid;
+	// {aclk} input bool #() s_axi_control_bready'2000
+	logic s_axi_control_bready;
+	// {aclk} input int #(FROM: 0, TO: 4096) s_axi_control_araddr'2000
+	logic[11:0] s_axi_control_araddr;
+	// {aclk} input bool #() s_axi_control_arvalid'2000
+	logic s_axi_control_arvalid;
+	// {aclk} output bool #() s_axi_control_arready'2000
+	wire s_axi_control_arready;
+	// {aclk} input bool #()[3] s_axi_control_arprot'2000
+	logic[2:0] s_axi_control_arprot;
+	// {aclk} output bool #()[64] s_axi_control_rdata'2000
+	wire[63:0] s_axi_control_rdata;
+	// {aclk} output bool #()[2] s_axi_control_rresp'2000
+	wire[1:0] s_axi_control_rresp;
+	// {aclk} output bool #() s_axi_control_rvalid'2000
+	wire s_axi_control_rvalid;
+	// {aclk} input bool #() s_axi_control_rready'2000
+	logic s_axi_control_rready;
+	// {aclk} output bool #() intr'2000
 	wire intr;
 	// {aclk} output bool #() maxi_ddr00_awvalid'3000
 	wire maxi_ddr00_awvalid;
@@ -260,23 +264,25 @@ module SUSpMV_Full_tb;
 	SUSpMV_Full dut(
 		.aclk(aclk),
 		.aresetn(aresetn),
-		.saxil_awaddr(saxil_awaddr),
-		.saxil_awvalid(saxil_awvalid),
-		.saxil_awready(saxil_awready),
-		.saxil_wdata(saxil_wdata),
-		.saxil_wstrb(saxil_wstrb),
-		.saxil_wvalid(saxil_wvalid),
-		.saxil_wready(saxil_wready),
-		.saxil_bresp(saxil_bresp),
-		.saxil_bvalid(saxil_bvalid),
-		.saxil_bready(saxil_bready),
-		.saxil_araddr(saxil_araddr),
-		.saxil_arvalid(saxil_arvalid),
-		.saxil_arready(saxil_arready),
-		.saxil_rdata(saxil_rdata),
-		.saxil_rresp(saxil_rresp),
-		.saxil_rvalid(saxil_rvalid),
-		.saxil_rready(saxil_rready),
+		.s_axi_control_awaddr(s_axi_control_awaddr),
+		.s_axi_control_awvalid(s_axi_control_awvalid),
+		.s_axi_control_awready(s_axi_control_awready),
+		.s_axi_control_awprot(s_axi_control_awprot),
+		.s_axi_control_wdata(s_axi_control_wdata),
+		.s_axi_control_wstrb(s_axi_control_wstrb),
+		.s_axi_control_wvalid(s_axi_control_wvalid),
+		.s_axi_control_wready(s_axi_control_wready),
+		.s_axi_control_bresp(s_axi_control_bresp),
+		.s_axi_control_bvalid(s_axi_control_bvalid),
+		.s_axi_control_bready(s_axi_control_bready),
+		.s_axi_control_araddr(s_axi_control_araddr),
+		.s_axi_control_arvalid(s_axi_control_arvalid),
+		.s_axi_control_arready(s_axi_control_arready),
+		.s_axi_control_arprot(s_axi_control_arprot),
+		.s_axi_control_rdata(s_axi_control_rdata),
+		.s_axi_control_rresp(s_axi_control_rresp),
+		.s_axi_control_rvalid(s_axi_control_rvalid),
+		.s_axi_control_rready(s_axi_control_rready),
 		.intr(intr),
 		.maxi_ddr00_awvalid(maxi_ddr00_awvalid),
 		.maxi_ddr00_awready(maxi_ddr00_awready),
@@ -385,8 +391,491 @@ module SUSpMV_Full_tb;
 		.maxi_hbm01_rlast(maxi_hbm01_rlast)
 	);
 
+	simple_axi_mem #(
+		.ADDR_WIDTH (64),
+		.DATA_WIDTH (512),
+		.MEM_BYTES  (1024*1024)
+	) ddr_mem (
+		.aclk    (aclk),
+		.aresetn  (aresetn),
+		.awvalid (maxi_ddr00_awvalid),
+		.awready (maxi_ddr00_awready),
+		.awaddr  (maxi_ddr00_awaddr),
+		.awlen   (maxi_ddr00_awlen),
+		.awsize  (maxi_ddr00_awsize),
+		.awburst (maxi_ddr00_awburst),
+		.wvalid  (maxi_ddr00_wvalid),
+		.wready  (maxi_ddr00_wready),
+		.wdata   (maxi_ddr00_wdata),
+		.wstrb   (maxi_ddr00_wstrb),
+		.wlast   (maxi_ddr00_wlast),
+		.bvalid  (maxi_ddr00_bvalid),
+		.bready  (maxi_ddr00_bready),
+		.bresp   (maxi_ddr00_bresp),
+		.arvalid (maxi_ddr00_arvalid),
+		.arready (maxi_ddr00_arready),
+		.araddr  (maxi_ddr00_araddr),
+		.arlen   (maxi_ddr00_arlen),
+		.arsize  (maxi_ddr00_arsize),
+		.arburst (maxi_ddr00_arburst),
+		.rvalid  (maxi_ddr00_rvalid),
+		.rready  (maxi_ddr00_rready),
+		.rdata   (maxi_ddr00_rdata),
+		.rresp   (maxi_ddr00_rresp),
+		.rlast   (maxi_ddr00_rlast)
+	);
+
+
+	simple_axi_mem #(
+		.ADDR_WIDTH (64),
+		.DATA_WIDTH (256),
+		.MEM_BYTES  (1024*1024)
+	) hbm00_mem (
+		.aclk    (aclk),
+		.aresetn  (aresetn),
+		.awvalid (maxi_hbm00_awvalid),
+		.awready (maxi_hbm00_awready),
+		.awaddr  (maxi_hbm00_awaddr),
+		.awlen   (maxi_hbm00_awlen),
+		.awsize  (maxi_hbm00_awsize),
+		.awburst (maxi_hbm00_awburst),
+		.wvalid  (maxi_hbm00_wvalid),
+		.wready  (maxi_hbm00_wready),
+		.wdata   (maxi_hbm00_wdata),
+		.wstrb   (maxi_hbm00_wstrb),
+		.wlast   (maxi_hbm00_wlast),
+		.bvalid  (maxi_hbm00_bvalid),
+		.bready  (maxi_hbm00_bready),
+		.bresp   (maxi_hbm00_bresp),
+		.arvalid (maxi_hbm00_arvalid),
+		.arready (maxi_hbm00_arready),
+		.araddr  (maxi_hbm00_araddr),
+		.arlen   (maxi_hbm00_arlen),
+		.arsize  (maxi_hbm00_arsize),
+		.arburst (maxi_hbm00_arburst),
+		.rvalid  (maxi_hbm00_rvalid),
+		.rready  (maxi_hbm00_rready),
+		.rdata   (maxi_hbm00_rdata),
+		.rresp   (maxi_hbm00_rresp),
+		.rlast   (maxi_hbm00_rlast)
+	);
+
+	simple_axi_mem #(
+		.ADDR_WIDTH (64),
+		.DATA_WIDTH (256),
+		.MEM_BYTES  (1024*1024)
+	) hbm01_mem (
+		.aclk    (aclk),
+		.aresetn  (aresetn),
+		.awvalid (maxi_hbm01_awvalid),
+		.awready (maxi_hbm01_awready),
+		.awaddr  (maxi_hbm01_awaddr),
+		.awlen   (maxi_hbm01_awlen),
+		.awsize  (maxi_hbm01_awsize),
+		.awburst (maxi_hbm01_awburst),
+		.wvalid  (maxi_hbm01_wvalid),
+		.wready  (maxi_hbm01_wready),
+		.wdata   (maxi_hbm01_wdata),
+		.wstrb   (maxi_hbm01_wstrb),
+		.wlast   (maxi_hbm01_wlast),
+		.bvalid  (maxi_hbm01_bvalid),
+		.bready  (maxi_hbm01_bready),
+		.bresp   (maxi_hbm01_bresp),
+		.arvalid (maxi_hbm01_arvalid),
+		.arready (maxi_hbm01_arready),
+		.araddr  (maxi_hbm01_araddr),
+		.arlen   (maxi_hbm01_arlen),
+		.arsize  (maxi_hbm01_arsize),
+		.arburst (maxi_hbm01_arburst),
+		.rvalid  (maxi_hbm01_rvalid),
+		.rready  (maxi_hbm01_rready),
+		.rdata   (maxi_hbm01_rdata),
+		.rresp   (maxi_hbm01_rresp),
+		.rlast   (maxi_hbm01_rlast)
+	);
+
+	//
+	// Simple AXI-Lite Master Tasks
+	//
+	// Assumes:
+	//   - signals are visible in current scope
+	//   - clock is named `aclk`
+	//   - active-low reset is `aresetn`
+	//   - 64-bit AXI-Lite data bus
+	//   - 12-bit AXI-Lite address bus
+	//
+
+	// ================================================================
+	// RESET DEFAULTS
+	// ================================================================
+
+	task automatic axi_lite_master_init();
+	begin
+		s_axi_control_awaddr  = '0;
+		s_axi_control_awvalid = 1'b0;
+		s_axi_control_awprot  = '0;
+
+		s_axi_control_wdata   = '0;
+		s_axi_control_wstrb   = '0;
+		s_axi_control_wvalid  = 1'b0;
+
+		s_axi_control_bready  = 1'b0;
+
+		s_axi_control_araddr  = '0;
+		s_axi_control_arvalid = 1'b0;
+		s_axi_control_arprot  = '0;
+
+		s_axi_control_rready  = 1'b0;
+	end
+	endtask
+
+	// ================================================================
+	// AXI-LITE WRITE
+	// ================================================================
+
+	task automatic axi_lite_write(
+		input logic [11:0] addr,
+		input logic [63:0] data,
+		input logic [7:0]  strb = 8'hFF
+	);
+	begin
+
+		// ------------------------------------------------------------
+		// Drive address + data
+		// ------------------------------------------------------------
+
+		@(posedge aclk);
+
+		s_axi_control_awaddr  <= addr;
+		s_axi_control_awvalid <= 1'b1;
+		s_axi_control_awprot  <= 3'b000;
+
+		s_axi_control_wdata   <= data;
+		s_axi_control_wstrb   <= strb;
+		s_axi_control_wvalid  <= 1'b1;
+
+		s_axi_control_bready  <= 1'b1;
+
+		@(posedge aclk);
+		// ------------------------------------------------------------
+		// Wait for AW handshake
+		// Wait for W handshake
+		// Wait for B response
+		// ------------------------------------------------------------
+
+		fork
+			begin
+				while (!s_axi_control_awready)
+					@(posedge aclk);
+
+				s_axi_control_awvalid <= 1'b0;
+			end
+			begin
+				while (!s_axi_control_wready)
+					@(posedge aclk);
+
+				s_axi_control_wvalid <= 1'b0;
+			end
+			begin
+				while (!s_axi_control_bvalid)
+					@(posedge aclk);
+
+				s_axi_control_bready <= 1'b0;
+			end
+		join
+	end
+	endtask
+
+	// ================================================================
+	// AXI-LITE READ
+	// ================================================================
+
+	task automatic axi_lite_read(
+		input  logic [11:0] addr,
+		output logic [63:0] data
+	);
+	begin
+
+		// ------------------------------------------------------------
+		// Drive read address
+		// ------------------------------------------------------------
+
+		@(posedge aclk);
+
+		s_axi_control_araddr  <= addr;
+		s_axi_control_arvalid <= 1'b1;
+		s_axi_control_arprot  <= 3'b000;
+
+		s_axi_control_rready  <= 1'b1;
+
+		// ------------------------------------------------------------
+		// Wait for AR handshake
+		// ------------------------------------------------------------
+
+		while (!s_axi_control_arready)
+			@(posedge aclk);
+
+		s_axi_control_arvalid <= 1'b0;
+
+		// ------------------------------------------------------------
+		// Wait for read data
+		// ------------------------------------------------------------
+
+		while (!s_axi_control_rvalid)
+			@(posedge aclk);
+
+		data = s_axi_control_rdata;
+
+		if (s_axi_control_rresp != 2'b00) begin
+			$display("[%0t] AXI-Lite READ ERROR: addr=%h resp=%b",
+					$time,
+					addr,
+					s_axi_control_rresp);
+		end
+
+		@(posedge aclk);
+
+		s_axi_control_rready <= 1'b0;
+
+	end
+	endtask
+
 	initial begin
-		// ... your testbench here
+		aresetn <= 0;
+		repeat(4100) @(posedge aclk);
+
+		aresetn <= 1;
+	end
+
+	initial begin
+		axi_lite_master_init();
+
+		wait(aresetn);
+
+		repeat(10) @(posedge aclk);
+
+		// X vector reg
+		axi_lite_write(12'h020, 64'h00000000_00000000);
+
+		// Y vector reg
+		axi_lite_write(12'h030, 64'h00000000_00000000);
+
+		// X element count
+		axi_lite_write(12'h040, 32'h00000000);
+
+		// Y repeats
+		axi_lite_write(12'h050, 32'h00000000);
+
+		// HBM00 addr
+		axi_lite_write(12'h060, 64'h00000000_00000000);
+
+		// HBM00 256bit block count
+		axi_lite_write(12'h070, 32'h00000000);
+
+		// HBM00 addr
+		axi_lite_write(12'h080, 64'h00000000_00000000);
+
+		// HBM00 256bit block count
+		axi_lite_write(12'h090, 32'h00000000);
+
+		// HBM00 addr
+		axi_lite_write(12'h000, 64'h00000000_00000001);
 	end
 endmodule // SUSpMV_Full_tb
 
+module simple_axi_mem #(
+    parameter ADDR_WIDTH = 64,
+    parameter DATA_WIDTH = 512,
+    parameter MEM_BYTES  = 1024 * 1024
+)(
+    input  logic                     aclk,
+    input  logic                     aresetn,
+
+    // ============================================================
+    // AXI WRITE ADDRESS CHANNEL
+    // ============================================================
+
+    input  logic                     awvalid,
+    output logic                     awready,
+    input  logic [ADDR_WIDTH-1:0]    awaddr,
+    input  logic [7:0]               awlen,
+    input  logic [2:0]               awsize,
+    input  logic [1:0]               awburst,
+
+    // ============================================================
+    // AXI WRITE DATA CHANNEL
+    // ============================================================
+
+    input  logic                     wvalid,
+    output logic                     wready,
+    input  logic [DATA_WIDTH-1:0]    wdata,
+    input  logic [DATA_WIDTH/8-1:0]  wstrb,
+    input  logic                     wlast,
+
+    // ============================================================
+    // AXI WRITE RESPONSE CHANNEL
+    // ============================================================
+
+    output logic                     bvalid,
+    input  logic                     bready,
+    output logic [1:0]               bresp,
+
+    // ============================================================
+    // AXI READ ADDRESS CHANNEL
+    // ============================================================
+
+    input  logic                     arvalid,
+    output logic                     arready,
+    input  logic [ADDR_WIDTH-1:0]    araddr,
+    input  logic [7:0]               arlen,
+    input  logic [2:0]               arsize,
+    input  logic [1:0]               arburst,
+
+    // ============================================================
+    // AXI READ DATA CHANNEL
+    // ============================================================
+
+    output logic                     rvalid,
+    input  logic                     rready,
+    output logic [DATA_WIDTH-1:0]    rdata,
+    output logic [1:0]               rresp,
+    output logic                     rlast
+);
+
+    localparam DATA_BYTES = DATA_WIDTH / 8;
+
+    // ============================================================
+    // BYTE-ADDRESSABLE MEMORY
+    // ============================================================
+
+    logic [7:0] mem [0:MEM_BYTES-1];
+
+    // ============================================================
+    // WRITE STATE
+    // ============================================================
+
+    logic [ADDR_WIDTH-1:0] wr_addr;
+    logic [7:0]            wr_beats_left;
+    logic                  wr_active;
+
+    // ============================================================
+    // READ STATE
+    // ============================================================
+
+    logic [ADDR_WIDTH-1:0] rd_addr;
+    logic [7:0]            rd_beats_left;
+    logic                  rd_active;
+
+    integer i;
+
+    // ============================================================
+    // MAIN LOGIC
+    // ============================================================
+
+    always_ff @(posedge aclk or negedge aresetn) begin
+        if (!aresetn) begin
+
+            awready <= 1'b1;
+            wready  <= 1'b1;
+
+            bvalid  <= 1'b0;
+            bresp   <= 2'b00;
+
+            arready <= 1'b1;
+
+            rvalid  <= 1'b0;
+            rresp   <= 2'b00;
+            rlast   <= 1'b0;
+
+            wr_active <= 1'b0;
+            rd_active <= 1'b0;
+
+        end else begin
+
+            // ====================================================
+            // WRITE ADDRESS HANDSHAKE
+            // ====================================================
+
+            if (awvalid && awready) begin
+                wr_addr       <= awaddr;
+                wr_beats_left <= awlen;
+                wr_active     <= 1'b1;
+            end
+
+            // ====================================================
+            // WRITE DATA
+            // ====================================================
+
+            if (wr_active && wvalid && wready) begin
+
+                // byte-wise write
+                for (i = 0; i < DATA_BYTES; i++) begin
+                    if (wstrb[i]) begin
+                        mem[wr_addr + i] <= wdata[i*8 +: 8];
+                    end
+                end
+
+                // burst increment
+                wr_addr <= wr_addr + DATA_BYTES;
+
+                if (wlast) begin
+                    wr_active <= 1'b0;
+
+                    bvalid <= 1'b1;
+                    bresp  <= 2'b00; // OKAY
+                end
+            end
+
+            // ====================================================
+            // WRITE RESPONSE
+            // ====================================================
+
+            if (bvalid && bready) begin
+                bvalid <= 1'b0;
+            end
+
+            // ====================================================
+            // READ ADDRESS HANDSHAKE
+            // ====================================================
+
+            if (arvalid && arready && !rd_active) begin
+                rd_addr       <= araddr;
+                rd_beats_left <= arlen;
+                rd_active     <= 1'b1;
+
+                rvalid <= 1'b1;
+                rresp  <= 2'b00;
+            end
+
+            // ====================================================
+            // READ DATA CHANNEL
+            // ====================================================
+
+            if (rd_active && (!rvalid || (rvalid && rready))) begin
+
+                // build read data
+                for (i = 0; i < DATA_BYTES; i++) begin
+                    rdata[i*8 +: 8] <= mem[rd_addr + i];
+                end
+
+                rlast <= (rd_beats_left == 0);
+
+                // advance burst
+                rd_addr <= rd_addr + DATA_BYTES;
+
+                if (rd_beats_left == 0) begin
+                    rd_active <= 1'b0;
+                end else begin
+                    rd_beats_left <= rd_beats_left - 1;
+                end
+            end
+
+            // final beat accepted
+            if (rvalid && rready && rlast) begin
+                rvalid <= 1'b0;
+                rlast  <= 1'b0;
+            end
+        end
+    end
+
+endmodule
