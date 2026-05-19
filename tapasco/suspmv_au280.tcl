@@ -44,13 +44,10 @@ namespace eval suspmv {
         if { $pe_ports > 32 } {
             set pe_ports 32
         }
-        set total_ports $pe_ports
-        #set total_ports [expr $pe_ports + 1]
-        #if { $total_ports > 32 } {
-        #    set total_ports 32
-        #}
-        puts $pe_ports
-        puts $total_ports
+        set total_ports [expr $pe_ports + 1]
+        if { $total_ports > 32 } {
+            set total_ports 32
+        }
 
         set bothStacks [expr ($total_ports > 16)]
         set hbm_properties [create_hbm_properties $total_ports]
@@ -84,46 +81,41 @@ namespace eval suspmv {
         save_bd_design
 
         # create DMA port
-        #set_property CONFIG.NUM_MI {2} [get_bd_cells /memory/mig_ic]
-        #set dma_master [get_bd_intf_pins /memory/mig_ic/M01_AXI]
-        #puts $dma_master
+        set_property CONFIG.NUM_MI {2} [get_bd_cells /memory/mig_ic]
+        set dma_master [get_bd_intf_pins /memory/mig_ic/M01_AXI]
 
-        puts "connect pes"
-        puts $total_ports
         # connect PEs
         for {set i 0} {$i < $total_ports} {incr i} {
             set master [lindex $hbmports $i]
             set hbm_index [format %02s $i]
     
             # create interconnect for protocol conversion (AXI4->AXI3)
-            #if { $i == $pe_ports } {
-            #    # port is used by DMA engine only
-            #    set dma_slave [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
-            #    set dma_slave_clk [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
-            #    set dma_slave_rst [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
-            #} else {
-            #    if { $i == 31 } {
-            #        # port is used by PE and DMA engine
-            #        set converter [tapasco::ip::create_axi_ic converter_ic_${i} 2 1]
-            #        set dma_slave [get_bd_intf_pins $converter/S01_AXI]
-            #        set dma_slave_clk [get_bd_pins $converter/S01_ACLK]
-            #        set dma_slave_rst [get_bd_pins $converter/S01_ARESETN]
-            #    } else {
+            if { $i == $pe_ports } {
+                # port is used by DMA engine only
+                set dma_slave [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
+                set dma_slave_clk [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
+                set dma_slave_rst [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
+            } else {
+                if { $i == 31 } {
+                    # port is used by PE and DMA engine
+                    set converter [tapasco::ip::create_axi_ic converter_ic_${i} 2 1]
+                    set dma_slave [get_bd_intf_pins $converter/S01_AXI]
+                    set dma_slave_clk [get_bd_pins $converter/S01_ACLK]
+                    set dma_slave_rst [get_bd_pins $converter/S01_ARESETN]
+                } else {
                     set converter [tapasco::ip::create_axi_ic converter_ic_${i} 1 1]
-            #    }
+                }
                 connect_bd_net $aclk [get_bd_pins $converter/S00_ACLK] [get_bd_pins $converter/ACLK] [get_bd_pins $converter/M00_ACLK] [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
                 connect_bd_net $aresetn [get_bd_pins $converter/S00_ARESETN] [get_bd_pins $converter/ARESETN] [get_bd_pins $converter/M00_ARESETN] [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
                 connect_bd_intf_net $master [get_bd_intf_pins $converter/S00_AXI]
-                puts [get_bd_intf_pins $converter/M00_AXI]
-                puts [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
                 connect_bd_intf_net [get_bd_intf_pins $converter/M00_AXI] [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
-            #}
+            }
         }
         save_bd_design
         # connect DMA engine
-        #connect_bd_intf_net $dma_master $dma_slave
-        #connect_bd_intf_net [get_bd_pins memory_clk] [get_bd_pins /memory/mig_ic/M01_ACLK] $dma_slave_clk
-        #connect_bd_intf_net [get_bd_pins memory_interconnect_aresetn] [get_bd_pins /memory/mig_ic/M01_ARESETN] $dma_slave_rst
+        connect_bd_intf_net $dma_master $dma_slave
+        connect_bd_net [get_bd_pins mem_clk] $dma_slave_clk
+        connect_bd_net [get_bd_pins mem_peripheral_aresetn] $dma_slave_rst
         save_bd_design
 
         # address map
