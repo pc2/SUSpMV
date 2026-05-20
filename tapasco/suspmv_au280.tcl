@@ -2,9 +2,7 @@
 # It will instantiate the AU280 HBM and connect the PE as desired.
 # How to use:
 #   1. Copy this plugin file to $TAPASCO_HOME_TOOLFLOW/vivado/platform/AU280/plugins/
-#   2. Delete line 84 in $TAPASCO_HOME_TOOLFLOW/vivado/platform/pcie/pcie_base.tcl
-#      error "No address defined for [get_property NAME $m], please make sure to define one in post-address-map plugin"
-#   3. Run `tapasco --jobsFile job_au280.json` using the job_au280.json file from this directory.
+#   2. Run `tapasco --jobsFile job_au280.json` using the job_au280.json file from this directory.
 
 if {[tapasco::is_feature_enabled "suspmv"]} {
     proc create_custom_subsystem_hbm {{args {}}} {
@@ -80,10 +78,6 @@ namespace eval suspmv {
         set aresetn [get_bd_pins design_interconnect_aresetn]
         save_bd_design
 
-        # create DMA port
-        set_property CONFIG.NUM_MI {2} [get_bd_cells /memory/mig_ic]
-        set dma_master [get_bd_intf_pins /memory/mig_ic/M01_AXI]
-
         # connect PEs
         for {set i 0} {$i < $total_ports} {incr i} {
             set master [lindex $hbmports $i]
@@ -113,7 +107,8 @@ namespace eval suspmv {
         }
         save_bd_design
         # connect DMA engine
-        connect_bd_intf_net $dma_master $dma_slave
+        #set_property CONFIG.NUM_MI {2} [get_bd_cells /memory/mig_ic]
+        #connect_bd_intf_net [get_bd_intf_pins /memory/mig_ic/M01_AXI] $dma_slave
         connect_bd_net [get_bd_pins mem_clk] $dma_slave_clk
         connect_bd_net [get_bd_pins mem_peripheral_aresetn] $dma_slave_rst
         save_bd_design
@@ -193,11 +188,13 @@ namespace eval suspmv {
     }
 
     proc addressmap {{args {}}} {
+        puts "suspmv::addressmap"
         set pe [get_bd_cells /arch/target_ip_00_000/internal_target_ip_00_000]
         set hbmports [get_bd_intf_pins -of_objects $pe -filter {MODE == Master && VLNV == xilinx.com:interface:aximm_rtl:1.0 && NAME =~ "*hbm*"}]
 
-        for {set i 0} {$i < [llength $hbmports]} {incr i} {
-            set args [lappend args maxi_hbm${i} [list 0 0 -1 ""]]
+        for {set i 0} {$i < [llength $hbmports] && $i < 32} {incr i} {
+            set hbm_index [format %02s $i]
+            set args [lappend args maxi_hbm${hbm_index} [list "skip" 0 -1 ""]]
         }
         puts $args
         return $args
@@ -206,6 +203,24 @@ namespace eval suspmv {
 }
 
 if {[tapasco::is_feature_enabled "suspmv"]} {
+
+    namespace eval ::platform {
+        proc get_ignored_segments { } {
+            puts "suspmv::get_ignored_segments"
+
+            set ignored [list]
+            for {set i 0} {$i < 32} {incr i} {
+                for {set j 0} {$j < 32} {incr j} {
+                    set axi_index [format %02s $i]
+                    set mem_index [format %02s $j]
+                    lappend ignored "/hbm/hbm_0/SAXI_${axi_index}/HBM_MEM${mem_index}"
+                }
+            }
+
+            return $ignored
+        }
+    }
+
     tapasco::register_plugin "platform::suspmv::remove_ports" "post-pe-create"
-    #tapasco::register_plugin "platform::suspmv::addressmap" "post-address-map"
+    tapasco::register_plugin "platform::suspmv::addressmap" "post-address-map"
 }
