@@ -14,9 +14,10 @@ if {[tapasco::is_feature_enabled "suspmv"]} {
 
         # create hbm core
         set pe [get_bd_cells /arch/target_ip_00_000/internal_target_ip_00_000]
+        set ddrports [get_bd_intf_pins -of_objects $pe -filter {MODE == Master && VLNV == xilinx.com:interface:aximm_rtl:1.0 && NAME =~ "*ddr*"}]
         set hbmports [get_bd_intf_pins -of_objects $pe -filter {MODE == Master && VLNV == xilinx.com:interface:aximm_rtl:1.0 && NAME =~ "*hbm*"}]
         current_bd_instance /hbm
-        suspmv::generate_hbm_core $hbmports
+        suspmv::generate_hbm_core $ddrports $hbmports
         save_bd_design
     }
 }
@@ -34,7 +35,7 @@ namespace eval suspmv {
         save_bd_design
     }
 
-    proc generate_hbm_core { hbmports } {
+    proc generate_hbm_core { ddrports hbmports } {
         puts "Generating HBM Core"
 
         # create and configure HBM IP
@@ -86,9 +87,13 @@ namespace eval suspmv {
             # create interconnect for protocol conversion (AXI4->AXI3)
             if { $i == $pe_ports } {
                 # port is used by DMA engine only
-                set dma_slave [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
-                set dma_slave_clk [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
-                set dma_slave_rst [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
+                set converter [tapasco::ip::create_axi_ic converter_ic_${i} 1 1]
+                set dma_slave [get_bd_intf_pins $converter/S00_AXI]
+                set dma_slave_clk [get_bd_pins $converter/S00_ACLK]
+                set dma_slave_rst [get_bd_pins $converter/S00_ARESETN]
+                connect_bd_net $aclk [get_bd_pins $converter/ACLK] [get_bd_pins $converter/M00_ACLK] [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
+                connect_bd_net $aresetn [get_bd_pins $converter/ARESETN] [get_bd_pins $converter/M00_ARESETN] [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
+                connect_bd_intf_net [get_bd_intf_pins $converter/M00_AXI] [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
             } else {
                 if { $i == 31 } {
                     # port is used by PE and DMA engine
@@ -106,19 +111,52 @@ namespace eval suspmv {
             }
         }
         save_bd_design
+
+        ####################
         # connect DMA engine
-        #set_property CONFIG.NUM_MI {2} [get_bd_cells /memory/mig_ic]
-        #connect_bd_intf_net [get_bd_intf_pins /memory/mig_ic/M01_AXI] $dma_slave
-        connect_bd_net [get_bd_pins mem_clk] $dma_slave_clk
-        connect_bd_net [get_bd_pins mem_peripheral_aresetn] $dma_slave_rst
+
+        # dma offset
+        set dmaoffset [create_bd_cell -type ip -vlnv esa.informatik.tu-darmstadt.de:user:axi_generic_offset:0.1 dma_offset]
+        set_property -dict [list \
+            CONFIG.ADDRESS_WIDTH {35} \
+            CONFIG.ID_WIDTH {1} \
+            CONFIG.OVERWRITE_BITS {1} \
+        ] $dmaoffset
+        connect_bd_net [get_bd_pins mem_clk] [get_bd_pins $dmaoffset/aclk] $dma_slave_clk
+        connect_bd_net [get_bd_pins mem_peripheral_aresetn] [get_bd_pins $dmaoffset/aresetn] $dma_slave_rst
+        connect_bd_intf_net [get_bd_intf_pins $dmaoffset/M_AXI] $dma_slave
+
+        # insert dma smartconnect
+        delete_bd_objs [get_bd_intf_nets /memory/dma_m32_axi]
+        set sc [create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 /memory/smartconnect_0]
+        set_property -dict [list \
+            CONFIG.HAS_ARESETN {0} \
+            CONFIG.NUM_MI {2} \
+            CONFIG.NUM_SI {1} \
+        ] $sc
+        connect_bd_intf_net [get_bd_intf_pins /memory/dma/m32_axi] [get_bd_intf_pins $sc/S00_AXI]
+        connect_bd_net [get_bd_pins /memory/mem_clk] [get_bd_pins $sc/aclk]
+        connect_bd_intf_net [get_bd_intf_pins $sc/M00_AXI] [get_bd_intf_pins /memory/mig_ic/S00_AXI]
+        connect_bd_intf_net [get_bd_intf_pins $sc/M01_AXI] [get_bd_intf_pins $dmaoffset/S_AXI]
         save_bd_design
 
+        ####################
         # address map
+        assign_bd_address -target_address_space /memory/dma/m32_axi -offset 0x000000000 -range 16G [get_bd_addr_segs /memory/mig/C0_DDR4_MEMORY_MAP/C0_DDR4_ADDRESS_BLOCK] -force
+        assign_bd_address -target_address_space /memory/dma/m32_axi -offset 0x400000000 -range 16G [get_bd_addr_segs /hbm/dma_offset/S_AXI/reg0] -force
+        assign_bd_address -target_address_space /hbm/dma_offset/M_AXI [get_bd_addr_segs hbm/hbm_0/SAXI_31/] -force
         for {set i 0} {$i < $pe_ports} {incr i} {
             set hbm_index [format %02s $i]
             assign_bd_address -target_address_space /arch/target_ip_00_000/internal_target_ip_00_000/maxi_hbm${hbm_index} [get_bd_addr_segs hbm/hbm_0/SAXI_${hbm_index}/] -force
         }
 
+        for {set k 0} {$k < [llength $ddrports]} {incr k} {
+            set kk [format %02s $k]
+            assign_bd_address -target_address_space /arch/target_ip_00_000/internal_target_ip_00_000/maxi_ddr${kk} [get_bd_addr_segs memory/mig/C0_DDR4_MEMORY_MAP/C0_DDR4_ADDRESS_BLOCK] -force
+        }
+        save_bd_design
+
+        ####################
         # apply constraints for one or both stacks
         current_bd_instance /hbm
         set constraints_l "$::env(TAPASCO_HOME_TCL)/platform/AU280/plugins/hbm_l.xdc"
@@ -189,15 +227,26 @@ namespace eval suspmv {
 
     proc addressmap {{args {}}} {
         puts "suspmv::addressmap"
+        save_bd_design
+
         set pe [get_bd_cells /arch/target_ip_00_000/internal_target_ip_00_000]
+        set ddrports [get_bd_intf_pins -of_objects $pe -filter {MODE == Master && VLNV == xilinx.com:interface:aximm_rtl:1.0 && NAME =~ "*ddr*"}]
         set hbmports [get_bd_intf_pins -of_objects $pe -filter {MODE == Master && VLNV == xilinx.com:interface:aximm_rtl:1.0 && NAME =~ "*hbm*"}]
 
+        for {set i 0} {$i < [llength $ddrports] && $i < 4} {incr i} {
+            set ddr_index [format %02s $i]
+            set args [lappend args maxi_ddr${ddr_index} [list "skip" 0 -1 ""]]
+        }
         for {set i 0} {$i < [llength $hbmports] && $i < 32} {incr i} {
             set hbm_index [format %02s $i]
             set args [lappend args maxi_hbm${hbm_index} [list "skip" 0 -1 ""]]
         }
         puts $args
         return $args
+    }
+
+    proc aftermath {} {
+        assign_bd_address
     }
 
 }
@@ -207,6 +256,7 @@ if {[tapasco::is_feature_enabled "suspmv"]} {
     namespace eval ::platform {
         proc get_ignored_segments { } {
             puts "suspmv::get_ignored_segments"
+            save_bd_design
 
             set ignored [list]
             for {set i 0} {$i < 32} {incr i} {
@@ -217,10 +267,14 @@ if {[tapasco::is_feature_enabled "suspmv"]} {
                 }
             }
 
+            lappend ignored "/hbm/dma_offset/S_AXI/reg0"
+            lappend ignored "/memory/mig/C0_DDR4_MEMORY_MAP/C0_DDR4_ADDRESS_BLOCK"
+
             return $ignored
         }
     }
 
     tapasco::register_plugin "platform::suspmv::remove_ports" "post-pe-create"
     tapasco::register_plugin "platform::suspmv::addressmap" "post-address-map"
+    tapasco::register_plugin "platform::suspmv::aftermath" "pre-wrapper"
 }
