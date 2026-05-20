@@ -405,6 +405,8 @@ module SUSpMV_SLR#(int NUM_UNITS, int HBM_MAY_PUSH_LATENCY) {
             y_return_channel.y_values[I] = output_y_values
             y_return_channel.num_y_values[I] = num_y_valid
             y_return_channel.is_last_y[I] = is_last_y
+        } else {
+            y_return_channel.valids[I] = false
         }
         when start_y_bursts[I] {
             unit.start_y_burst()
