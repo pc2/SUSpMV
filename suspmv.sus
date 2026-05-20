@@ -206,7 +206,8 @@ module JoiningFIFO#(T, int NUM_FIFOS, int DEPTH, int MAY_PUSH_LATENCY) {
     /// We don't actually care about the pipelining of minimum_write_addr
     /// because it is monotonically ascending, 
     LatencyCut cut_minimum_write_addr
-    cut_minimum_write_addr.din = TreeMin(relative_write_addrs)
+    reg reg reg reg int pipelined_relative_write_addrs = TreeMin(relative_write_addrs)
+    cut_minimum_write_addr.din = pipelined_relative_write_addrs
     int minimum_write_addr = cut_minimum_write_addr.dout
 
 
@@ -340,11 +341,11 @@ module YCollector {
             double new_value = fp64_add(prev_value, bucket_write_value[BUCKET])
             bucket_ram.write(front_index, new_value)
         } else when num_ys_left_per_bucket[BUCKET] != 0 & output_fifo.may_pushes[BUCKET] {
-            int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer, cur_output_y_per_bucket[BUCKET])
+            reg int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer, cur_output_y_per_bucket[BUCKET])
             reg double read_value = bucket_ram.read(back_index)
             bucket_ram.write(back_index, 0.0d)
-            output_fifo.datas[BUCKET] = fp64_to_fp32(read_value)
-            output_fifo.pushes[BUCKET] = true
+            reg output_fifo.datas[BUCKET] = fp64_to_fp32(read_value)
+            reg output_fifo.pushes[BUCKET] = true
             cur_output_y_per_bucket[BUCKET] = cur_output_y_per_bucket[BUCKET] + 1 mod HALF_RAM_DEPTH
             num_ys_left_per_bucket[BUCKET] = num_ys_left_per_bucket[BUCKET] - 1 mod HALF_RAM_DEPTH
         }

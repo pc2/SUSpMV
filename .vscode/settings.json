@@ -4,6 +4,7 @@
         "sus-float/UltraScalePlus/fp_wrappers.sus",
         "sus-float/UltraScalePlus/extensions.sus",
         "sus-xrt/axi.sus",
+        "sus-tapasco/sus/tapasco_ctrl_slave.sus",
         "suspmv.sus",
         "suspmv_io.sus"
     ]
