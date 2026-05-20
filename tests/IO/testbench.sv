@@ -1,3 +1,5 @@
+`include "matrix_params.vh"
+
 // Testbench for module SUSpMV_Full #()
 module SUSpMV_Full_tb;
 	// Clocks
@@ -649,10 +651,11 @@ module SUSpMV_Full_tb;
 
 	initial begin
 		axi_lite_master_init();
+		$readmemh("hbm0.mem", hbm00_mem.mem);
+		$readmemh("hbm0.mem", hbm01_mem.mem);
+		$readmemh("x_vec.mem", ddr_mem.mem);
 
 		wait(aresetn);
-
-		repeat(10) @(posedge aclk);
 
 		// X vector reg
 		axi_lite_write(12'h020, 64'h00000000_00000000);
@@ -661,22 +664,22 @@ module SUSpMV_Full_tb;
 		axi_lite_write(12'h030, 64'h00000000_00000000);
 
 		// X element count
-		axi_lite_write(12'h040, 32'h00000000);
+		axi_lite_write(12'h040, `X_VEC_LEN);
 
 		// Y repeats
-		axi_lite_write(12'h050, 32'h00000000);
+		axi_lite_write(12'h050, 1);
 
 		// HBM00 addr
 		axi_lite_write(12'h060, 64'h00000000_00000000);
 
 		// HBM00 256bit block count
-		axi_lite_write(12'h070, 32'h00000000);
+		axi_lite_write(12'h070, 214);
 
 		// HBM00 addr
 		axi_lite_write(12'h080, 64'h00000000_00000000);
 
 		// HBM00 256bit block count
-		axi_lite_write(12'h090, 32'h00000000);
+		axi_lite_write(12'h090, 214);
 
 		// HBM00 addr
 		axi_lite_write(12'h000, 64'h00000000_00000001);
@@ -686,7 +689,7 @@ endmodule // SUSpMV_Full_tb
 module simple_axi_mem #(
     parameter ADDR_WIDTH = 64,
     parameter DATA_WIDTH = 512,
-    parameter MEM_BYTES  = 1024 * 1024
+    parameter DEPTH      = 1024
 )(
     input  logic                     aclk,
     input  logic                     aresetn,
@@ -742,13 +745,11 @@ module simple_axi_mem #(
     output logic                     rlast
 );
 
-    localparam DATA_BYTES = DATA_WIDTH / 8;
-
     // ============================================================
-    // BYTE-ADDRESSABLE MEMORY
+    // MEMORY
     // ============================================================
 
-    logic [7:0] mem [0:MEM_BYTES-1];
+    logic [DATA_WIDTH:0] mem [0:DEPTH-1];
 
     // ============================================================
     // WRITE STATE
@@ -809,14 +810,14 @@ module simple_axi_mem #(
             if (wr_active && wvalid && wready) begin
 
                 // byte-wise write
-                for (i = 0; i < DATA_BYTES; i++) begin
+                for (i = 0; i < DATA_WIDTH / 8; i++) begin
                     if (wstrb[i]) begin
-                        mem[wr_addr + i] <= wdata[i*8 +: 8];
+                        mem[wr_addr][i*8 +: 8] <= wdata[i*8 +: 8];
                     end
                 end
 
                 // burst increment
-                wr_addr <= wr_addr + DATA_BYTES;
+                wr_addr <= wr_addr + 1;
 
                 if (wlast) begin
                     wr_active <= 1'b0;
@@ -839,7 +840,7 @@ module simple_axi_mem #(
             // ====================================================
 
             if (arvalid && arready && !rd_active) begin
-                rd_addr       <= araddr;
+                rd_addr       <= araddr / (DATA_WIDTH / 8);
                 rd_beats_left <= arlen;
                 rd_active     <= 1'b1;
 
@@ -854,14 +855,14 @@ module simple_axi_mem #(
             if (rd_active && (!rvalid || (rvalid && rready))) begin
 
                 // build read data
-                for (i = 0; i < DATA_BYTES; i++) begin
-                    rdata[i*8 +: 8] <= mem[rd_addr + i];
+                for (i = 0; i < DATA_WIDTH / 8; i++) begin
+                    rdata[i*8 +: 8] <= mem[rd_addr][i*8 +: 8];
                 end
 
                 rlast <= (rd_beats_left == 0);
 
                 // advance burst
-                rd_addr <= rd_addr + DATA_BYTES;
+                rd_addr <= rd_addr + 1;
 
                 if (rd_beats_left == 0) begin
                     rd_active <= 1'b0;

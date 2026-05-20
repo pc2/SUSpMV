@@ -130,7 +130,7 @@ testMultiAccumulate: U280/sus_codegen.sv
 testSpMVUnit: U280/sus_codegen.sv
 	cd tests/SpMVUnit && vivado -mode batch -source sim.tcl
 
-testIO: U280/sus_codegen.sv
+testIO: U280/sus_codegen.sv tests/IO/matrix_params.vh
 	cd tests/IO && vivado -mode batch -source sim.tcl
 
 U280/tapasco: U280/SUSpMV_Full.xo
@@ -140,3 +140,17 @@ U280/tapasco: U280/SUSpMV_Full.xo
 	tapasco compose [SUSpMV_Full x1]@450 MHz -p AU280 --deleteProjects false
 
 .PHONY: U280/tapasco
+
+host/suspmv: host/src/main.cpp host/src/matrix.cpp host/src/matrix.h
+	cd host && cmake --build .
+
+# download all supported matrices
+host/test/arc130/arc130.mtx:
+	cd host;\
+	python3 -m venv venv;\
+	source venv/bin/activate;\
+	pip install ssgetpy;\
+	ssgetpy --format MM --data-type real --outdir test/;\
+
+tests/IO/matrix_params.vh: host/suspmv host/test/arc130/arc130.mtx
+	cd tests/IO/ && ../../host/suspmv ../../host/test/arc130/arc130.mtx 0
