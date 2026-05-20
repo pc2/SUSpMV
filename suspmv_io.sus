@@ -650,8 +650,8 @@ module SUSpMV_Full {
     int[NUM_HBMS] matrix_data_start_addrs
     int[NUM_HBMS] matrix_data_element_counts
     for int HBM_I in 0..NUM_HBMS {
-        matrix_data_start_addrs[HBM_I] = BitsToUInt(ctrl.input_regs[4 + HBM_I * 2])
-        matrix_data_element_counts[HBM_I] = BitsToUInt(ctrl.input_regs[5 + HBM_I * 2]) mod 1 << 32
+        reg reg reg matrix_data_start_addrs[HBM_I] = BitsToUInt(ctrl.input_regs[4 + HBM_I * 2])
+        reg reg reg matrix_data_element_counts[HBM_I] = BitsToUInt(ctrl.input_regs[5 + HBM_I * 2]) mod 1 << 32
     }
 
     bool _hbm0_reader_may_request = hbm00_reader.may_request_new_read
@@ -680,19 +680,19 @@ module SUSpMV_Full {
     }
 
     // Connect all HBMs
-    hbm00_reader.ready_for_lots_of_data = suspmv_slr0.may_pushes[0]
+    reg reg reg hbm00_reader.ready_for_lots_of_data = suspmv_slr0.may_pushes[0]
     when hbm00_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        suspmv_slr0.hbm_valids[0] = true
-        suspmv_slr0.hbm_datas[0] = elements[0]
+        reg reg reg suspmv_slr0.hbm_valids[0] = true
+        reg reg reg suspmv_slr0.hbm_datas[0] = elements[0]
     } else {
-        suspmv_slr0.hbm_valids[0] = false
+        reg reg reg suspmv_slr0.hbm_valids[0] = false
     }
-    hbm01_reader.ready_for_lots_of_data = suspmv_slr0.may_pushes[1]
+    reg reg reg hbm01_reader.ready_for_lots_of_data = suspmv_slr0.may_pushes[1]
     when hbm01_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        suspmv_slr0.hbm_valids[1] = true
-        suspmv_slr0.hbm_datas[1] = elements[0]
+        reg reg reg suspmv_slr0.hbm_valids[1] = true
+        reg reg reg suspmv_slr0.hbm_datas[1] = elements[0]
     } else {
-        suspmv_slr0.hbm_valids[1] = false
+        reg reg reg suspmv_slr0.hbm_valids[1] = false
     }
 
     when !aresetn {

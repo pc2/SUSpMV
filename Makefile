@@ -137,7 +137,7 @@ U280/tapasco: U280/SUSpMV_Full.xo
 	rm -f $(BIN_DIR)/SUSpMV_Full.zip
 	cd $(BIN_DIR)/pack_prj && zip -r ../SUSpMV_Full.zip SUSpMV_Full_ip
 	tapasco import $(BIN_DIR)/SUSpMV_Full.zip as 100 -p AU280
-	tapasco compose [SUSpMV_Full x1]@450 MHz -p AU280 --deleteProjects false
+	tapasco --jobsFile tapasco/job_au280.json
 
 .PHONY: U280/tapasco
 

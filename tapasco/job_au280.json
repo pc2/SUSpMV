@@ -12,7 +12,7 @@
     "Composition": {
       "Composition": [
         {
-          "Kernel": "suspmv",
+          "Kernel": "SUSpMV_Full",
           "Count": 1
         }
       ]

@@ -441,7 +441,7 @@ module XVectorMemory {
             ram_idx[I] = BitwiseIntConcat#(LOWER_BITS: clog2#(V: X_DEPTH))(cur_reader_buffer, x_indices[I])
         }
 
-        float[1][PARALLELISM] vector_values = [
+        reg float[1][PARALLELISM] vector_values = [
             ram1.read(ram_idx[0]),
             ram2.read(ram_idx[1]),
             ram3.read(ram_idx[2]),
