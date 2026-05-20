@@ -9,7 +9,6 @@
 #include <string>
 #include <cstring>
 #include <cassert>
-#include <format>
 
 void Tile::append(std::vector<uint8_t> &data, uint64_t min_blocks_per_tile) {
     uint64_t first_entry_idx = 0;

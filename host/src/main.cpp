@@ -1,4 +1,4 @@
-//#include <tapasco.hpp>
+#include <tapasco.hpp>
 #include "matrix.h"
 #include <random>
 #include <format>
@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
     uint64_t iterations = std::stoi(argv[2]);
 
     // initialize TaPaSCo
-    //tapasco::Tapasco tapasco;
+    tapasco::Tapasco tapasco;
 
     // accelerator config
     uint64_t compute_units = 2;
@@ -64,8 +64,6 @@ int main(int argc, char **argv) {
     // memory layout
     uint64_t hbm_base = 0x800000000;
     uint64_t hbm_stride = 0x1000000;
-    uint64_t ddr_base   = 0x1800000000;
-    uint64_t ddr_stride = sizeof(float) * (m.width + m.height);
 
     if(iterations == 0) {
         // upload matrix to device distributed across hbm banks
@@ -89,6 +87,14 @@ int main(int argc, char **argv) {
         store("expected.mem", reinterpret_cast<const uint8_t*>(expected_result.data()), expected_result.size() * sizeof(float), 512);
 
         store_matrix_size("matrix_params.vh", m, compute_units);
+
+        return;
+    }
+
+    for (uint64_t i = 0; i < compute_units; i++) {
+        std::vector<uint8_t> data = m.get_compute_unit_data(i, compute_units, min_blocks_per_tile);
+        uint64_t hbm_addr = hbm_base + hbm_stride * i;
+        tapasco.copy_to(data.data(), hbm_addr, data.size());
     }
 
     for (uint64_t iter = 0; iter < iterations; iter++) {
@@ -99,24 +105,30 @@ int main(int argc, char **argv) {
             v[i] = random();
         }
 
-        uint64_t v_addr = ddr_base + ddr_stride * iter;
-        uint64_t r_addr = ddr_base + ddr_stride * iter + sizeof(float) * m.width;
-        //tapasco.copy_to((uint8_t*)v.data(), v_addr, v.size() * sizeof(float));
+        auto v_buffer = tapasco::makeInOnly(tapasco::makeWrappedPointer(v.data(), v.size() * sizeof(float)));
+        auto r_buffer = tapasco::makeOutOnly(tapasco::makeWrappedPointer(result.data(), result.size() * sizeof(float)));
 
         // launch spvm
-        /*auto job = tapasco.launch(
-            SUSPMV_PE_ID, 
+        uint64_t cycles = -1;
+        tapasco::RetVal<uint64_t> ret_val(&cycles);
+        auto job = tapasco.launch(
+            SUSPMV_PE_ID,
+            ret_val,
             m.width, m.height,
-            v_addr, r_addr
+            v_buffer, r_buffer
         );
         job();
-        tapasco.copy_from(r_addr, (uint8_t*)result.data(), v.size() * sizeof(float));*/
+        std::cout << "Cycles: " << cycles << std::endl;
 
         // check result integrity
         std::vector<float> reference = m.mul(v);
+        uint64_t errors = 0;
         for (uint64_t i = 0; i < m.height; i++) {
-            //assert(abs(result[i] - reference[i]) < 0.1);
+            if (abs(result[i] - reference[i]) > 0.1) {
+                errors += 1;
+            }
         }
+        std::cout << "Errors: " << errors << std::endl;
     }
 
     return 0;
