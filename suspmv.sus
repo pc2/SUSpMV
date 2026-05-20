@@ -170,6 +170,21 @@ module LatencyCut#(T) {
     output T dout = din
 }
 
+module ResetLengthener#(int MIN_RESET_CYCLES) {
+    state int#(FROM: 0, TO: MIN_RESET_CYCLES) reset_countdown
+
+    domain reset_in
+    action rst_in {
+        reset_countdown = MIN_RESET_CYCLES - 1
+    } else when reset_countdown != 0 {
+        reset_countdown = IntNarrow#(FROM: 0, TO: MIN_RESET_CYCLES)(reset_countdown - 1)
+    }
+
+    domain reset_out
+    // Some pipeline regs so our new reset signal can reach far
+    reg reg reg reg reg output bool rst_out = reset_countdown != 0    
+}
+
 module JoiningFIFO#(T, int NUM_FIFOS, int DEPTH, int MAY_PUSH_LATENCY) {
     state int#(FROM: 0, TO: DEPTH * 2)[NUM_FIFOS] write_addrs'0
     state int#(FROM: 0, TO: DEPTH * 2) read_addr'0
@@ -320,7 +335,7 @@ module YCollector {
     }
 
     // Required to slowly reset the memory
-    bool is_rst
+    bool is_long_rst
     state int#(FROM: 0, TO: NUM_Y_BUFFERS * HALF_RAM_DEPTH) reset_rotator
     initial reset_rotator = 0
 
@@ -333,7 +348,7 @@ module YCollector {
     output_fifo.pushes = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
     for int BUCKET in 0..NUM_BUCKETS {
         RAM#(T: type double, DEPTH: HALF_RAM_DEPTH * NUM_Y_BUFFERS) bucket_ram
-        when is_rst {
+        when is_long_rst {
             bucket_ram.write(reset_rotator, 0.0d)
         } else when bucket_write[BUCKET] {
             int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer, bucket_write_index[BUCKET])
@@ -386,13 +401,17 @@ module YCollector {
         current_back_buffer = 0
         highest_y = 0
         reset_rotator = reset_rotator + 1 mod HALF_RAM_DEPTH * NUM_Y_BUFFERS
-        is_rst = true
         currently_outputting = false
         y_index_manager.rst()
         output_fifo.rst()
         y_ends_fifo.rst()
+    }
+
+    domain long_reset
+    action long_rst {
+        is_long_rst = true
     } else {
-        is_rst = false
+        is_long_rst = false
     }
 }
 
@@ -605,6 +624,9 @@ module SpMVUnit {
     XVectorMemory x_vector_memory
     MultiAccumulate accumulate
     YCollector collector
+    // The reset lengthener is needed because YCollector needs at least 4096 cycles to fully initialize its memory to 0.0
+    // It's here because we can't assume that the BSP will hold the reset for long enough
+    ResetLengthener#(MIN_RESET_CYCLES: 4096) reset_lengthener
     FWFT#(DEPTH: 512, T: type bool[256]) packed_data_fifo
 
     domain main
@@ -621,7 +643,9 @@ module SpMVUnit {
     output bool release_x_buffer = false
 
     when packed_data_fifo.pop_available : bool[256] packed_matrix_data {
-        when num_x_bufs_in_use.may_acquire & num_y_bufs_in_use.may_acquire {
+        // We don't send any data down the pipeline as long as the reset_lengthener is still working. 
+        // This way, we can already get HBM data into the FIFO, and load X vector data, but only start reading from the FIFO once the Y collector memory is cleared
+        when num_x_bufs_in_use.may_acquire & num_y_bufs_in_use.may_acquire & !reset_lengthener.rst_out {
             packed_data_fifo.pop()
             float[6] weights, int[6] x_indices, int[6] y_deltas, bool end_of_x, bool end_of_y = DecompressCommand(packed_matrix_data)
 
@@ -688,10 +712,15 @@ module SpMVUnit {
     action rst {
         has_y_burst_token = false
         x_vector_memory.rst()
-        accumulate.rst()
         collector.rst()
         num_x_bufs_in_use.rst()
         num_y_bufs_in_use.rst()
         packed_data_fifo.rst()
+        reset_lengthener.rst_in()
+    }
+
+    when reset_lengthener.rst_out {
+        collector.long_rst()
+        accumulate.rst() // Long reset for accumulate too, because the pipeline (~170 stages) is fairly long
     }
 }

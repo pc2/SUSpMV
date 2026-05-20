@@ -644,7 +644,7 @@ module SUSpMV_Full_tb;
 
 	initial begin
 		aresetn <= 0;
-		repeat(4100) @(posedge aclk);
+		repeat(10) @(posedge aclk);
 
 		aresetn <= 1;
 	end

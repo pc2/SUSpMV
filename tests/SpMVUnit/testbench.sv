@@ -137,8 +137,7 @@ module SpMVUnit_tb;
 		push <= 0;
 		write_x_values <= 0;
         
-        // 4096 cycles of reset required to clear out the Y vector RAM
-		repeat(4100) @(posedge clk);
+		repeat(10) @(posedge clk);
 
 		rst <= 0;
 	end
