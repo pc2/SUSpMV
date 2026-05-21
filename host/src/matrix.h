@@ -43,33 +43,24 @@ struct Float6 {
     uint64_t mode      : 4;
 };
 
-class Tile {
-public:
-    uint64_t tx;
-    uint64_t ty;
-    uint64_t x;
-    uint64_t y;
+union MatrixDataBlock {
+    Float5 float5;
+    Float6 float6;
+};
+
+struct ComputeUnitData {
+    std::vector<std::vector<MatrixDataBlock>> hbm_buffers;
+    uint64_t x_tiles;
+    /// y_tiles would then be y_repeats * COMPUTE_UNITS
+    uint64_t y_repeats;
+};
+
+struct Matrix {
     uint64_t width;
     uint64_t height;
     std::vector<Entry> entries;
 
-    void append(std::vector<uint8_t> &data, uint64_t min_blocks_per_tile);
-
-    void rearrange_entries();
-
-};
-
-class Matrix {
-
-public:
-    uint64_t tile_width;
-    uint64_t tile_height;
-    uint64_t width;
-    uint64_t height;
-    std::vector<Tile> tiles;
-
-    static Matrix load(std::string path, uint64_t tile_height);
+    static Matrix load(std::string path);
     std::vector<float> mul(std::vector<float> &v);
-    std::vector<uint8_t> get_compute_unit_data(uint64_t i, uint64_t compute_units, uint64_t min_blocks_per_tile);
-
+    ComputeUnitData get_compute_unit_data(uint64_t compute_units, uint64_t num_y_repeats);
 };
