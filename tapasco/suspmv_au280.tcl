@@ -254,7 +254,7 @@ namespace eval suspmv {
     proc parse_constraints_file {} {
         set config [tapasco::get_feature "suspmv"]
         if {[dict exists $config path]} {
-            set $path [dict get $config path]
+            set path [dict get $config path]
             set file [file normalize $path]
             if {![file exists $file]} {
                 puts "CustomConstraints: file $file does not exist"
