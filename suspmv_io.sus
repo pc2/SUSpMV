@@ -422,7 +422,6 @@ module SUSpMV_Full {
     clock aclk
     input bool aresetn
 
-    gen int X_ELEMS_PER_PAGE = 1024
     gen int PARALLEL_X_READ = 16
 
     gen int CTRL_AXI_WIDTH = 64
@@ -642,8 +641,7 @@ module SUSpMV_Full {
     int x_vector_addr = BitsToUInt(ctrl.input_regs[0])
     int y_vector_addr = BitsToUInt(ctrl.input_regs[1])
 
-    int num_x_elements = BitsToUInt(ctrl.input_regs[2]) mod 1 << 32
-    int num_x_pages = (num_x_elements + (X_ELEMS_PER_PAGE - 1) mod 1 << 32) / X_ELEMS_PER_PAGE
+    int num_x_pages = BitsToUInt(ctrl.input_regs[2]) mod 1 << 32
 
     int num_y_repetitions = BitsToUInt(ctrl.input_regs[3]) mod 1 << 32
 

@@ -663,11 +663,11 @@ module SUSpMV_Full_tb;
 		// Y vector reg
 		axi_lite_write(12'h030, 64'h00000000_00000000);
 
-		// X element count
-		axi_lite_write(12'h040, `X_VEC_LEN);
+		// Number of tiles in X direction
+		axi_lite_write(12'h040, `X_TILES);
 
-		// Y repeats
-		axi_lite_write(12'h050, 1);
+		// Number of tiles in Y direction
+		axi_lite_write(12'h050, `Y_TILES);
 
 		// HBM00 addr
 		axi_lite_write(12'h060, 64'h00000000_00000000);
