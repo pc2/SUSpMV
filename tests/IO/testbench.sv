@@ -667,21 +667,21 @@ module SUSpMV_Full_tb;
 		axi_lite_write(12'h040, `X_TILES);
 
 		// Number of tiles in Y direction
-		axi_lite_write(12'h050, `Y_TILES);
+		axi_lite_write(12'h050, `Y_REPEATS);
 
 		// HBM00 addr
 		axi_lite_write(12'h060, 64'h00000000_00000000);
 
 		// HBM00 256bit block count
-		axi_lite_write(12'h070, 214);
+		axi_lite_write(12'h070, `HBM0_LEN);
 
 		// HBM00 addr
 		axi_lite_write(12'h080, 64'h00000000_00000000);
 
 		// HBM00 256bit block count
-		axi_lite_write(12'h090, 214);
+		axi_lite_write(12'h090, `HBM1_LEN);
 
-		// HBM00 addr
+		// Start!
 		axi_lite_write(12'h000, 64'h00000000_00000001);
 	end
 endmodule // SUSpMV_Full_tb

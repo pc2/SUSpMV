@@ -1,16 +1,38 @@
 #include "matrix.h"
+#include "consts.h"
 
 #include <cstdint>
 #include <vector>
+#include <span>
 #include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <format>
 #include <cstring>
 #include <cassert>
 
-void Tile::append(std::vector<uint8_t> &data, uint64_t min_blocks_per_tile) {
+/// Splits this y slice of the matrix across 1024-element wide tiles
+/// 
+/// As it splits up the X values, it subtracts the x_base from the tile, as well as the y_base provided, such that:
+/// Entry x in 0..1024
+/// Entry y in 0..32768
+void split_region_tiles_x_axis(std::span<Entry> entry_span, std::vector<std::vector<Entry>>& x_tiles, size_t y_base) {
+    for(std::vector<Entry>& e : x_tiles) {
+        e.clear();
+    }
+    for(Entry e : entry_span) {
+        assert(e.y >= y_base);
+        x_tiles[e.x / TILE_X_WIDTH].push_back(Entry{
+            x: e.x % TILE_X_WIDTH,
+            y: e.y - y_base,
+            val: e.val
+        });
+    }
+}
+
+void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBlock>& data, bool is_last_in_y) {
     uint64_t first_entry_idx = 0;
     bool tile_last = false;
     uint64_t block_count = 0;
@@ -20,20 +42,24 @@ void Tile::append(std::vector<uint8_t> &data, uint64_t min_blocks_per_tile) {
         float    val[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         uint64_t x[6]   = {0, 0, 0, 0, 0, 0};
         uint64_t y[6]   = {0, 0, 0, 0, 0, 0};
-        uint64_t dy[6]  = {0, 0, 0, 0, 0, 0};
+        uint8_t  dy[6]  = {0, 0, 0, 0, 0, 0};
         uint64_t count  = 0;
         for (uint64_t i = 0; i < 6 && first_entry_idx + i < entries.size(); i++) {
             uint64_t j = i + first_entry_idx;
-            tile_last = j + 1 == entries.size() && block_count >= min_blocks_per_tile;
-            dy[i] = tile_last ? 255 : entries[j+1].y - entries[j].y;
-            x[i] = entries[j].x % 1024;
+            assert(j < entries.size());
+            tile_last = j + 1 == entries.size() && block_count >= MIN_BLOCKS_PER_TILE;
+            // TODO: Insert zeros when delta_y would not fit in 8 bit. 
+            dy[i] = static_cast<uint8_t>(tile_last ? 255 : entries[j+1].y - entries[j].y);
+            assert(entries[j].x < 1024);
+            assert(entries[j].y < 2048 * 16);
+            x[i] = entries[j].x;
             y[i] = entries[j].y;
             val[i] = entries[j].val;
 
             // check for bank conflicts
             bool bank_conflict = false;
             for (uint64_t k = 0; k < i; k++) {
-                if (y[i] % 16 == y[k] % 16 && y[i] != y[k]) {
+                if (y[i] % NUM_Y_BANKS == y[k] % NUM_Y_BANKS && y[i] != y[k]) {
                     // bank conflict
                     bank_conflict = true;
                     break;
@@ -99,7 +125,8 @@ void Tile::append(std::vector<uint8_t> &data, uint64_t min_blocks_per_tile) {
 
         // append new block
         if (use_float6) {
-            Float6 block{
+            MatrixDataBlock block;
+            block.float6 = Float6{
                 weights: { val[0], val[1], val[2], val[3], val[4], val[5] },
                 x_index_5: x[5],
                 x_index_4: x[4],
@@ -109,19 +136,19 @@ void Tile::append(std::vector<uint8_t> &data, uint64_t min_blocks_per_tile) {
                 x_index_0: x[0],
                 mode     : mode,
             };
-            const uint8_t* ptr = reinterpret_cast<const uint8_t*>(&block);
-            data.insert(data.end(), ptr, ptr + sizeof(Float6));
+            data.push_back(block);
             first_entry_idx += 6;
         } else {
-            Float5 block{
+            MatrixDataBlock block;
+            block.float5 = Float5{
                 weights: { val[0], val[1], val[2], val[3], val[4] },
                 y_delta0 : dy[0],
                 y_delta1 : dy[1],
                 y_delta2 : dy[2],
                 y_delta3 : dy[3],
                 y_delta4 : dy[4],
-                last_in_x : tile_last ? 1 : 0,
-                last_in_y : tile_last ? 1 : 0,
+                last_in_x : tile_last ? 1u : 0u,
+                last_in_y : tile_last ? 1u : 0u,
                 x_index_4: x[4],
                 x_index_3: x[3],
                 x_index_2: x[2],
@@ -129,16 +156,17 @@ void Tile::append(std::vector<uint8_t> &data, uint64_t min_blocks_per_tile) {
                 x_index_0: x[0],
                 mode     : 0b1111,
             };
-            const uint8_t* ptr = reinterpret_cast<const uint8_t*>(&block);
-            data.insert(data.end(), ptr, ptr + sizeof(Float5));
+            data.push_back(block);
             first_entry_idx += count > 5 ? 5 : count;
         }
     }
 
     // in case the tile is very empty, we must add some filler blocks to prevent conflicts with the next tile.
-    while (block_count < 16) {
+    while (block_count < MIN_BLOCKS_PER_TILE) {
         block_count += 1;
-        Float5 block{
+
+        MatrixDataBlock block;
+        block.float5 = Float5{
             weights: { 0.0, 0.0, 0.0, 0.0, 0.0 },
             y_delta0 : 0,
             y_delta1 : 0,
@@ -154,31 +182,11 @@ void Tile::append(std::vector<uint8_t> &data, uint64_t min_blocks_per_tile) {
             x_index_0: 0,
             mode     : 0b1111,
         };
-        const uint8_t* ptr = reinterpret_cast<const uint8_t*>(&block);
-        data.insert(data.end(), ptr, ptr + sizeof(Float5));
+        data.push_back(block);
     }
 }
 
-void Tile::rearrange_entries() {
-    // sort entries within each tile in ascending y, then x coordinate
-    std::sort(this->entries.begin(), this->entries.end(), [](const Entry &a, const Entry &b) {
-        if (a.y == b.y) {
-            return a.x < b.x;
-        } else {
-            return a.y < b.y;
-        }
-    });
-
-    // insert zero-entries to step through large empty regions
-    for (size_t i = 1; i < entries.size(); i++) {
-        if (entries[i].y - entries[i-1].y > 255) {
-            // TODO: optimize, because this might cause avoidable bank conflics
-            entries.insert(entries.begin()+i, Entry{x: 0, y: entries[i-1].y+255, val: 0.0});
-        }
-    }
-}
-
-Matrix Matrix::load(std::string path, uint64_t tile_height) {
+Matrix Matrix::load(std::string path) {
     std::ifstream file(path);
     if (!file) {
         throw std::runtime_error("Failed to open file");
@@ -286,34 +294,14 @@ Matrix Matrix::load(std::string path, uint64_t tile_height) {
 
     // create matrix
     Matrix m = Matrix{
-        tile_width: 1024,
-        tile_height: tile_height,
         width: cols,
         height: rows,
+        entries: std::vector<Entry>()
     };
-    uint64_t tile_width = 1024;
-    // create tiles
-    for (uint64_t y = 0, ty = 0; y < m.height; y += m.tile_height, ty++) {
-        for (uint64_t x = 0, tx = 0; x < m.width; x += m.tile_width, tx++) {
-            m.tiles.push_back(Tile{
-                tx: tx,
-                ty: ty,
-                x: x,
-                y: y,
-                width: std::min(m.width - x, tile_width),
-                height: std::min(m.height - y, tile_height)
-            });
-        }
-    }
-    uint64_t tiles_per_row = (m.width + tile_width - 1) / tile_width;
 
     // ------------------------------------------------------------
     // Read entries
     // ------------------------------------------------------------
-
-    // Note:
-    // Entries are read and directly inserted into the correct tile as opposed to storing all entries in a large array and distributing them later.
-    // This is because I anticipate that this matrix is very large and we don't want to store it in memory twice.
 
     std::string line;
     while (std::getline(file, line)) {
@@ -342,20 +330,23 @@ Matrix Matrix::load(std::string path, uint64_t tile_height) {
         // Matrix Market uses 1-based indexing
         col -= 1;
         row -= 1;
-
-        uint64_t tile_idx = (row / m.tile_height * tiles_per_row) + (col / tile_width);
-        m.tiles[tile_idx].entries.push_back(Entry{ x: row, y: col, val: value });
+        
+        m.entries.push_back(Entry{x: col, y: row, val: value});
         // Expand symmetry
         if ((symmetric || skew_symmetric) && row != col) {
-            uint64_t tile_idx = (col / m.tile_height * tiles_per_row) + (row / tile_width);
-            m.tiles[tile_idx].entries.push_back(Entry{ x: col, y: row, val: skew_symmetric ? -value : value });
+            m.entries.push_back(Entry{ x: col, y: row, val: skew_symmetric ? -value : value });
         }
     }
 
-    // post process tiles
-    for (Tile &tile : m.tiles) {
-        tile.rearrange_entries();
-    }
+    // sort entries in ascending y, then x coordinate
+    std::sort(m.entries.begin(), m.entries.end(), [](const Entry &a, const Entry &b) {
+        if (a.y == b.y) {
+            return a.x < b.x;
+        } else {
+            return a.y < b.y;
+        }
+    });
+
     return m;
 }
 
@@ -363,24 +354,73 @@ std::vector<float> Matrix::mul(std::vector<float> &v) {
     assert(v.size() == width);
     std::vector<float> r(height, 0.0);
 
-    for (Tile &tile : tiles) {
-        for (Entry &entry : tile.entries) {
-            r[entry.y] += entry.val * v[entry.x];
-        }
+    for (Entry &entry : this->entries) {
+        r[entry.y] += entry.val * v[entry.x];
     }
 
     return r;
 }
 
-std::vector<uint8_t> Matrix::get_compute_unit_data(uint64_t i, uint64_t compute_units, uint64_t min_blocks_per_tile) {
-    uint64_t tiles_per_row = (width + tile_width - 1) / tile_width;
-    std::vector<uint8_t> blocks;
+// Currently we pass num_y_repeats as a simple parameter. In the future this function should itself decide how many repeats to use. 
+ComputeUnitData Matrix::get_compute_unit_data(uint64_t compute_units, uint64_t num_y_repeats) {
+    uint64_t tiles_per_row = (width + TILE_X_WIDTH - 1) / TILE_X_WIDTH;
 
-    for (Tile &tile : tiles) {
-        if (tile.ty % compute_units == i) {
-            tile.append(blocks, min_blocks_per_tile);
+    // Temporary memory to split a single rows block into its constituent tiles. 
+    std::vector<std::vector<Entry>> current_x_tile_split(tiles_per_row);
+
+    // The final memory buffers, these should be uploaded to the FPGA. 
+    std::vector<std::vector<MatrixDataBlock>> hbm_buffers(compute_units);
+
+    std::vector<size_t> y_split_points;
+    y_split_points.reserve(compute_units*num_y_repeats+1);
+    std::vector<uint64_t> y_froms;
+    y_froms.reserve(compute_units*num_y_repeats);
+
+    y_split_points.push_back(0);
+    y_froms.push_back(0);
+    for(size_t i = 1; i < compute_units*num_y_repeats; i++) {
+        size_t desired_split_location = this->entries.size() * i / compute_units;
+
+        uint64_t desired_split_y = this->entries[desired_split_location].y;
+        while(desired_split_location >= 1 && this->entries[desired_split_location-1].y == desired_split_y) {
+            desired_split_location--;
+        }
+
+        y_split_points.push_back(desired_split_location);
+        y_froms.push_back(desired_split_y);
+    }
+    y_split_points.push_back(this->entries.size());
+
+    for(size_t i = 0; i < y_froms.size(); i++) {
+        size_t cur_hbm = i % compute_units;
+
+        size_t from = y_split_points[i];
+        size_t to = y_split_points[i+1];
+
+        assert(from <= to);
+        assert(to <= this->entries.size());
+        std::span<Entry> entries_here = std::span(this->entries).subspan(from, to - from);
+
+        for(Entry& e : entries_here) {
+            assert(e.x < this->width);
+            assert(e.y < this->height);
+        }
+        split_region_tiles_x_axis(entries_here, current_x_tile_split, y_froms[i]);
+        for(std::vector<Entry>& tile : current_x_tile_split) {
+            for(Entry& e : tile) {
+                assert(e.x < TILE_X_WIDTH);
+                assert(e.y < MAX_TILE_Y_HEIGHT);
+            }
+        }
+
+        for(size_t tile_x = 0; tile_x < current_x_tile_split.size(); tile_x++) {
+            append_tile_entries(current_x_tile_split[tile_x], hbm_buffers[cur_hbm], tile_x == current_x_tile_split.size()-1);
         }
     }
 
-    return blocks;
+    return ComputeUnitData{
+        hbm_buffers: hbm_buffers,
+        x_tiles: tiles_per_row,
+        y_repeats: num_y_repeats
+    };
 }

@@ -1,7 +1,9 @@
 `define X_VEC_LEN 130
 `define Y_VEC_LEN 130
-`define NUM_TILES 1
 `define COMPUTE_UNITS 2
-`define X_TILES 0
-`define Y_TILES 0
-`define HBM0_LEN 2
+`define X_TILES 1
+`define Y_REPEATS 1
+`define HBM0_ADDR 34359738368
+`define HBM0_LEN 88
+`define HBM1_ADDR 34376515584
+`define HBM1_LEN 127

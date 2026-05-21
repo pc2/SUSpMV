@@ -141,8 +141,8 @@ U280/tapasco: U280/SUSpMV_Full.xo
 
 .PHONY: U280/tapasco
 
-host/suspmv: host/src/main.cpp host/src/matrix.cpp host/src/matrix.h
-	cd host && cmake --build .
+host/suspmv: host/src/main.cpp host/src/dump_hex.cpp host/src/matrix.cpp host/src/matrix.h
+	cd host && cmake -B . -S . && cmake --build .
 
 # download all supported matrices
 host/test/arc130/arc130.mtx:
