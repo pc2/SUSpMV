@@ -241,12 +241,30 @@ namespace eval suspmv {
             set hbm_index [format %02s $i]
             set args [lappend args maxi_hbm${hbm_index} [list "skip" 0 -1 ""]]
         }
+        set args [lappend args M01_AXI [list "skip" 0 -1 ""]]
+
         puts $args
         return $args
     }
 
     proc aftermath {} {
         assign_bd_address
+    }
+
+    proc parse_constraints_file {} {
+        set config [tapasco::get_feature "suspmv"]
+        if {[dict exists $config path]} {
+            set $path [dict get $config path]
+            set file [file normalize $path]
+            if {![file exists $file]} {
+                puts "CustomConstraints: file $file does not exist"
+                return
+            }
+            set constraints_file "[get_property DIRECTORY [current_project]]/[file tail $file]"
+            file copy -force $file $constraints_file
+            read_xdc $constraints_file
+            set_property PROCESSING_ORDER LATE [get_files $constraints_file]
+        }
     }
 
 }
@@ -277,4 +295,5 @@ if {[tapasco::is_feature_enabled "suspmv"]} {
     tapasco::register_plugin "platform::suspmv::remove_ports" "post-pe-create"
     tapasco::register_plugin "platform::suspmv::addressmap" "post-address-map"
     tapasco::register_plugin "platform::suspmv::aftermath" "pre-wrapper"
+    tapasco::register_plugin "platform::suspmv::parse_constraints_file" "pre-arch"
 }
