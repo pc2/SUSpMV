@@ -364,6 +364,7 @@ std::vector<float> Matrix::mul(std::vector<float> &v) {
 // Currently we pass num_y_repeats as a simple parameter. In the future this function should itself decide how many repeats to use. 
 ComputeUnitData Matrix::get_compute_unit_data(uint64_t compute_units, uint64_t num_y_repeats) {
     uint64_t tiles_per_row = (width + TILE_X_WIDTH - 1) / TILE_X_WIDTH;
+    size_t total_y_partitions = compute_units*num_y_repeats;
 
     // Temporary memory to split a single rows block into its constituent tiles. 
     std::vector<std::vector<Entry>> current_x_tile_split(tiles_per_row);
@@ -372,14 +373,16 @@ ComputeUnitData Matrix::get_compute_unit_data(uint64_t compute_units, uint64_t n
     std::vector<std::vector<MatrixDataBlock>> hbm_buffers(compute_units);
 
     std::vector<size_t> y_split_points;
-    y_split_points.reserve(compute_units*num_y_repeats+1);
+    y_split_points.reserve(total_y_partitions+1);
     std::vector<uint64_t> y_froms;
-    y_froms.reserve(compute_units*num_y_repeats);
+    y_froms.reserve(total_y_partitions);
+
+    std::cout << "Determining Y splits" << std::endl;
 
     y_split_points.push_back(0);
     y_froms.push_back(0);
-    for(size_t i = 1; i < compute_units*num_y_repeats; i++) {
-        size_t desired_split_location = this->entries.size() * i / compute_units;
+    for(size_t i = 1; i < total_y_partitions; i++) {
+        size_t desired_split_location = this->entries.size() * i / total_y_partitions;
 
         uint64_t desired_split_y = this->entries[desired_split_location].y;
         while(desired_split_location >= 1 && this->entries[desired_split_location-1].y == desired_split_y) {
@@ -390,12 +393,15 @@ ComputeUnitData Matrix::get_compute_unit_data(uint64_t compute_units, uint64_t n
         y_froms.push_back(desired_split_y);
     }
     y_split_points.push_back(this->entries.size());
+    y_froms.push_back(this->height);
 
-    for(size_t i = 0; i < y_froms.size(); i++) {
+    for(size_t i = 0; i < total_y_partitions; i++) {
         size_t cur_hbm = i % compute_units;
 
         size_t from = y_split_points[i];
         size_t to = y_split_points[i+1];
+
+        std::cout << std::format("Placing Y {}..{} (entries {}..{}) in compute unit {}", y_froms[i], y_froms[i+1], from, to, cur_hbm) << std::endl;
 
         assert(from <= to);
         assert(to <= this->entries.size());

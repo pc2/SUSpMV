@@ -17,11 +17,14 @@ int main(int argc, char **argv) {
     uint64_t iterations = std::stoi(argv[2]);
 
     // Temporary, should be computed automatically in the future
-    uint64_t y_repeats = 1;
+    uint64_t y_repeats = 2;
 
     // load matrix from file
+    std::cout << "Loading " << path << std::endl;
     Matrix m = Matrix::load(path);
+    std::cout << "Constructing ComputeUnitData..." << std::endl;
     ComputeUnitData data = m.get_compute_unit_data(COMPUTE_UNITS, y_repeats);
+    std::cout << "ComputeUnitData done" << std::endl;
 
     if(iterations == 0) {
         dump_hex(m, data);
