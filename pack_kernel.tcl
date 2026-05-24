@@ -16,6 +16,8 @@ add_files -norecurse \
 
 import_ip [glob -type f ../../$SUS_FLOAT_LIB_PATH/xci_files/*.xci]
 
+add_files -fileset constrs_1 -norecurse ../../pblocks.xdc
+
 set_property top SUSpMV_Full [current_fileset]
 
 
@@ -68,9 +70,9 @@ add_ctrl_reg Y_VEC_OUT {Y Vector Output Addr Start} 0x018 64
 add_ctrl_reg NUM_X_ELEMS {Number of X elements} 0x020 32
 add_ctrl_reg NUM_Y_REPETITIONS {Number of Y buffer batches to process per kernel instance} 0x024 32
 
-add_bus_interface maxi_ddr00 512
-associate_bus_interface maxi_ddr00 X_VEC
-associate_bus_interface maxi_ddr00 Y_VEC_OUT
+add_bus_interface maxi_ddr01 512
+associate_bus_interface maxi_ddr01 X_VEC
+associate_bus_interface maxi_ddr01 Y_VEC_OUT
 
 # HBM CTRL regs
 add_ctrl_reg HBM00_ADDR {Start addr of HBM00 memory} 0x028 64

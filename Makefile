@@ -32,7 +32,7 @@ U280/sus_codegen.sv: $(FILES)
 XOS_VCK := $(BIN_DIR)/SUSpMV_Full.xo
 LOCAL_XOS := ../SUSpMV_Full.xo
 
-U280/SUSpMV_Full.xo: pack_kernel.tcl U280/sus_codegen.sv
+U280/SUSpMV_Full.xo: pack_kernel.tcl pblocks.xdc U280/sus_codegen.sv
 	rm -f $(BIN_DIR)/SUSpMV_Full.xo
 	rm -rf $(BIN_DIR)/pack_prj
 	mkdir $(BIN_DIR)/pack_prj

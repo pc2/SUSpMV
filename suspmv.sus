@@ -294,7 +294,8 @@ module YCollector {
         
         for int BUCKET_I in 0..NUM_BUCKETS {
             for int CHANNEL in 0..PARALELLISM {
-                when valids[CHANNEL] & target_buckets[CHANNEL] == BUCKET_I {
+                reg bool should_write_bucket_pipeline = valids[CHANNEL] & target_buckets[CHANNEL] == BUCKET_I
+                when should_write_bucket_pipeline {
                     bucket_write[BUCKET_I] = true
                     bucket_mux_from[BUCKET_I] = CHANNEL
                 }
