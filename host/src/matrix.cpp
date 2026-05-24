@@ -13,6 +13,8 @@
 #include <cstring>
 #include <cassert>
 
+static_assert(sizeof(MatrixDataBlock) == 256 / 8);
+
 /// Splits this y slice of the matrix across 1024-element wide tiles
 /// 
 /// As it splits up the X values, it subtracts the x_base from the tile, as well as the y_base provided, such that:
@@ -47,7 +49,7 @@ void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBloc
         for (uint64_t i = 0; i < 6 && first_entry_idx + i < entries.size(); i++) {
             uint64_t j = i + first_entry_idx;
             assert(j < entries.size());
-            tile_last = j + 1 == entries.size() && block_count >= MIN_BLOCKS_PER_TILE;
+            tile_last = j + 1 == entries.size();
             // TODO: Insert zeros when delta_y would not fit in 8 bit. 
             dy[i] = static_cast<uint8_t>(tile_last ? 255 : entries[j+1].y - entries[j].y);
             assert(entries[j].x < 1024);
@@ -136,10 +138,20 @@ void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBloc
                 x_index_0: x[0],
                 mode     : mode,
             };
+            std::cout << std::format("Float6 [{}]*{} [{}]*{} [{}]*{} [{}]*{} [{}]*{} [{}]*{}",
+                x[0], val[0],
+                x[1], val[1],
+                x[2], val[2],
+                x[3], val[3],
+                x[4], val[4],
+                x[5], val[5]
+            ) << std::endl;
             data.push_back(block);
             first_entry_idx += 6;
         } else {
             MatrixDataBlock block;
+            bool last_in_x = tile_last;
+            bool last_in_y = tile_last && is_last_in_y;
             block.float5 = Float5{
                 weights: { val[0], val[1], val[2], val[3], val[4] },
                 y_delta0 : dy[0],
@@ -147,8 +159,8 @@ void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBloc
                 y_delta2 : dy[2],
                 y_delta3 : dy[3],
                 y_delta4 : dy[4],
-                last_in_x : tile_last ? 1u : 0u,
-                last_in_y : tile_last ? 1u : 0u,
+                last_in_x : last_in_x ? 1u : 0u,
+                last_in_y : last_in_y ? 1u : 0u,
                 x_index_4: x[4],
                 x_index_3: x[3],
                 x_index_2: x[2],
@@ -156,6 +168,15 @@ void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBloc
                 x_index_0: x[0],
                 mode     : 0b1111,
             };
+            std::cout << std::format("Float5 [{}]*{} [{}]*{} [{}]*{} [{}]*{} [{}]*{} (X Last: {}) (Y Last: {})",
+                x[0], val[0],
+                x[1], val[1],
+                x[2], val[2],
+                x[3], val[3],
+                x[4], val[4],
+                last_in_x,
+                last_in_y
+            ) << std::endl;
             data.push_back(block);
             first_entry_idx += count > 5 ? 5 : count;
         }
@@ -173,8 +194,8 @@ void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBloc
             y_delta2 : 0,
             y_delta3 : 0,
             y_delta4 : 0,
-            last_in_x : block_count == 16,
-            last_in_y : block_count == 16,
+            last_in_x : 0u, // Append blocks for an empty start to the next tile. 
+            last_in_y : 0u,
             x_index_4: 0,
             x_index_3: 0,
             x_index_2: 0,
@@ -182,6 +203,7 @@ void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBloc
             x_index_0: 0,
             mode     : 0b1111,
         };
+        std::cout << "MinBlockFillerBlock" << std::endl;
         data.push_back(block);
     }
 }

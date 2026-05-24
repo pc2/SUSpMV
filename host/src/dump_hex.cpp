@@ -5,8 +5,9 @@
 #include <iomanip>
 #include <format>
 
-template<typename T>
-void store(std::string path, const std::vector<T>& data, size_t row_bits) {
+template<typename T, size_t ROW_BITS>
+void store(std::string path, const std::vector<T>& data) {
+    std::cout << "Data element size is " << sizeof(T) << std::endl;
     const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(data.data());
     size_t data_len = data.size() * sizeof(T);
 
@@ -14,13 +15,23 @@ void store(std::string path, const std::vector<T>& data, size_t row_bits) {
 
     std::ofstream out(path);
 
-    size_t row_bytes = row_bits / 8;
-    for (size_t i = 0; i < data_len; ++i) {
-        out << std::format("{:02x}", data_ptr[i]);
+    constexpr size_t ROW_BYTES = ROW_BITS / 8;
 
-        if (i % row_bytes == row_bytes-1 || i == data_len-1) {
-            out << '\n';
+    char row_buf[ROW_BYTES * 2 + 1];
+    row_buf[ROW_BYTES * 2] = '\n';
+    for(size_t i = 0; i < data_len; i += ROW_BYTES) {
+        for(int j = 0; j < ROW_BYTES; j++) {
+            constexpr char* HEX = "0123456789abcdef";
+            uint8_t v;
+            if(i + j < data_len) {
+                v = data_ptr[i + j];
+            } else {
+                v = 0;
+            }
+            row_buf[ROW_BYTES * 2 - 2 - j*2] = HEX[v / 16];
+            row_buf[ROW_BYTES * 2 - 2 - j*2 + 1] = HEX[v % 16];
         }
+        out << row_buf;
     }
 
     out.close();
@@ -43,7 +54,7 @@ void store_matrix_size(std::string path, Matrix& m, ComputeUnitData& data) {
         out << std::format("`define HBM{}_LEN {}", i, data.hbm_buffers[i].size()) << std::endl;
 
         // cue to store the compute unit data in files
-        store(std::format("hbm{}.mem", i), data.hbm_buffers[i], 256);
+        store<MatrixDataBlock, 256>(std::format("hbm{}.mem", i), data.hbm_buffers[i]);
     }
 
     out.close();
@@ -58,8 +69,8 @@ int dump_hex(Matrix& m, ComputeUnitData& data) {
     std::vector<float> expected_result = m.mul(x_vec);
 
     // Store the vector 
-    store("x_vec.mem", x_vec, 512);
-    store("expected.mem", expected_result, 512);
+    store<float, 512>("x_vec.mem", x_vec);
+    store<float, 512>("expected.mem", expected_result);
 
     store_matrix_size("matrix_params.vh", m, data);
 

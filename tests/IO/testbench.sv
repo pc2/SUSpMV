@@ -773,24 +773,35 @@ module simple_axi_mem #(
     // MAIN LOGIC
     // ============================================================
 
+	assign arready = !rd_active & aresetn;
+	assign awready = !wr_active & aresetn;
+
+	assign rvalid = rd_active & aresetn;
+
+	always_comb begin
+		if(rvalid) begin
+			// build read data
+			for (i = 0; i < DATA_WIDTH / 8; i++) begin
+				rdata[i*8 +: 8] = mem[rd_addr][i*8 +: 8];
+			end
+
+			rlast = rd_beats_left == 1;			
+		end
+	end
+
     always_ff @(posedge aclk or negedge aresetn) begin
         if (!aresetn) begin
-
-            awready <= 1'b1;
-            wready  <= 1'b1;
-
             bvalid  <= 1'b0;
             bresp   <= 2'b00;
 
-            arready <= 1'b1;
-
-            rvalid  <= 1'b0;
             rresp   <= 2'b00;
             rlast   <= 1'b0;
 
             wr_active <= 1'b0;
             rd_active <= 1'b0;
 
+			wready <= 1'b0;
+			rvalid <= 1'b0;
         end else begin
 
             // ====================================================
@@ -798,17 +809,17 @@ module simple_axi_mem #(
             // ====================================================
 
             if (awvalid && awready) begin
-                wr_addr       <= awaddr;
-                wr_beats_left <= awlen;
+                wr_addr       = awaddr;
+                wr_beats_left = awlen+1;
                 wr_active     <= 1'b1;
+				wready        <= 1'b1;
             end
 
             // ====================================================
             // WRITE DATA
             // ====================================================
 
-            if (wr_active && wvalid && wready) begin
-
+            if (wvalid && wready) begin
                 // byte-wise write
                 for (i = 0; i < DATA_WIDTH / 8; i++) begin
                     if (wstrb[i]) begin
@@ -819,11 +830,16 @@ module simple_axi_mem #(
                 // burst increment
                 wr_addr <= wr_addr + 1;
 
+				wr_beats_left--;
+
                 if (wlast) begin
-                    wr_active <= 1'b0;
 
                     bvalid <= 1'b1;
                     bresp  <= 2'b00; // OKAY
+
+					if(wr_beats_left != 0) begin
+						$fatal("WR Beats Left Isn't 0 at the end of write transer???");
+					end
                 end
             end
 
@@ -832,6 +848,7 @@ module simple_axi_mem #(
             // ====================================================
 
             if (bvalid && bready) begin
+				wr_active <= 1'b0;
                 bvalid <= 1'b0;
             end
 
@@ -839,9 +856,9 @@ module simple_axi_mem #(
             // READ ADDRESS HANDSHAKE
             // ====================================================
 
-            if (arvalid && arready && !rd_active) begin
+            if (arvalid && arready) begin
                 rd_addr       <= araddr / (DATA_WIDTH / 8);
-                rd_beats_left <= arlen;
+                rd_beats_left <= arlen+1;
                 rd_active     <= 1'b1;
 
                 rvalid <= 1'b1;
@@ -852,30 +869,16 @@ module simple_axi_mem #(
             // READ DATA CHANNEL
             // ====================================================
 
-            if (rd_active && (!rvalid || (rvalid && rready))) begin
-
-                // build read data
-                for (i = 0; i < DATA_WIDTH / 8; i++) begin
-                    rdata[i*8 +: 8] <= mem[rd_addr][i*8 +: 8];
-                end
-
-                rlast <= (rd_beats_left == 0);
-
+			if(rready && rvalid) begin
                 // advance burst
                 rd_addr <= rd_addr + 1;
 
-                if (rd_beats_left == 0) begin
+                if (rlast) begin
                     rd_active <= 1'b0;
                 end else begin
                     rd_beats_left <= rd_beats_left - 1;
                 end
-            end
-
-            // final beat accepted
-            if (rvalid && rready && rlast) begin
-                rvalid <= 1'b0;
-                rlast  <= 1'b0;
-            end
+			end
         end
     end
 
