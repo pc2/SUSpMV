@@ -1,6 +1,6 @@
 
 const size_t TILE_X_WIDTH = 1024;
-const size_t MIN_BLOCKS_PER_TILE = 16;
+const size_t MIN_BLOCKS_PER_TILE = 18;
 const size_t NUM_Y_BANKS = 16;
 
 // accelerator config

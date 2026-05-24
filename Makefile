@@ -152,5 +152,6 @@ host/test/arc130/arc130.mtx:
 	pip install ssgetpy;\
 	ssgetpy --format MM --data-type real --outdir test/;\
 
-tests/IO/matrix_params.vh: host/suspmv host/test/arc130/arc130.mtx
-	cd tests/IO/ && ../../host/suspmv ../../host/test/arc130/arc130.mtx 0
+# host/test/arc130/arc130.mtx
+tests/IO/test_data: host/suspmv host/test/1138_bus/1138_bus.mtx
+	cd tests/IO/ && ../../host/suspmv ../../host/test/1138_bus/1138_bus.mtx 0

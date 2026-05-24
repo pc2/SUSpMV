@@ -36,24 +36,24 @@ void split_region_tiles_x_axis(std::span<Entry> entry_span, std::vector<std::vec
 
 void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBlock>& data, bool is_last_in_y) {
     uint64_t first_entry_idx = 0;
-    bool tile_last = false;
     uint64_t block_count = 0;
 
-    while (!tile_last) {
+    while (true) {
         block_count += 1;
         float    val[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         uint64_t x[6]   = {0, 0, 0, 0, 0, 0};
         uint64_t y[6]   = {0, 0, 0, 0, 0, 0};
         uint8_t  dy[6]  = {0, 0, 0, 0, 0, 0};
         uint64_t count  = 0;
-        for (uint64_t i = 0; i < 6 && first_entry_idx + i < entries.size(); i++) {
-            uint64_t j = i + first_entry_idx;
-            assert(j < entries.size());
-            tile_last = j + 1 == entries.size();
+        for (uint64_t i = 0; i < 6; i++) {
+            uint64_t j = first_entry_idx + i;
+            if(j >= entries.size()) {
+                break;
+            }
             // TODO: Insert zeros when delta_y would not fit in 8 bit. 
-            dy[i] = static_cast<uint8_t>(tile_last ? 255 : entries[j+1].y - entries[j].y);
-            assert(entries[j].x < 1024);
-            assert(entries[j].y < 2048 * 16);
+            dy[i] = static_cast<uint8_t>(entries[j+1].y - entries[j].y);
+            assert(entries[j].x < TILE_X_WIDTH);
+            assert(entries[j].y < MAX_TILE_Y_HEIGHT);
             x[i] = entries[j].x;
             y[i] = entries[j].y;
             val[i] = entries[j].val;
@@ -72,13 +72,13 @@ void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBloc
             }
             count += 1;
         }
-
+        
         // check if we can use a `Float6` block here
         bool use_float6 = true;
         // only use Float6 iff
         // - we actually have six values
         // - it is not the last block of the tile (must be Float5)
-        if (count != 6 || tile_last) {
+        if (count != 6) {
             use_float6 = false;
         }
         // - no dy may be at more than 1
@@ -138,20 +138,20 @@ void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBloc
                 x_index_0: x[0],
                 mode     : mode,
             };
-            std::cout << std::format("Float6 [{}]*{} [{}]*{} [{}]*{} [{}]*{} [{}]*{} [{}]*{}",
+            /*std::cout << std::format("Float6 [{}]*{} [{}]*{} [{}]*{} [{}]*{} [{}]*{} [{}]*{}",
                 x[0], val[0],
                 x[1], val[1],
                 x[2], val[2],
                 x[3], val[3],
                 x[4], val[4],
                 x[5], val[5]
-            ) << std::endl;
+            ) << std::endl;*/
             data.push_back(block);
             first_entry_idx += 6;
         } else {
             MatrixDataBlock block;
-            bool last_in_x = tile_last;
-            bool last_in_y = tile_last && is_last_in_y;
+            bool last_in_x = first_entry_idx + count >= entries.size();
+            bool last_in_y = last_in_x && is_last_in_y;
             block.float5 = Float5{
                 weights: { val[0], val[1], val[2], val[3], val[4] },
                 y_delta0 : dy[0],
@@ -168,7 +168,7 @@ void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBloc
                 x_index_0: x[0],
                 mode     : 0b1111,
             };
-            std::cout << std::format("Float5 [{}]*{} [{}]*{} [{}]*{} [{}]*{} [{}]*{} (X Last: {}) (Y Last: {})",
+            /*std::cout << std::format("Float5 [{}]*{} [{}]*{} [{}]*{} [{}]*{} [{}]*{} (X Last: {}) (Y Last: {})",
                 x[0], val[0],
                 x[1], val[1],
                 x[2], val[2],
@@ -176,14 +176,16 @@ void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBloc
                 x[4], val[4],
                 last_in_x,
                 last_in_y
-            ) << std::endl;
+            ) << std::endl;*/
             data.push_back(block);
             first_entry_idx += count > 5 ? 5 : count;
+
+            if(last_in_x) break;
         }
     }
 
     // in case the tile is very empty, we must add some filler blocks to prevent conflicts with the next tile.
-    while (block_count < MIN_BLOCKS_PER_TILE) {
+    while ((block_count < MIN_BLOCKS_PER_TILE) && !is_last_in_y) {
         block_count += 1;
 
         MatrixDataBlock block;
@@ -203,7 +205,7 @@ void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBloc
             x_index_0: 0,
             mode     : 0b1111,
         };
-        std::cout << "MinBlockFillerBlock" << std::endl;
+        //std::cout << "MinBlockFillerBlock" << std::endl;
         data.push_back(block);
     }
 }

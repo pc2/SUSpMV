@@ -91,8 +91,8 @@ struct Float5 {
 **Note: The y_deltas apply to the change in Y *after* this element. So the *next* element's Y is currentY + delta_y**
 
 ### Extra constraints
-- When crossing between `last_in_x` blocks, the same `y` index must not be written to twice in a row within 16 blocks. (This is because the latency for accumulating to y block URAMs is 15 cycles.)
-  Delay the second write by adding "zero" blocks *before* the second write. It's okay to start accumulating for the same y value again, but the `is_last` assertions must be 16 blocks apart. 
+- When crossing between `last_in_x` blocks, the same `y` index must not be written to twice in a row within 18 blocks. (This is because the latency for accumulating to y block URAMs is 15 cycles.)
+  Delay the second write by adding "zero" blocks *before* the second write. It's okay to start accumulating for the same y value again, but the `is_last` assertions must be 18 blocks apart. 
 - Within a block, no two `y` indices may be the same `mod 16`, due to y bank conflicts. If a `y` equal `mod 16` to a previous one in this block, fill the rest with zeros, to push the `is_last` for the conflicting `y` to the next block. This can of course only occur for the 5-float mode, since 6-float mode only allows consecutive y indices. 
 - In a `last_in_x` block, all unused weights *must* be 0.0. This ensures that the accumulator for the next set of X values starts at 0.0. 
 - There must be at least one write to the last `y` index. This is so each SUSpMV unit can calibrate its memory write. 

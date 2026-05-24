@@ -17,11 +17,12 @@ void store(std::string path, const std::vector<T>& data) {
 
     constexpr size_t ROW_BYTES = ROW_BITS / 8;
 
-    char row_buf[ROW_BYTES * 2 + 1];
+    char row_buf[ROW_BYTES * 2 + 2];
     row_buf[ROW_BYTES * 2] = '\n';
+    row_buf[ROW_BYTES * 2 + 1] = '\0';
     for(size_t i = 0; i < data_len; i += ROW_BYTES) {
-        for(int j = 0; j < ROW_BYTES; j++) {
-            constexpr char* HEX = "0123456789abcdef";
+        for(size_t j = 0; j < ROW_BYTES; j++) {
+            constexpr const char* HEX = "0123456789abcdef";
             uint8_t v;
             if(i + j < data_len) {
                 v = data_ptr[i + j];
