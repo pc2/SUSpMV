@@ -351,9 +351,9 @@ module YCollector {
         when is_long_rst {
             bucket_ram.write(reset_rotator, 0.0d)
         } else when bucket_write[BUCKET] {
-            int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer, bucket_write_index[BUCKET])
+            reg int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer, bucket_write_index[BUCKET])
             reg double prev_value = bucket_ram.read(front_index)
-            double new_value = fp64_add(prev_value, bucket_write_value[BUCKET])
+            reg double new_value = fp64_add(prev_value, bucket_write_value[BUCKET])
             bucket_ram.write(front_index, new_value)
         } else when num_ys_left_per_bucket[BUCKET] != 0 & output_fifo.may_pushes[BUCKET] {
             reg int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer, cur_output_y_per_bucket[BUCKET])

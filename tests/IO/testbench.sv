@@ -652,7 +652,7 @@ module SUSpMV_Full_tb;
 	initial begin
 		axi_lite_master_init();
 		$readmemh("hbm0.mem", hbm00_mem.mem);
-		$readmemh("hbm0.mem", hbm01_mem.mem);
+		$readmemh("hbm1.mem", hbm01_mem.mem);
 		$readmemh("x_vec.mem", ddr_mem.mem);
 
 		wait(aresetn);
