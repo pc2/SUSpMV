@@ -358,7 +358,7 @@ Matrix Matrix::load(std::string path) {
         m.entries.push_back(Entry{x: col, y: row, val: value});
         // Expand symmetry
         if ((symmetric || skew_symmetric) && row != col) {
-            m.entries.push_back(Entry{ x: col, y: row, val: skew_symmetric ? -value : value });
+            m.entries.push_back(Entry{ x: row, y: col, val: skew_symmetric ? -value : value });
         }
     }
 
@@ -370,6 +370,16 @@ Matrix Matrix::load(std::string path) {
             return a.y < b.y;
         }
     });
+
+    // Check no duplicates
+    Entry prev {x: 1ull << 63, y: 1ull << 63, val: 0.0};
+    for(Entry e : m.entries) {
+        if(prev.x == e.x && prev.y == e.y) {
+            std::cout << std::format("Duplicate element for X: {}, Y: {}", e.x, e.y) << std::endl;
+            exit(1);
+        }
+        prev = e;
+    }
 
     return m;
 }
