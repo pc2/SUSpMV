@@ -6,6 +6,7 @@
         "sus-xrt/axi.sus",
         "sus-tapasco/sus/tapasco_ctrl_slave.sus",
         "suspmv.sus",
-        "suspmv_io.sus"
+        "suspmv_io.sus",
+        "autopipeline.sus"
     ]
 }

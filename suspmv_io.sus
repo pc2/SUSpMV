@@ -252,7 +252,7 @@ module YVectorWriter#(int NUM_KERNELS) {
     state int#(FROM: 0, TO: 1 << 32) num_y_blocks_remaining
 
     domain y_start_tokens
-    output bool[NUM_KERNELS] unit_may_starts = RepeatGen#(T: type bool, V: false, SIZE: NUM_KERNELS)
+    reg output bool[NUM_KERNELS] unit_may_starts = RepeatGen#(T: type bool, V: false, SIZE: NUM_KERNELS)
 
     domain start_write
     // There will only ever be one write here. Safe to ignore
@@ -260,7 +260,7 @@ module YVectorWriter#(int NUM_KERNELS) {
     action submit_y_vector_addr'0 : int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH) y_vec_addr'0, int#(FROM: 0, TO: 1 << 32) num_y_blocks'0 {
         writer.request_new_write(y_vec_addr)
         unit_holding_y_token = 0
-        unit_may_starts[0] = true
+        reg unit_may_starts[0] = true
         num_y_blocks_remaining = num_y_blocks - 1 mod 1 << 32
     }
 
@@ -276,11 +276,11 @@ module YVectorWriter#(int NUM_KERNELS) {
 
         when last {
             int next_token_holding_unit = unit_holding_y_token + 1 mod NUM_KERNELS
-            unit_may_starts[next_token_holding_unit] = true
+            reg unit_may_starts[next_token_holding_unit] = true
             when unit_holding_y_token == NUM_KERNELS - 1 {
                 when num_y_blocks_remaining == 0 {
                     // Overwrite unit_may_starts with false, since we're fully done
-                    unit_may_starts = RepeatGen#(T: type bool, V: false, SIZE: NUM_KERNELS)
+                    reg unit_may_starts = RepeatGen#(T: type bool, V: false, SIZE: NUM_KERNELS)
                     write_is_true_last = true
                 } else {
                     num_y_blocks_remaining = num_y_blocks_remaining - 1 mod 1 << 32
@@ -387,7 +387,7 @@ module SUSpMV_SLR#(int NUM_UNITS, int HBM_MAY_PUSH_LATENCY) {
         SpMVUnit unit
 
         // Matrix data
-        may_pushes[I] = unit.may_push
+        reg may_pushes[I] = unit.may_push
         when hbm_valids[I] {
             unit.push(hbm_datas[I])
         }
@@ -480,52 +480,52 @@ module SUSpMV_Full {
     YVectorWriter#(NUM_KERNELS: NUM_HBMS) y_result_writer
 
     domain ddr_write
-    output bool                                    maxi_ddr01_awvalid = y_result_writer.awvalid
-    input  bool                                    maxi_ddr01_awready
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)  maxi_ddr01_awaddr = y_result_writer.awaddr
-    output int#(FROM: 0, TO: 256)                  maxi_ddr01_awlen = y_result_writer.awlen
-    output int#(FROM: 0, TO: 8)                    maxi_ddr01_awsize  = y_result_writer.awsize
-    output bool[2]                                 maxi_ddr01_awburst = y_result_writer.awburst
-    output bool[3]                                 maxi_ddr01_awprot = y_result_writer.awprot
-    output bool[4]                                 maxi_ddr01_awcache = y_result_writer.awcache
-    output int#(FROM: 0, TO: 16)                   maxi_ddr01_awqos = y_result_writer.awqos
-    output bool                                    maxi_ddr01_awlock = y_result_writer.awlock
-    output int#(FROM: 0, TO: 16)                   maxi_ddr01_awregion = y_result_writer.awregion
-    output bool                                    maxi_ddr01_wvalid = y_result_writer.wvalid
-    input  bool                                    maxi_ddr01_wready
-    output bool[DDR_AXI_WRITE_WIDTH]               maxi_ddr01_wdata = y_result_writer.wdata
-    output bool[DDR_AXI_WRITE_WIDTH / 8]           maxi_ddr01_wstrb = y_result_writer.wstrb
-    output bool                                    maxi_ddr01_wlast = y_result_writer.wlast
-    input  bool                                    maxi_ddr01_bvalid
-    output bool                                    maxi_ddr01_bready = y_result_writer.bready
-    input  bool[2]                                 maxi_ddr01_bresp
-    y_result_writer.awready =                      maxi_ddr01_awready
-    y_result_writer.wready =                       maxi_ddr01_wready
-    y_result_writer.bvalid =                       maxi_ddr01_bvalid
-    y_result_writer.bresp =                        maxi_ddr01_bresp
+    output bool                                    maxi_ddr00_awvalid = y_result_writer.awvalid
+    input  bool                                    maxi_ddr00_awready
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)  maxi_ddr00_awaddr = y_result_writer.awaddr
+    output int#(FROM: 0, TO: 256)                  maxi_ddr00_awlen = y_result_writer.awlen
+    output int#(FROM: 0, TO: 8)                    maxi_ddr00_awsize  = y_result_writer.awsize
+    output bool[2]                                 maxi_ddr00_awburst = y_result_writer.awburst
+    output bool[3]                                 maxi_ddr00_awprot = y_result_writer.awprot
+    output bool[4]                                 maxi_ddr00_awcache = y_result_writer.awcache
+    output int#(FROM: 0, TO: 16)                   maxi_ddr00_awqos = y_result_writer.awqos
+    output bool                                    maxi_ddr00_awlock = y_result_writer.awlock
+    output int#(FROM: 0, TO: 16)                   maxi_ddr00_awregion = y_result_writer.awregion
+    output bool                                    maxi_ddr00_wvalid = y_result_writer.wvalid
+    input  bool                                    maxi_ddr00_wready
+    output bool[DDR_AXI_WRITE_WIDTH]               maxi_ddr00_wdata = y_result_writer.wdata
+    output bool[DDR_AXI_WRITE_WIDTH / 8]           maxi_ddr00_wstrb = y_result_writer.wstrb
+    output bool                                    maxi_ddr00_wlast = y_result_writer.wlast
+    input  bool                                    maxi_ddr00_bvalid
+    output bool                                    maxi_ddr00_bready = y_result_writer.bready
+    input  bool[2]                                 maxi_ddr00_bresp
+    y_result_writer.awready =                      maxi_ddr00_awready
+    y_result_writer.wready =                       maxi_ddr00_wready
+    y_result_writer.bvalid =                       maxi_ddr00_bvalid
+    y_result_writer.bresp =                        maxi_ddr00_bresp
     
     domain ddr_read
-    output bool                                    maxi_ddr01_arvalid'0 = x_vector_reader.arvalid
-    input  bool                                    maxi_ddr01_arready
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)  maxi_ddr01_araddr = x_vector_reader.araddr
-    output int#(FROM: 0, TO: 256)                  maxi_ddr01_arlen = x_vector_reader.arlen
-    output int#(FROM: 0, TO: 8)                    maxi_ddr01_arsize  = x_vector_reader.arsize
-    output bool[2]                                 maxi_ddr01_arburst = x_vector_reader.arburst
-    output bool[3]                                 maxi_ddr01_arprot = x_vector_reader.arprot
-    output bool[4]                                 maxi_ddr01_arcache = x_vector_reader.arcache
-    output int#(FROM: 0, TO: 16)                   maxi_ddr01_arqos = x_vector_reader.arqos
-    output bool                                    maxi_ddr01_arlock = x_vector_reader.arlock
-    output int#(FROM: 0, TO: 16)                   maxi_ddr01_arregion = x_vector_reader.arregion
-    input  bool                                    maxi_ddr01_rvalid
-    output bool                                    maxi_ddr01_rready = x_vector_reader.rready
-    input  bool[DDR_AXI_READ_WIDTH]                maxi_ddr01_rdata
-    input  bool[2]                                 maxi_ddr01_rresp
-    input  bool                                    maxi_ddr01_rlast
-    x_vector_reader.arready =                      maxi_ddr01_arready
-    x_vector_reader.rvalid =                       maxi_ddr01_rvalid
-    x_vector_reader.rdata =                        maxi_ddr01_rdata
-    x_vector_reader.rresp =                        maxi_ddr01_rresp
-    x_vector_reader.rlast =                        maxi_ddr01_rlast
+    output bool                                    maxi_ddr00_arvalid'0 = x_vector_reader.arvalid
+    input  bool                                    maxi_ddr00_arready
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)  maxi_ddr00_araddr = x_vector_reader.araddr
+    output int#(FROM: 0, TO: 256)                  maxi_ddr00_arlen = x_vector_reader.arlen
+    output int#(FROM: 0, TO: 8)                    maxi_ddr00_arsize  = x_vector_reader.arsize
+    output bool[2]                                 maxi_ddr00_arburst = x_vector_reader.arburst
+    output bool[3]                                 maxi_ddr00_arprot = x_vector_reader.arprot
+    output bool[4]                                 maxi_ddr00_arcache = x_vector_reader.arcache
+    output int#(FROM: 0, TO: 16)                   maxi_ddr00_arqos = x_vector_reader.arqos
+    output bool                                    maxi_ddr00_arlock = x_vector_reader.arlock
+    output int#(FROM: 0, TO: 16)                   maxi_ddr00_arregion = x_vector_reader.arregion
+    input  bool                                    maxi_ddr00_rvalid
+    output bool                                    maxi_ddr00_rready = x_vector_reader.rready
+    input  bool[DDR_AXI_READ_WIDTH]                maxi_ddr00_rdata
+    input  bool[2]                                 maxi_ddr00_rresp
+    input  bool                                    maxi_ddr00_rlast
+    x_vector_reader.arready =                      maxi_ddr00_arready
+    x_vector_reader.rvalid =                       maxi_ddr00_rvalid
+    x_vector_reader.rdata =                        maxi_ddr00_rdata
+    x_vector_reader.rresp =                        maxi_ddr00_rresp
+    x_vector_reader.rlast =                        maxi_ddr00_rlast
 
 
     // ===================================================== //
@@ -638,25 +638,46 @@ module SUSpMV_Full {
     //  Addresses  //
     // =========== //
 
-    int x_vector_addr = BitsToUInt(ctrl.input_regs[0])
-    int y_vector_addr = BitsToUInt(ctrl.input_regs[1])
-
-    int num_x_pages = BitsToUInt(ctrl.input_regs[2]) mod 1 << 32
-
-    int num_y_repetitions = BitsToUInt(ctrl.input_regs[3]) mod 1 << 32
-
-    int[NUM_HBMS] matrix_data_start_addrs
-    int[NUM_HBMS] matrix_data_element_counts
-    for int HBM_I in 0..NUM_HBMS {
-        reg reg reg matrix_data_start_addrs[HBM_I] = BitsToUInt(ctrl.input_regs[4 + HBM_I * 2])
-        reg reg reg matrix_data_element_counts[HBM_I] = BitsToUInt(ctrl.input_regs[5 + HBM_I * 2]) mod 1 << 32
-    }
-
+    // Pipeline regs to get from SLR0 to SLR1
+    Tuple4 pack_ddr1_settings
+    action_autopipeline pipe_to_ddr1
+    
+    Tuple2 pack_hbm_settings
+    action_autopipeline pipe_to_hbms
+    
     bool _hbm0_reader_may_request = hbm00_reader.may_request_new_read
     bool _hbm1_reader_may_request = hbm01_reader.may_request_new_read
     when ctrl.start {
+        int x_vector_addr = BitsToUInt(ctrl.input_regs[0])
+        int y_vector_addr = BitsToUInt(ctrl.input_regs[1])
+        int num_x_pages = BitsToUInt(ctrl.input_regs[2]) mod 1 << 32
+        int num_y_repetitions = BitsToUInt(ctrl.input_regs[3]) mod 1 << 32
+        pipe_to_ddr1.din(pack_ddr1_settings.pack(x_vector_addr, y_vector_addr, num_x_pages, num_y_repetitions))
+
+        int[NUM_HBMS] matrix_data_start_addrs
+        int[NUM_HBMS] matrix_data_element_counts
+        for int HBM_I in 0..NUM_HBMS {
+            // Pipeline regs to reach both ends of SLR0
+            matrix_data_start_addrs[HBM_I] = BitsToUInt(ctrl.input_regs[4 + HBM_I * 2])
+            matrix_data_element_counts[HBM_I] = BitsToUInt(ctrl.input_regs[5 + HBM_I * 2]) mod 1 << 32
+        }
+
+        pipe_to_hbms.din(pack_hbm_settings.pack(matrix_data_start_addrs, matrix_data_element_counts))
+    }
+    when pipe_to_ddr1.dout : bool[] packed_ddr1_settings {
+        int x_vector_addr,
+        int y_vector_addr,
+        int num_x_pages,
+        int num_y_repetitions = pack_ddr1_settings.unpack(packed_ddr1_settings)
+
         x_vector_reader.start_loading(x_vector_addr, num_x_pages, num_y_repetitions)
         y_result_writer.submit_y_vector_addr(y_vector_addr, num_y_repetitions)
+    }
+
+    when pipe_to_hbms.dout : bool[] packed_hbm_settings {
+        int[NUM_HBMS] matrix_data_start_addrs,
+        int[NUM_HBMS] matrix_data_element_counts = pack_hbm_settings.unpack(packed_hbm_settings)
+
         hbm00_reader.request_new_read(matrix_data_start_addrs[0], matrix_data_element_counts[0], [])
         hbm01_reader.request_new_read(matrix_data_start_addrs[1], matrix_data_element_counts[1], [])
     }
@@ -666,32 +687,73 @@ module SUSpMV_Full {
     }
 
     // Shared data for SLRs
-    x_vector_reader.x_page_releases[0:NUM_HBMS] = suspmv_slr2.x_releases
+    // To cross SLR1 -> SLR2
+    Tuple2 pack_x_vector_info_slr2
+    action_autopipeline pipe_x_vector_info_slr2
+    data_autopipeline pipe_x_page_releases_slr2
+
+    pipe_x_page_releases_slr2.din = suspmv_slr2.x_releases
+    x_vector_reader.x_page_releases[0:NUM_HBMS] = pipe_x_page_releases_slr2.dout
+
     when x_vector_reader.x_valid : float[16] x_values, bool x_last {
+        pipe_x_vector_info_slr2.din(pack_x_vector_info_slr2.pack(x_values, x_last))
+    }
+    when pipe_x_vector_info_slr2.dout : bool[] packed {
+        float[16] x_values, bool x_last = pack_x_vector_info_slr2.unpack(packed)
         suspmv_slr2.push_x_data(x_values, x_last)
     }
 
-    suspmv_slr2.start_y_bursts = y_result_writer.unit_may_starts[0:NUM_HBMS]
-    suspmv_slr2.may_y_valid = y_result_writer.may_write
+    // To cross SLR1 -> SLR2
+    Tuple3 pack_y_valid_slr2
+    action_autopipeline pipe_y_valid_slr2
+
+    data_autopipeline pipe_start_y_bursts_slr2
+    data_autopipeline pipe_may_y_valid_slr2
+
+    pipe_start_y_bursts_slr2.din = y_result_writer.unit_may_starts[0:NUM_HBMS]
+    suspmv_slr2.start_y_bursts = pipe_start_y_bursts_slr2.dout
+
+    pipe_may_y_valid_slr2.din = y_result_writer.may_write
+    suspmv_slr2.may_y_valid = pipe_may_y_valid_slr2.dout
+
     when suspmv_slr2.y_valid : float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out {
+        pipe_y_valid_slr2.din(pack_y_valid_slr2.pack(y_values_out, num_y_values_out, is_last_y_out))
+    }
+
+    when pipe_y_valid_slr2.dout : bool[] packed {
+        float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out = pack_y_valid_slr2.unpack(packed)
         y_result_writer.write(y_values_out, num_y_values_out, is_last_y_out)
     }
 
     // Connect all HBMs
-    reg reg reg hbm00_reader.ready_for_lots_of_data = suspmv_slr2.may_pushes[0]
+    data_autopipeline pipe_may_push_hbm00
+    pipe_may_push_hbm00.din = suspmv_slr2.may_pushes[0]
+    hbm00_reader.ready_for_lots_of_data = pipe_may_push_hbm00.dout
+    action_autopipeline pipe_weights_hbm00
     when hbm00_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        reg reg reg suspmv_slr2.hbm_valids[0] = true
-        reg reg reg suspmv_slr2.hbm_datas[0] = elements[0]
-    } else {
-        reg reg reg suspmv_slr2.hbm_valids[0] = false
+        pipe_weights_hbm00.din(elements[0])
     }
-    reg reg reg hbm01_reader.ready_for_lots_of_data = suspmv_slr2.may_pushes[1]
+    when pipe_weights_hbm00.dout : bool[256] hbm_data {
+        suspmv_slr2.hbm_valids[0] = true
+        suspmv_slr2.hbm_datas[0] = hbm_data
+    } else {
+        suspmv_slr2.hbm_valids[0] = false
+    }
+
+    data_autopipeline pipe_may_push_hbm01
+    pipe_may_push_hbm01.din = suspmv_slr2.may_pushes[1]
+    hbm01_reader.ready_for_lots_of_data = pipe_may_push_hbm01.dout
+    action_autopipeline pipe_weights_hbm01
     when hbm01_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        reg reg reg suspmv_slr2.hbm_valids[1] = true
-        reg reg reg suspmv_slr2.hbm_datas[1] = elements[0]
-    } else {
-        reg reg reg suspmv_slr2.hbm_valids[1] = false
+        pipe_weights_hbm01.din(elements[0])
     }
+    when pipe_weights_hbm01.dout : bool[256] hbm_data {
+        suspmv_slr2.hbm_valids[1] = true
+        suspmv_slr2.hbm_datas[1] = hbm_data
+    } else {
+        suspmv_slr2.hbm_valids[1] = false
+    }
+
 
     when !aresetn {
         ctrl.rst()

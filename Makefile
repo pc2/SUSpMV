@@ -8,6 +8,7 @@ $(TMPDIR):
 FILES := 
 FILES += suspmv.sus
 FILES += suspmv_io.sus
+FILES += autopipeline.sus
 FILES += sus-float/fp_custom.sus
 FILES += sus-xrt/axi.sus
 FILES += sus-tapasco/sus/tapasco_ctrl_slave.sus
@@ -141,8 +142,11 @@ U280/tapasco: U280/SUSpMV_Full.xo
 
 .PHONY: U280/tapasco
 
-host/suspmv: host/src/main.cpp host/src/dump_hex.cpp host/src/matrix.cpp host/src/matrix.h
-	cd host && cmake -B . -S . && cmake --build .
+host/CMakeCache.txt:
+	cd host && cmake -S . -B .
+
+host/suspmv: host/src/main.cpp host/src/dump_hex.cpp host/src/matrix.cpp host/src/matrix.h host/src/consts.h host/CMakeCache.txt
+	cd host && cmake --build .
 
 # download all supported matrices
 host/test/arc130/arc130.mtx:
@@ -153,5 +157,6 @@ host/test/arc130/arc130.mtx:
 	ssgetpy --format MM --data-type real --outdir test/;\
 
 # host/test/arc130/arc130.mtx
-tests/IO/test_data: host/suspmv host/test/1138_bus/1138_bus.mtx
+# host/test/1138_bus/1138_bus.mtx
+tests/IO/test_data: host/suspmv
 	cd tests/IO/ && ../../host/suspmv ../../host/test/1138_bus/1138_bus.mtx 0

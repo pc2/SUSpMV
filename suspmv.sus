@@ -616,9 +616,7 @@ module Semaphore#(int MAX, int INITIAL_PERMITS) {
     }
 }
 
-module SpMVUnit {
-    gen int MAY_PUSH_LATENCY = 200
-
+module SpMVUnit#(int MAY_PUSH_LATENCY) {
     gen int MAX_X_BUFS = 8
     gen int MAX_Y_BUFS = 2
 
