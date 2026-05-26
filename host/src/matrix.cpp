@@ -34,180 +34,67 @@ void split_region_tiles_x_axis(std::span<Entry> entry_span, std::vector<std::vec
     }
 }
 
-void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBlock>& data, bool is_last_in_y) {
-    uint64_t first_entry_idx = 0;
-    uint64_t block_count = 0;
-
-    while (true) {
-        block_count += 1;
-        float    val[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-        uint64_t x[6]   = {0, 0, 0, 0, 0, 0};
-        uint64_t y[6]   = {0, 0, 0, 0, 0, 0};
-        uint8_t  dy[6]  = {0, 0, 0, 0, 0, 0};
-        uint64_t count  = 0;
-        for (uint64_t i = 0; i < 6; i++) {
-            uint64_t j = first_entry_idx + i;
-            if(j >= entries.size()) {
-                break;
-            }
-            // TODO: Insert zeros when delta_y would not fit in 8 bit. 
-            dy[i] = static_cast<uint8_t>(entries[j+1].y - entries[j].y);
-            assert(entries[j].x < TILE_X_WIDTH);
-            assert(entries[j].y < MAX_TILE_Y_HEIGHT);
-            x[i] = entries[j].x;
-            y[i] = entries[j].y;
-            val[i] = entries[j].val;
-
-            // check for bank conflicts
-            bool bank_conflict = false;
-            for (uint64_t k = 0; k < i; k++) {
-                if (y[i] % NUM_Y_BANKS == y[k] % NUM_Y_BANKS && y[i] != y[k]) {
-                    // bank conflict
-                    bank_conflict = true;
-                    break;
-                }
-            }
-            if (bank_conflict) {
-                break;
-            }
-            count += 1;
-        }
-        
-        // check if we can use a `Float6` block here
-        bool use_float6 = true;
-        // only use Float6 iff
-        // - we actually have six values
-        // - it is not the last block of the tile (must be Float5)
-        if (count != 6) {
-            use_float6 = false;
-        }
-        // - no dy may be at more than 1
-        for (uint64_t i = 0; i < 6; i++) {
-            if (dy[i] > 1) {
-                use_float6 = false;
-                break;
-            }
-        }
-        // - the last bits must be representable by a combination of mode and x values
-        //   => compute the last mask by setting every necessary last bits (smaller new x value implies last bit)
-        uint8_t last_mask = 0;
-        for (uint64_t i = 0; i < 6; i++) {
-            if (dy[i] == 1 && (i == 0 || x[i] > x[i-1])) {
-                last_mask |= 1 << i;
-            }
-        }
-        // check if the computed last_mask is available
-        uint8_t mode = 0b1111;
-        uint8_t available_last_masks[15] = {
-            0b000000,
-            0b000001,
-            0b000010,
-            0b000100,
-            0b001000,
-            0b010000,
-            0b100000,
-            0b100001,
-            0b010001,
-            0b100010,
-            0b001001,
-            0b010010,
-            0b100100,
-            0b101000,
-            0b110000,
+std::ostream& operator<<(std::ostream& ostr, Entry e) {
+    ostr << std::format("[{},{}]*{}", e.x, e.y, e.val);
+    return ostr;
+}
+std::ostream& operator<<(std::ostream& ostr, MatrixDataBlock m_data) {
+    if(m_data.float5.mode == 0b1111) {
+        uint64_t x_indices[5] = {
+            m_data.float5.x_index_0,
+            m_data.float5.x_index_1,
+            m_data.float5.x_index_2,
+            m_data.float5.x_index_3,
+            m_data.float5.x_index_4
         };
-        for (uint64_t i = 0; i < 15; i++) {
-            if (available_last_masks[i] == last_mask) {
-                mode = i;
-                break;
+        uint64_t dys[5] = {
+            m_data.float5.y_delta0,
+            m_data.float5.y_delta1,
+            m_data.float5.y_delta2,
+            m_data.float5.y_delta3,
+            m_data.float5.y_delta4
+        };
+        ostr << "Float5";
+        for(int i = 0; i < 5; i++) {
+            ostr << std::format(" [{}]*{}", x_indices[i], m_data.float5.weights[i]);
+            if(dys[i] != 0) {
+                ostr << std::format("(+{})", dys[i]);
             }
         }
-        if (mode == 0b1111) {
-            use_float6 = false;
+        if(m_data.float5.last_in_x) {
+            ostr << " X Last";
         }
-
-        // append new block
-        if (use_float6) {
-            MatrixDataBlock block;
-            block.float6 = Float6{
-                weights: { val[0], val[1], val[2], val[3], val[4], val[5] },
-                x_index_5: x[5],
-                x_index_4: x[4],
-                x_index_3: x[3],
-                x_index_2: x[2],
-                x_index_1: x[1],
-                x_index_0: x[0],
-                mode     : mode,
-            };
-            /*std::cout << std::format("Float6 [{}]*{} [{}]*{} [{}]*{} [{}]*{} [{}]*{} [{}]*{}",
-                x[0], val[0],
-                x[1], val[1],
-                x[2], val[2],
-                x[3], val[3],
-                x[4], val[4],
-                x[5], val[5]
-            ) << std::endl;*/
-            data.push_back(block);
-            first_entry_idx += 6;
-        } else {
-            MatrixDataBlock block;
-            bool last_in_x = first_entry_idx + count >= entries.size();
-            bool last_in_y = last_in_x && is_last_in_y;
-            block.float5 = Float5{
-                weights: { val[0], val[1], val[2], val[3], val[4] },
-                y_delta0 : dy[0],
-                y_delta1 : dy[1],
-                y_delta2 : dy[2],
-                y_delta3 : dy[3],
-                y_delta4 : dy[4],
-                last_in_x : last_in_x ? 1u : 0u,
-                last_in_y : last_in_y ? 1u : 0u,
-                x_index_4: x[4],
-                x_index_3: x[3],
-                x_index_2: x[2],
-                x_index_1: x[1],
-                x_index_0: x[0],
-                mode     : 0b1111,
-            };
-            /*std::cout << std::format("Float5 [{}]*{} [{}]*{} [{}]*{} [{}]*{} [{}]*{} (X Last: {}) (Y Last: {})",
-                x[0], val[0],
-                x[1], val[1],
-                x[2], val[2],
-                x[3], val[3],
-                x[4], val[4],
-                last_in_x,
-                last_in_y
-            ) << std::endl;*/
-            data.push_back(block);
-            first_entry_idx += count > 5 ? 5 : count;
-
-            if(last_in_x) break;
+        if(m_data.float5.last_in_y) {
+            ostr << " Y Last";
+        }
+    } else {
+        uint64_t x_indices[6] = {
+            m_data.float6.x_index_0,
+            m_data.float6.x_index_1,
+            m_data.float6.x_index_2,
+            m_data.float6.x_index_3,
+            m_data.float6.x_index_4,
+            m_data.float6.x_index_5
+        };
+        bool lasts[6];
+        uint8_t last_mask = LAST_MASKS[m_data.float6.mode];
+        for(int i = 0; i < 6; i++) {
+            lasts[i] = (last_mask & (1 << i)) != 0;
+        }
+        for(int i = 0; i < 6-1; i++) {
+            if(x_indices[i+1] <= x_indices[i]) {
+                lasts[i] |= true;
+            }
+        }
+        ostr << "Float6";
+        for(int i = 0; i < 6; i++) {
+            ostr << std::format(" [{}]*{}", x_indices[i], m_data.float6.weights[i]);
+            if(lasts[i]) {
+                ostr << "(+1)";
+            }
         }
     }
-
-    // in case the tile is very empty, we must add some filler blocks to prevent conflicts with the next tile.
-    while ((block_count < MIN_BLOCKS_PER_TILE) && !is_last_in_y) {
-        block_count += 1;
-
-        MatrixDataBlock block;
-        block.float5 = Float5{
-            weights: { 0.0, 0.0, 0.0, 0.0, 0.0 },
-            y_delta0 : 0,
-            y_delta1 : 0,
-            y_delta2 : 0,
-            y_delta3 : 0,
-            y_delta4 : 0,
-            last_in_x : 0u, // Append blocks for an empty start to the next tile. 
-            last_in_y : 0u,
-            x_index_4: 0,
-            x_index_3: 0,
-            x_index_2: 0,
-            x_index_1: 0,
-            x_index_0: 0,
-            mode     : 0b1111,
-        };
-        //std::cout << "MinBlockFillerBlock" << std::endl;
-        data.push_back(block);
-    }
+    return ostr;
 }
 
 Matrix Matrix::load(std::string path) {
@@ -384,7 +271,7 @@ Matrix Matrix::load(std::string path) {
     return m;
 }
 
-std::vector<float> Matrix::mul(std::vector<float> &v) {
+std::vector<float> Matrix::mul(std::vector<float>& v) {
     assert(v.size() == width);
     std::vector<float> r(height, 0.0);
 
@@ -393,6 +280,304 @@ std::vector<float> Matrix::mul(std::vector<float> &v) {
     }
 
     return r;
+}
+
+std::vector<float> ComputeUnitData::mul(std::vector<float>& x_vec) {
+    std::vector<float> result(this->height, 0.0);
+
+    for(size_t compute_unit = 0; compute_unit < this->hbm_buffers.size(); compute_unit++) {
+        float cur_x_tile[TILE_X_WIDTH];
+        double cur_y_tile[MAX_TILE_Y_HEIGHT];
+        uint64_t cur_x = 0;
+        uint64_t cur_y = 0;
+        uint64_t cur_y_repeat = 0;
+        double cur_accumulator = 0.0;
+        for(size_t i = 0; i < TILE_X_WIDTH; i++) {
+            cur_x_tile[i] = 0.0;
+        }
+        for(size_t i = 0; i < TILE_X_WIDTH && cur_x < x_vec.size(); i++) {
+            cur_x_tile[i] = x_vec[cur_x++];
+        }
+        for(size_t i = 0; i < MAX_TILE_Y_HEIGHT; i++) {
+            cur_y_tile[i] = 0.0;
+        }
+        std::cout << "Compute Unit " << compute_unit << std::endl;
+        for(MatrixDataBlock& elem : this->hbm_buffers[compute_unit]) {
+            std::cout << elem << std::endl;
+            if(elem.float5.mode == 0b1111) {
+                // It's a float5
+                uint64_t x_indices[5] = {
+                    elem.float5.x_index_0,
+                    elem.float5.x_index_1,
+                    elem.float5.x_index_2,
+                    elem.float5.x_index_3,
+                    elem.float5.x_index_4
+                };
+                uint64_t dys[5] = {
+                    elem.float5.y_delta0,
+                    elem.float5.y_delta1,
+                    elem.float5.y_delta2,
+                    elem.float5.y_delta3,
+                    elem.float5.y_delta4
+                };
+                // To more closely match hardware behavior, use sub accumulator
+                double cur_subaccum = 0.0;
+                for(int i = 0; i < 5; i++) {
+                    float term = elem.float5.weights[i] * cur_x_tile[x_indices[i]];
+                    cur_subaccum += static_cast<double>(term);
+
+                    if(dys[i] != 0) {
+                        cur_y_tile[cur_y] += cur_accumulator + cur_subaccum;
+                        cur_y += dys[i];
+                        cur_accumulator = 0.0;
+                        cur_subaccum = 0.0;
+                    }
+                }
+                cur_accumulator += cur_subaccum;
+
+                if(elem.float5.last_in_y) {
+                    cur_x = 0;
+                }
+                if(elem.float5.last_in_x) {
+                    for(size_t i = 0; i < TILE_X_WIDTH; i++) {
+                        cur_x_tile[i] = 0.0;
+                    }
+                    for(size_t i = 0; i < TILE_X_WIDTH && cur_x < x_vec.size(); i++) {
+                        cur_x_tile[i] = x_vec[cur_x++];
+                    }
+                    cur_y = 0;
+                    assert(cur_accumulator == 0.0);
+                }
+                if(elem.float5.last_in_y) {
+                    size_t section = cur_y_repeat * this->hbm_buffers.size() + compute_unit;
+                    uint64_t y_from = this->y_froms[section];
+                    uint64_t y_to = this->y_froms[section+1];
+                    for(size_t y = y_from; y < y_to; y++) {
+                        result[y] = static_cast<float>(cur_y_tile[y - y_from]);
+                        std::cout << "Write to Y " << y << ": " << result[y] << std::endl;
+                    }
+                    for(size_t i = 0; i < MAX_TILE_Y_HEIGHT; i++) {
+                        cur_y_tile[i] = 0.0;
+                    }
+                    cur_y_repeat++;
+                }
+            } else {
+                // It's a float6
+                uint64_t x_indices[6] = {
+                    elem.float6.x_index_0,
+                    elem.float6.x_index_1,
+                    elem.float6.x_index_2,
+                    elem.float6.x_index_3,
+                    elem.float6.x_index_4,
+                    elem.float6.x_index_5
+                };
+                
+                bool lasts[6];
+                uint8_t last_mask = LAST_MASKS[elem.float6.mode];
+                for(int i = 0; i < 6; i++) {
+                    lasts[i] = (last_mask & (1 << i)) != 0;
+                }
+                for(int i = 0; i < 6-1; i++) {
+                    if(x_indices[i+1] <= x_indices[i]) {
+                        lasts[i] |= true;
+                    }
+                }
+
+                double cur_subaccum = 0.0;
+                for(int i = 0; i < 6; i++) {
+                    float term = elem.float6.weights[i] * cur_x_tile[x_indices[i]];
+
+                    cur_subaccum += static_cast<double>(term);
+
+                    if(lasts[i]) {
+                        cur_y_tile[cur_y] = +cur_accumulator + cur_subaccum;
+                        cur_y += 1;
+                        cur_accumulator = 0.0;
+                        cur_subaccum = 0.0;
+                    }
+                }
+                cur_accumulator += cur_subaccum;
+            }
+        }
+    }
+
+    return result;
+}
+
+void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBlock>& data, bool is_last_in_y) {
+    uint64_t first_entry_idx = 0;
+    uint64_t block_count = 0;
+
+    while (true) {
+        block_count += 1;
+        float    val[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+        uint64_t x[6]   = {0, 0, 0, 0, 0, 0};
+        uint64_t y[6]   = {0, 0, 0, 0, 0, 0};
+        uint8_t  dy[6]  = {0, 0, 0, 0, 0, 0};
+        uint64_t count  = 0;
+        for (uint64_t i = 0; i < 6; i++) {
+            uint64_t j = first_entry_idx + i;
+            if(j >= entries.size()) {
+                break;
+            }
+            // TODO: Insert zeros when delta_y would not fit in 8 bit. 
+            if(j+1 >= entries.size()) {
+                dy[i] = 1;
+            } else {
+                dy[i] = static_cast<uint8_t>(entries[j+1].y - entries[j].y);
+            }
+            assert(entries[j].x < TILE_X_WIDTH);
+            assert(entries[j].y < MAX_TILE_Y_HEIGHT);
+            x[i] = entries[j].x;
+            y[i] = entries[j].y;
+            val[i] = entries[j].val;
+
+            // check for bank conflicts
+            bool bank_conflict = false;
+            for (uint64_t k = 0; k < i; k++) {
+                if (y[i] % NUM_Y_BANKS == y[k] % NUM_Y_BANKS && y[i] != y[k]) {
+                    // bank conflict
+                    bank_conflict = true;
+                    break;
+                }
+            }
+            if (bank_conflict) {
+                break;
+            }
+            count += 1;
+        }
+        
+        // check if we can use a `Float6` block here
+        bool use_float6 = true;
+        // only use Float6 iff
+        // - we actually have six values
+        // - it is not the last block of the tile (must be Float5)
+        if (count != 6) {
+            use_float6 = false;
+        }
+        // - no dy may be at more than 1
+        for (uint64_t i = 0; i < 6; i++) {
+            if (dy[i] > 1) {
+                use_float6 = false;
+                break;
+            }
+        }
+        // - the last bits must be representable by a combination of mode and x values
+        //   => compute the last mask by setting every necessary last bits (smaller new x value implies last bit)
+        bool required_last_mask[6] = {false, false, false, false, false, false};
+        for (int i = 0; i < 6; i++) {
+            if (dy[i] != 0) {
+                required_last_mask[i] = true;
+            }
+        }
+        // Remove implicit lasts before adding last mask
+        for(int i = 0; i < 6 - 1; i++) {
+            if(x[i+1] <= x[i]) {
+                required_last_mask[i] = false;
+            }
+        }
+
+        // check if the computed last_mask is available
+        uint8_t required_last = 0b000000;
+        for(int i = 0; i < 6; i++) {
+            if(required_last_mask[i]) {
+                required_last |= 1 << i;
+            }
+        }
+        uint8_t mode = 0b1111;
+        for (uint64_t i = 0; i < 15; i++) {
+            if (LAST_MASKS[i] == required_last) {
+                mode = i;
+                break;
+            }
+        }
+        if (mode == 0b1111) {
+            use_float6 = false;
+        }
+
+        // append new block
+        if (use_float6) {
+            MatrixDataBlock block;
+            block.float6 = Float6{
+                weights: { val[0], val[1], val[2], val[3], val[4], val[5] },
+                x_index_5: x[5],
+                x_index_4: x[4],
+                x_index_3: x[3],
+                x_index_2: x[2],
+                x_index_1: x[1],
+                x_index_0: x[0],
+                mode     : mode,
+            };
+            data.push_back(block);
+            first_entry_idx += 6;
+        } else {
+            if(count > 5) {
+                count = 5; // Float5 can only send 5 floats.
+            }
+            MatrixDataBlock block;
+            bool last_in_x = first_entry_idx + count >= entries.size();
+            bool last_in_y = last_in_x && is_last_in_y;
+            block.float5 = Float5{
+                weights: { val[0], val[1], val[2], val[3], val[4] },
+                y_delta0 : dy[0],
+                y_delta1 : dy[1],
+                y_delta2 : dy[2],
+                y_delta3 : dy[3],
+                y_delta4 : dy[4],
+                last_in_x : last_in_x ? 1u : 0u,
+                last_in_y : last_in_y ? 1u : 0u,
+                x_index_4: x[4],
+                x_index_3: x[3],
+                x_index_2: x[2],
+                x_index_1: x[1],
+                x_index_0: x[0],
+                mode     : 0b1111,
+            };
+            data.push_back(block);
+            std::cout << block << std::endl;
+            if(last_in_x) {
+                std::cout << "first_entry_idx: " << first_entry_idx << std::endl;
+                std::cout << "count: " << count << std::endl;
+                std::cout << "entries.size(): " << entries.size() << std::endl;
+                assert(first_entry_idx + count == entries.size());
+                // Check that on a last block, the output accumulator will be zero. 
+                for(int i = 4; i >= 0; i--) {
+                    if(dy[i] == 0) {
+                        assert(val[i] == 0.0);
+                    } else {
+                        break;
+                    }
+                }
+                break;
+            }
+            first_entry_idx += count;
+        }
+    }
+
+    // in case the tile is very empty, we must add some filler blocks to prevent conflicts with the next tile.
+    while ((block_count < MIN_BLOCKS_PER_TILE) && !is_last_in_y) {
+        block_count += 1;
+
+        MatrixDataBlock block;
+        block.float5 = Float5{
+            weights: { 0.0, 0.0, 0.0, 0.0, 0.0 },
+            y_delta0 : 0,
+            y_delta1 : 0,
+            y_delta2 : 0,
+            y_delta3 : 0,
+            y_delta4 : 0,
+            last_in_x : 0u, // Append blocks for an empty start to the next tile. 
+            last_in_y : 0u,
+            x_index_4: 0,
+            x_index_3: 0,
+            x_index_2: 0,
+            x_index_1: 0,
+            x_index_0: 0,
+            mode     : 0b1111,
+        };
+        //std::cout << "MinBlockFillerBlock" << std::endl;
+        data.push_back(block);
+    }
 }
 
 // Currently we pass num_y_repeats as a simple parameter. In the future this function should itself decide how many repeats to use. 
@@ -461,6 +646,9 @@ ComputeUnitData Matrix::get_compute_unit_data(uint64_t compute_units, uint64_t n
     return ComputeUnitData{
         hbm_buffers: hbm_buffers,
         x_tiles: tiles_per_row,
-        y_repeats: num_y_repeats
+        y_repeats: num_y_repeats,
+        width: width,
+        height: height,
+        y_froms: y_froms
     };
 }

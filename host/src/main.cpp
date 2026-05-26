@@ -3,10 +3,52 @@
 #include "consts.h"
 #include <vector>
 #include <random>
+#include <format>
+#include <cmath>
+
+int dump_hex(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec);
 
 #define SUSPMV_PE_ID 100
 
-int dump_hex(Matrix& m, ComputeUnitData& data);
+std::vector<float> random_x_vec(size_t len) {
+    std::vector<float> x_vec(len, 0.0);
+
+    std::random_device rd;  // Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+    std::uniform_real_distribution<float> dis(-2.0, 2.0);
+
+    for (uint64_t i = 0; i < x_vec.size(); i++) {
+        x_vec[i] = dis(gen);
+    }
+
+    return x_vec;
+}
+
+bool are_equalish(float a, float b) {
+    float max_abs = std::max(std::max(std::abs(a), std::abs(b)), 0.000000000001f);
+
+    float delta = (a - b) / max_abs;
+    return delta >= -0.00001 && delta <= 0.00001;
+}
+
+void check_mul(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec) {
+    std::vector<float> y_vec_m = m.mul(x_vec);
+    std::vector<float> y_vec_data = data.mul(x_vec);
+
+    assert(y_vec_m.size() == y_vec_data.size());
+
+    bool any_error = false;
+    for(size_t i = 0; i < y_vec_m.size(); i++) {
+        if(!are_equalish(y_vec_m[i], y_vec_data[i])) {
+            any_error = true;
+        }
+        std::cout << std::format("Y: {}, Mat.mul: {}\tData.mul: {}", i, y_vec_m[i], y_vec_data[i]) << std::endl;
+    }
+    if(any_error) {
+        std::cout << "DISCREPANCY BETWEEN Mat.mul and Data.mul FOUND!" << std::endl;
+        exit(1);
+    }
+}
 
 int main(int argc, char **argv) {
     if (argc != 3) {
@@ -26,8 +68,13 @@ int main(int argc, char **argv) {
     ComputeUnitData data = m.get_compute_unit_data(COMPUTE_UNITS, y_repeats);
     std::cout << "ComputeUnitData done" << std::endl;
 
+    // std::vector<float> x_vec = random_x_vec(m.width);
+    std::vector<float> x_vec(m.width, 1.0);
+
+    check_mul(m, data, x_vec);
+
     if(iterations == 0) {
-        dump_hex(m, data);
+        dump_hex(m, data, x_vec);
         return 0;
     }
 
@@ -44,13 +91,9 @@ int main(int argc, char **argv) {
 
     for (uint64_t iter = 0; iter < iterations; iter++) {
         // generate & upload test vector
-        std::vector<float> v(m.width, 0.0);
         std::vector<float> result(m.height);
-        for (uint64_t i = 0; i < v.size(); i++) {
-            v[i] = random();
-        }
 
-        auto v_buffer = tapasco::makeInOnly(tapasco::makeWrappedPointer(v.data(), v.size() * sizeof(float)));
+        auto v_buffer = tapasco::makeInOnly(tapasco::makeWrappedPointer(x_vec.data(), x_vec.size() * sizeof(float)));
         auto r_buffer = tapasco::makeOutOnly(tapasco::makeWrappedPointer(result.data(), result.size() * sizeof(float)));
 
         // launch SUSpMV
@@ -66,7 +109,7 @@ int main(int argc, char **argv) {
         std::cout << "Cycles: " << cycles << std::endl;
 
         // check result integrity
-        std::vector<float> reference = m.mul(v);
+        std::vector<float> reference = m.mul(x_vec);
         uint64_t errors = 0;
         for (uint64_t i = 0; i < m.height; i++) {
             if (std::abs(result[i] - reference[i]) > 0.1) {

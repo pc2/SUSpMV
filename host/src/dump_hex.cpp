@@ -61,12 +61,7 @@ void store_matrix_size(std::string path, Matrix& m, ComputeUnitData& data) {
     out.close();
 }
 
-int dump_hex(Matrix& m, ComputeUnitData& data) {
-    // generate a test vector
-    std::vector<float> x_vec(m.width, 0.0);
-    for (uint64_t i = 0; i < x_vec.size(); i++) {
-        x_vec[i] = random();
-    }
+int dump_hex(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec) {
     std::vector<float> expected_result = m.mul(x_vec);
 
     // Store the vector 

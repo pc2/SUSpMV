@@ -48,11 +48,20 @@ union MatrixDataBlock {
     Float6 float6;
 };
 
+std::ostream& operator<<(std::ostream& ostr, MatrixDataBlock m_data);
+
 struct ComputeUnitData {
     std::vector<std::vector<MatrixDataBlock>> hbm_buffers;
     uint64_t x_tiles;
     /// y_tiles would then be y_repeats * COMPUTE_UNITS
     uint64_t y_repeats;
+
+    uint64_t width;
+    uint64_t height;
+    std::vector<size_t> y_froms;
+
+    /// For sanity-check against the hardware impl
+    std::vector<float> mul(std::vector<float>& v);
 };
 
 struct Matrix {
@@ -61,6 +70,6 @@ struct Matrix {
     std::vector<Entry> entries;
 
     static Matrix load(std::string path);
-    std::vector<float> mul(std::vector<float> &v);
+    std::vector<float> mul(std::vector<float>& v);
     ComputeUnitData get_compute_unit_data(uint64_t compute_units, uint64_t num_y_repeats);
 };
