@@ -52,76 +52,76 @@ module SUSpMV_Full_tb;
 	logic s_axi_control_rready;
 	// {aclk} output bool #() intr'2000
 	wire intr;
-	// {aclk} output bool #() maxi_ddr01_awvalid'3000
-	wire maxi_ddr01_awvalid;
-	// {aclk} input bool #() maxi_ddr01_awready'3000
-	logic maxi_ddr01_awready;
-	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_ddr01_awaddr'3000
-	wire[63:0] maxi_ddr01_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 256) maxi_ddr01_awlen'3000
-	wire[7:0] maxi_ddr01_awlen;
-	// {aclk} output int #(FROM: 0, TO: 8) maxi_ddr01_awsize'3000
-	wire[2:0] maxi_ddr01_awsize;
-	// {aclk} output bool #()[2] maxi_ddr01_awburst'3000
-	wire[1:0] maxi_ddr01_awburst;
-	// {aclk} output bool #()[3] maxi_ddr01_awprot'3000
-	wire[2:0] maxi_ddr01_awprot;
-	// {aclk} output bool #()[4] maxi_ddr01_awcache'3000
-	wire[3:0] maxi_ddr01_awcache;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_ddr01_awqos'3000
-	wire[3:0] maxi_ddr01_awqos;
-	// {aclk} output bool #() maxi_ddr01_awlock'3000
-	wire maxi_ddr01_awlock;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_ddr01_awregion'3000
-	wire[3:0] maxi_ddr01_awregion;
-	// {aclk} output bool #() maxi_ddr01_wvalid'3000
-	wire maxi_ddr01_wvalid;
-	// {aclk} input bool #() maxi_ddr01_wready'3000
-	logic maxi_ddr01_wready;
-	// {aclk} output bool #()[512] maxi_ddr01_wdata'3000
-	wire[511:0] maxi_ddr01_wdata;
-	// {aclk} output bool #()[64] maxi_ddr01_wstrb'3000
-	wire[63:0] maxi_ddr01_wstrb;
-	// {aclk} output bool #() maxi_ddr01_wlast'3000
-	wire maxi_ddr01_wlast;
-	// {aclk} input bool #() maxi_ddr01_bvalid'3000
-	logic maxi_ddr01_bvalid;
-	// {aclk} output bool #() maxi_ddr01_bready'3000
-	wire maxi_ddr01_bready;
-	// {aclk} input bool #()[2] maxi_ddr01_bresp'3000
-	logic[1:0] maxi_ddr01_bresp;
-	// {aclk} output bool #() maxi_ddr01_arvalid'0
-	wire maxi_ddr01_arvalid;
-	// {aclk} input bool #() maxi_ddr01_arready'0
-	logic maxi_ddr01_arready;
-	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_ddr01_araddr'0
-	wire[63:0] maxi_ddr01_araddr;
-	// {aclk} output int #(FROM: 0, TO: 256) maxi_ddr01_arlen'0
-	wire[7:0] maxi_ddr01_arlen;
-	// {aclk} output int #(FROM: 0, TO: 8) maxi_ddr01_arsize'0
-	wire[2:0] maxi_ddr01_arsize;
-	// {aclk} output bool #()[2] maxi_ddr01_arburst'0
-	wire[1:0] maxi_ddr01_arburst;
-	// {aclk} output bool #()[3] maxi_ddr01_arprot'0
-	wire[2:0] maxi_ddr01_arprot;
-	// {aclk} output bool #()[4] maxi_ddr01_arcache'0
-	wire[3:0] maxi_ddr01_arcache;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_ddr01_arqos'0
-	wire[3:0] maxi_ddr01_arqos;
-	// {aclk} output bool #() maxi_ddr01_arlock'0
-	wire maxi_ddr01_arlock;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_ddr01_arregion'0
-	wire[3:0] maxi_ddr01_arregion;
-	// {aclk} input bool #() maxi_ddr01_rvalid'0
-	logic maxi_ddr01_rvalid;
-	// {aclk} output bool #() maxi_ddr01_rready'0
-	wire maxi_ddr01_rready;
-	// {aclk} input bool #()[512] maxi_ddr01_rdata'0
-	logic[511:0] maxi_ddr01_rdata;
-	// {aclk} input bool #()[2] maxi_ddr01_rresp'0
-	logic[1:0] maxi_ddr01_rresp;
-	// {aclk} input bool #() maxi_ddr01_rlast'0
-	logic maxi_ddr01_rlast;
+	// {aclk} output bool #() maxi_ddr00_awvalid'3000
+	wire maxi_ddr00_awvalid;
+	// {aclk} input bool #() maxi_ddr00_awready'3000
+	logic maxi_ddr00_awready;
+	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_ddr00_awaddr'3000
+	wire[63:0] maxi_ddr00_awaddr;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_ddr00_awlen'3000
+	wire[7:0] maxi_ddr00_awlen;
+	// {aclk} output int #(FROM: 0, TO: 8) maxi_ddr00_awsize'3000
+	wire[2:0] maxi_ddr00_awsize;
+	// {aclk} output bool #()[2] maxi_ddr00_awburst'3000
+	wire[1:0] maxi_ddr00_awburst;
+	// {aclk} output bool #()[3] maxi_ddr00_awprot'3000
+	wire[2:0] maxi_ddr00_awprot;
+	// {aclk} output bool #()[4] maxi_ddr00_awcache'3000
+	wire[3:0] maxi_ddr00_awcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_ddr00_awqos'3000
+	wire[3:0] maxi_ddr00_awqos;
+	// {aclk} output bool #() maxi_ddr00_awlock'3000
+	wire maxi_ddr00_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_ddr00_awregion'3000
+	wire[3:0] maxi_ddr00_awregion;
+	// {aclk} output bool #() maxi_ddr00_wvalid'3000
+	wire maxi_ddr00_wvalid;
+	// {aclk} input bool #() maxi_ddr00_wready'3000
+	logic maxi_ddr00_wready;
+	// {aclk} output bool #()[512] maxi_ddr00_wdata'3000
+	wire[511:0] maxi_ddr00_wdata;
+	// {aclk} output bool #()[64] maxi_ddr00_wstrb'3000
+	wire[63:0] maxi_ddr00_wstrb;
+	// {aclk} output bool #() maxi_ddr00_wlast'3000
+	wire maxi_ddr00_wlast;
+	// {aclk} input bool #() maxi_ddr00_bvalid'3000
+	logic maxi_ddr00_bvalid;
+	// {aclk} output bool #() maxi_ddr00_bready'3000
+	wire maxi_ddr00_bready;
+	// {aclk} input bool #()[2] maxi_ddr00_bresp'3000
+	logic[1:0] maxi_ddr00_bresp;
+	// {aclk} output bool #() maxi_ddr00_arvalid'0
+	wire maxi_ddr00_arvalid;
+	// {aclk} input bool #() maxi_ddr00_arready'0
+	logic maxi_ddr00_arready;
+	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_ddr00_araddr'0
+	wire[63:0] maxi_ddr00_araddr;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_ddr00_arlen'0
+	wire[7:0] maxi_ddr00_arlen;
+	// {aclk} output int #(FROM: 0, TO: 8) maxi_ddr00_arsize'0
+	wire[2:0] maxi_ddr00_arsize;
+	// {aclk} output bool #()[2] maxi_ddr00_arburst'0
+	wire[1:0] maxi_ddr00_arburst;
+	// {aclk} output bool #()[3] maxi_ddr00_arprot'0
+	wire[2:0] maxi_ddr00_arprot;
+	// {aclk} output bool #()[4] maxi_ddr00_arcache'0
+	wire[3:0] maxi_ddr00_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_ddr00_arqos'0
+	wire[3:0] maxi_ddr00_arqos;
+	// {aclk} output bool #() maxi_ddr00_arlock'0
+	wire maxi_ddr00_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_ddr00_arregion'0
+	wire[3:0] maxi_ddr00_arregion;
+	// {aclk} input bool #() maxi_ddr00_rvalid'0
+	logic maxi_ddr00_rvalid;
+	// {aclk} output bool #() maxi_ddr00_rready'0
+	wire maxi_ddr00_rready;
+	// {aclk} input bool #()[512] maxi_ddr00_rdata'0
+	logic[511:0] maxi_ddr00_rdata;
+	// {aclk} input bool #()[2] maxi_ddr00_rresp'0
+	logic[1:0] maxi_ddr00_rresp;
+	// {aclk} input bool #() maxi_ddr00_rlast'0
+	logic maxi_ddr00_rlast;
 	// {aclk} output bool #() maxi_hbm00_awvalid'0
 	wire maxi_hbm00_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm00_awaddr'0
@@ -289,41 +289,41 @@ module SUSpMV_Full_tb;
 		.s_axi_control_rvalid(s_axi_control_rvalid),
 		.s_axi_control_rready(s_axi_control_rready),
 		.intr(intr),
-		.maxi_ddr01_awvalid(maxi_ddr01_awvalid),
-		.maxi_ddr01_awready(maxi_ddr01_awready),
-		.maxi_ddr01_awaddr(maxi_ddr01_awaddr),
-		.maxi_ddr01_awlen(maxi_ddr01_awlen),
-		.maxi_ddr01_awsize(maxi_ddr01_awsize),
-		.maxi_ddr01_awburst(maxi_ddr01_awburst),
-		.maxi_ddr01_awprot(maxi_ddr01_awprot),
-		.maxi_ddr01_awcache(maxi_ddr01_awcache),
-		.maxi_ddr01_awqos(maxi_ddr01_awqos),
-		.maxi_ddr01_awlock(maxi_ddr01_awlock),
-		.maxi_ddr01_awregion(maxi_ddr01_awregion),
-		.maxi_ddr01_wvalid(maxi_ddr01_wvalid),
-		.maxi_ddr01_wready(maxi_ddr01_wready),
-		.maxi_ddr01_wdata(maxi_ddr01_wdata),
-		.maxi_ddr01_wstrb(maxi_ddr01_wstrb),
-		.maxi_ddr01_wlast(maxi_ddr01_wlast),
-		.maxi_ddr01_bvalid(maxi_ddr01_bvalid),
-		.maxi_ddr01_bready(maxi_ddr01_bready),
-		.maxi_ddr01_bresp(maxi_ddr01_bresp),
-		.maxi_ddr01_arvalid(maxi_ddr01_arvalid),
-		.maxi_ddr01_arready(maxi_ddr01_arready),
-		.maxi_ddr01_araddr(maxi_ddr01_araddr),
-		.maxi_ddr01_arlen(maxi_ddr01_arlen),
-		.maxi_ddr01_arsize(maxi_ddr01_arsize),
-		.maxi_ddr01_arburst(maxi_ddr01_arburst),
-		.maxi_ddr01_arprot(maxi_ddr01_arprot),
-		.maxi_ddr01_arcache(maxi_ddr01_arcache),
-		.maxi_ddr01_arqos(maxi_ddr01_arqos),
-		.maxi_ddr01_arlock(maxi_ddr01_arlock),
-		.maxi_ddr01_arregion(maxi_ddr01_arregion),
-		.maxi_ddr01_rvalid(maxi_ddr01_rvalid),
-		.maxi_ddr01_rready(maxi_ddr01_rready),
-		.maxi_ddr01_rdata(maxi_ddr01_rdata),
-		.maxi_ddr01_rresp(maxi_ddr01_rresp),
-		.maxi_ddr01_rlast(maxi_ddr01_rlast),
+		.maxi_ddr00_awvalid(maxi_ddr00_awvalid),
+		.maxi_ddr00_awready(maxi_ddr00_awready),
+		.maxi_ddr00_awaddr(maxi_ddr00_awaddr),
+		.maxi_ddr00_awlen(maxi_ddr00_awlen),
+		.maxi_ddr00_awsize(maxi_ddr00_awsize),
+		.maxi_ddr00_awburst(maxi_ddr00_awburst),
+		.maxi_ddr00_awprot(maxi_ddr00_awprot),
+		.maxi_ddr00_awcache(maxi_ddr00_awcache),
+		.maxi_ddr00_awqos(maxi_ddr00_awqos),
+		.maxi_ddr00_awlock(maxi_ddr00_awlock),
+		.maxi_ddr00_awregion(maxi_ddr00_awregion),
+		.maxi_ddr00_wvalid(maxi_ddr00_wvalid),
+		.maxi_ddr00_wready(maxi_ddr00_wready),
+		.maxi_ddr00_wdata(maxi_ddr00_wdata),
+		.maxi_ddr00_wstrb(maxi_ddr00_wstrb),
+		.maxi_ddr00_wlast(maxi_ddr00_wlast),
+		.maxi_ddr00_bvalid(maxi_ddr00_bvalid),
+		.maxi_ddr00_bready(maxi_ddr00_bready),
+		.maxi_ddr00_bresp(maxi_ddr00_bresp),
+		.maxi_ddr00_arvalid(maxi_ddr00_arvalid),
+		.maxi_ddr00_arready(maxi_ddr00_arready),
+		.maxi_ddr00_araddr(maxi_ddr00_araddr),
+		.maxi_ddr00_arlen(maxi_ddr00_arlen),
+		.maxi_ddr00_arsize(maxi_ddr00_arsize),
+		.maxi_ddr00_arburst(maxi_ddr00_arburst),
+		.maxi_ddr00_arprot(maxi_ddr00_arprot),
+		.maxi_ddr00_arcache(maxi_ddr00_arcache),
+		.maxi_ddr00_arqos(maxi_ddr00_arqos),
+		.maxi_ddr00_arlock(maxi_ddr00_arlock),
+		.maxi_ddr00_arregion(maxi_ddr00_arregion),
+		.maxi_ddr00_rvalid(maxi_ddr00_rvalid),
+		.maxi_ddr00_rready(maxi_ddr00_rready),
+		.maxi_ddr00_rdata(maxi_ddr00_rdata),
+		.maxi_ddr00_rresp(maxi_ddr00_rresp),
+		.maxi_ddr00_rlast(maxi_ddr00_rlast),
 		.maxi_hbm00_awvalid(maxi_hbm00_awvalid),
 		.maxi_hbm00_awaddr(maxi_hbm00_awaddr),
 		.maxi_hbm00_awlen(maxi_hbm00_awlen),
@@ -403,31 +403,31 @@ module SUSpMV_Full_tb;
 	) ddr_mem (
 		.aclk    (aclk),
 		.aresetn  (aresetn),
-		.awvalid (maxi_ddr01_awvalid),
-		.awready (maxi_ddr01_awready),
-		.awaddr  (maxi_ddr01_awaddr),
-		.awlen   (maxi_ddr01_awlen),
-		.awsize  (maxi_ddr01_awsize),
-		.awburst (maxi_ddr01_awburst),
-		.wvalid  (maxi_ddr01_wvalid),
-		.wready  (maxi_ddr01_wready),
-		.wdata   (maxi_ddr01_wdata),
-		.wstrb   (maxi_ddr01_wstrb),
-		.wlast   (maxi_ddr01_wlast),
-		.bvalid  (maxi_ddr01_bvalid),
-		.bready  (maxi_ddr01_bready),
-		.bresp   (maxi_ddr01_bresp),
-		.arvalid (maxi_ddr01_arvalid),
-		.arready (maxi_ddr01_arready),
-		.araddr  (maxi_ddr01_araddr),
-		.arlen   (maxi_ddr01_arlen),
-		.arsize  (maxi_ddr01_arsize),
-		.arburst (maxi_ddr01_arburst),
-		.rvalid  (maxi_ddr01_rvalid),
-		.rready  (maxi_ddr01_rready),
-		.rdata   (maxi_ddr01_rdata),
-		.rresp   (maxi_ddr01_rresp),
-		.rlast   (maxi_ddr01_rlast)
+		.awvalid (maxi_ddr00_awvalid),
+		.awready (maxi_ddr00_awready),
+		.awaddr  (maxi_ddr00_awaddr),
+		.awlen   (maxi_ddr00_awlen),
+		.awsize  (maxi_ddr00_awsize),
+		.awburst (maxi_ddr00_awburst),
+		.wvalid  (maxi_ddr00_wvalid),
+		.wready  (maxi_ddr00_wready),
+		.wdata   (maxi_ddr00_wdata),
+		.wstrb   (maxi_ddr00_wstrb),
+		.wlast   (maxi_ddr00_wlast),
+		.bvalid  (maxi_ddr00_bvalid),
+		.bready  (maxi_ddr00_bready),
+		.bresp   (maxi_ddr00_bresp),
+		.arvalid (maxi_ddr00_arvalid),
+		.arready (maxi_ddr00_arready),
+		.araddr  (maxi_ddr00_araddr),
+		.arlen   (maxi_ddr00_arlen),
+		.arsize  (maxi_ddr00_arsize),
+		.arburst (maxi_ddr00_arburst),
+		.rvalid  (maxi_ddr00_rvalid),
+		.rready  (maxi_ddr00_rready),
+		.rdata   (maxi_ddr00_rdata),
+		.rresp   (maxi_ddr00_rresp),
+		.rlast   (maxi_ddr00_rlast)
 	);
 
 
@@ -658,7 +658,7 @@ module SUSpMV_Full_tb;
     
     always_comb begin
         for(int i = 0; i < 16; i++) begin
-            write_ys[i] = $bitstoshortreal(maxi_ddr01_wdata[i * 32 +: 32]);
+            write_ys[i] = $bitstoshortreal(maxi_ddr00_wdata[i * 32 +: 32]);
         end
     end
     
@@ -705,9 +705,10 @@ module SUSpMV_Full_tb;
 		for(int i = 0; i < `Y_VEC_LEN; i++) begin
 			automatic shortreal found_y_value = $bitstoshortreal(ddr_mem.mem[i / 16 + `Y_VEC_START_ADDR / 64][(i % 16) * 32 +: 32]);
 			automatic shortreal expected_y_value = $bitstoshortreal(expected_buffer[i / 16][(i % 16) * 32 +: 32]);
-			automatic shortreal diff = found_y_value - expected_y_value;
+			automatic shortreal diff = (found_y_value - expected_y_value) / ((expected_y_value < 0.0 ? -expected_y_value : expected_y_value) + 0.000001);
+            // automatic shortreal diff = found_y_value - expected_y_value;
 
-			if(diff >= 1e-6 || diff <= 1e-6) begin
+			if(diff >= -1e-5 && diff <= 1e-5) begin
 				$display("Y %d: Found %f, Expected %f", i, found_y_value, expected_y_value);
 			end else begin
 				$fatal("Y %d: Found %f, Expected %f", i, found_y_value, expected_y_value);

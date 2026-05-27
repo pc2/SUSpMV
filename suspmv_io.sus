@@ -434,6 +434,12 @@ module SUSpMV_Full {
 
     gen int NUM_HBMS = 2
 
+
+    gen int SINGLE_SLR_CROSSING = 6
+    gen int DOUBLE_SLR_CROSSING = 10
+    gen int NO_SLR_CROSSING = 4
+
+
     //xrt_ctrl_slave #(NUM_INPUT_REGS: 6 + 4 * NUM_HBMS, NUM_OUTPUT_REGS: 0, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
     tapasco_ctrl_slave #(NUM_INPUT_REGS: 4 + 2 * NUM_HBMS, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
 
@@ -628,7 +634,7 @@ module SUSpMV_Full {
     hbm01_reader.rdata =                            maxi_hbm01_rdata
     hbm01_reader.rresp =                            maxi_hbm01_rresp
     hbm01_reader.rlast =                            maxi_hbm01_rlast
-
+    
     // ========= //
     //  Kernels  //
     // ========= //
@@ -640,10 +646,10 @@ module SUSpMV_Full {
 
     // Pipeline regs to get from SLR0 to SLR1
     Tuple4 pack_ddr1_settings
-    action_autopipeline pipe_to_ddr1
+    action_pipeline#(DEPTH: SINGLE_SLR_CROSSING) pipe_to_ddr1
     
     Tuple2 pack_hbm_settings
-    action_autopipeline pipe_to_hbms
+    action_pipeline#(DEPTH: NO_SLR_CROSSING) pipe_to_hbms
     
     bool _hbm0_reader_may_request = hbm00_reader.may_request_new_read
     bool _hbm1_reader_may_request = hbm01_reader.may_request_new_read
@@ -689,8 +695,8 @@ module SUSpMV_Full {
     // Shared data for SLRs
     // To cross SLR1 -> SLR2
     Tuple2 pack_x_vector_info_slr2
-    action_autopipeline pipe_x_vector_info_slr2
-    data_autopipeline pipe_x_page_releases_slr2
+    action_pipeline#(DEPTH: SINGLE_SLR_CROSSING) pipe_x_vector_info_slr2
+    data_pipeline#(DEPTH: SINGLE_SLR_CROSSING) pipe_x_page_releases_slr2
 
     pipe_x_page_releases_slr2.din = suspmv_slr2.x_releases
     x_vector_reader.x_page_releases[0:NUM_HBMS] = pipe_x_page_releases_slr2.dout
@@ -705,10 +711,10 @@ module SUSpMV_Full {
 
     // To cross SLR1 -> SLR2
     Tuple3 pack_y_valid_slr2
-    action_autopipeline pipe_y_valid_slr2
+    action_pipeline#(DEPTH: SINGLE_SLR_CROSSING) pipe_y_valid_slr2
 
-    data_autopipeline pipe_start_y_bursts_slr2
-    data_autopipeline pipe_may_y_valid_slr2
+    data_pipeline#(DEPTH: SINGLE_SLR_CROSSING) pipe_start_y_bursts_slr2
+    data_pipeline#(DEPTH: SINGLE_SLR_CROSSING) pipe_may_y_valid_slr2
 
     pipe_start_y_bursts_slr2.din = y_result_writer.unit_may_starts[0:NUM_HBMS]
     suspmv_slr2.start_y_bursts = pipe_start_y_bursts_slr2.dout
@@ -726,10 +732,10 @@ module SUSpMV_Full {
     }
 
     // Connect all HBMs
-    data_autopipeline pipe_may_push_hbm00
+    data_pipeline#(DEPTH: DOUBLE_SLR_CROSSING) pipe_may_push_hbm00
     pipe_may_push_hbm00.din = suspmv_slr2.may_pushes[0]
     hbm00_reader.ready_for_lots_of_data = pipe_may_push_hbm00.dout
-    action_autopipeline pipe_weights_hbm00
+    action_pipeline#(DEPTH: DOUBLE_SLR_CROSSING) pipe_weights_hbm00
     when hbm00_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
         pipe_weights_hbm00.din(elements[0])
     }
@@ -740,10 +746,10 @@ module SUSpMV_Full {
         suspmv_slr2.hbm_valids[0] = false
     }
 
-    data_autopipeline pipe_may_push_hbm01
+    data_pipeline#(DEPTH: DOUBLE_SLR_CROSSING) pipe_may_push_hbm01
     pipe_may_push_hbm01.din = suspmv_slr2.may_pushes[1]
     hbm01_reader.ready_for_lots_of_data = pipe_may_push_hbm01.dout
-    action_autopipeline pipe_weights_hbm01
+    action_pipeline#(DEPTH: DOUBLE_SLR_CROSSING) pipe_weights_hbm01
     when hbm01_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
         pipe_weights_hbm01.din(elements[0])
     }

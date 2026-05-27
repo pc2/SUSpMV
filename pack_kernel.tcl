@@ -12,7 +12,7 @@ create_project ${KERNEL_NAME} ./${KERNEL_NAME} -part $PART
 add_files -norecurse \
 {
     ../sus_codegen.sv \
-    ../../autopipeline.sv \
+    ../../slr_crossing.sv \
 }
 
 import_ip [glob -type f ../../$SUS_FLOAT_LIB_PATH/xci_files/*.xci]

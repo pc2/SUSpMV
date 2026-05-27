@@ -1,0 +1,30 @@
+
+extern module primitive_pipeline #(int WIDTH, int DEPTH) {
+    clock clk
+    input bool[WIDTH] din'0
+    output bool[WIDTH] dout'DEPTH
+}
+
+module data_pipeline #(T, int DEPTH) {
+    primitive_pipeline#(WIDTH: sizeof#(T), DEPTH) pipeline_regs
+
+    input T din'0
+    pipeline_regs.din = ToBits(din)
+    // (* pipeline_group="fwd",pipeline_limit=12 *)
+    output T dout'DEPTH = FromBits(pipeline_regs.dout)
+}
+
+module action_pipeline #(T, int DEPTH) {
+    primitive_pipeline#(WIDTH: sizeof#(T) + 1, DEPTH) pipeline_regs
+
+    action din'0: T in_data'0 {
+        pipeline_regs.din[0] = true
+        pipeline_regs.din[1:] = ToBits(in_data)
+    } else {
+        pipeline_regs.din[0] = false
+    }
+    trigger dout'DEPTH: T out_data'DEPTH
+    when pipeline_regs.dout[0] {
+        dout(FromBits(pipeline_regs.dout[1:]))
+    }
+}
