@@ -8,7 +8,7 @@ $(TMPDIR):
 FILES := 
 FILES += suspmv.sus
 FILES += suspmv_io.sus
-FILES += autopipeline.sus
+FILES += slr_crossing.sus
 FILES += sus-float/fp_custom.sus
 FILES += sus-xrt/axi.sus
 FILES += sus-tapasco/sus/tapasco_ctrl_slave.sus
@@ -33,7 +33,7 @@ U280/sus_codegen.sv: $(FILES)
 XOS_VCK := $(BIN_DIR)/SUSpMV_Full.xo
 LOCAL_XOS := ../SUSpMV_Full.xo
 
-U280/SUSpMV_Full.xo: pack_kernel.tcl pblocks.xdc U280/sus_codegen.sv
+U280/SUSpMV_Full.xo: pack_kernel.tcl pblocks.xdc U280/sus_codegen.sv slr_crossing.sv
 	rm -f $(BIN_DIR)/SUSpMV_Full.xo
 	rm -rf $(BIN_DIR)/pack_prj
 	mkdir $(BIN_DIR)/pack_prj
@@ -159,4 +159,5 @@ host/test/arc130/arc130.mtx:
 # host/test/arc130/arc130.mtx
 # host/test/1138_bus/1138_bus.mtx
 tests/IO/test_data: host/suspmv
-	cd tests/IO/ && ../../host/suspmv ../../host/test/1138_bus/1138_bus.mtx 0
+	cd tests/IO/ && ../../host/suspmv ../../host/test/1138_bus/1138_bus.mtx 0 1
+#	cd tests/IO/ && ../../host/suspmv ../../host/test/arc130/arc130.mtx 0 4

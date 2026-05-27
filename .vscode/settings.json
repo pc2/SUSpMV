@@ -7,6 +7,6 @@
         "sus-tapasco/sus/tapasco_ctrl_slave.sus",
         "suspmv.sus",
         "suspmv_io.sus",
-        "autopipeline.sus"
+        "slr_crossing.sus"
     ]
 }

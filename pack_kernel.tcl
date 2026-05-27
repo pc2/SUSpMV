@@ -16,6 +16,7 @@ add_files -norecurse \
 }
 
 import_ip [glob -type f ../../$SUS_FLOAT_LIB_PATH/xci_files/*.xci]
+upgrade_ip -vlnv xilinx.com:ip:floating_point:7.1 [get_ips fp32_*_ip fp64_*_ip] -log ip_upgrade.log
 
 add_files -fileset constrs_1 -norecurse ../../pblocks.xdc
 

@@ -435,9 +435,7 @@ module SUSpMV_Full {
     gen int NUM_HBMS = 2
 
 
-    gen int SINGLE_SLR_CROSSING = 6
-    gen int DOUBLE_SLR_CROSSING = 10
-    gen int NO_SLR_CROSSING = 4
+    gen int NO_SLR_CROSSING = 6
 
 
     //xrt_ctrl_slave #(NUM_INPUT_REGS: 6 + 4 * NUM_HBMS, NUM_OUTPUT_REGS: 0, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
@@ -646,10 +644,10 @@ module SUSpMV_Full {
 
     // Pipeline regs to get from SLR0 to SLR1
     Tuple4 pack_ddr1_settings
-    action_pipeline#(DEPTH: SINGLE_SLR_CROSSING) pipe_to_ddr1
+    action_pipeline_cross_slr#(FROM_DEPTH: 3, TO_DEPTH: 3) pipe_ctrl_to_ddr1
     
     Tuple2 pack_hbm_settings
-    action_pipeline#(DEPTH: NO_SLR_CROSSING) pipe_to_hbms
+    action_pipeline#(DEPTH: NO_SLR_CROSSING) pipe_ctrl_to_hbms
     
     bool _hbm0_reader_may_request = hbm00_reader.may_request_new_read
     bool _hbm1_reader_may_request = hbm01_reader.may_request_new_read
@@ -658,7 +656,7 @@ module SUSpMV_Full {
         int y_vector_addr = BitsToUInt(ctrl.input_regs[1])
         int num_x_pages = BitsToUInt(ctrl.input_regs[2]) mod 1 << 32
         int num_y_repetitions = BitsToUInt(ctrl.input_regs[3]) mod 1 << 32
-        pipe_to_ddr1.din(pack_ddr1_settings.pack(x_vector_addr, y_vector_addr, num_x_pages, num_y_repetitions))
+        pipe_ctrl_to_ddr1.din(pack_ddr1_settings.pack(x_vector_addr, y_vector_addr, num_x_pages, num_y_repetitions))
 
         int[NUM_HBMS] matrix_data_start_addrs
         int[NUM_HBMS] matrix_data_element_counts
@@ -668,9 +666,9 @@ module SUSpMV_Full {
             matrix_data_element_counts[HBM_I] = BitsToUInt(ctrl.input_regs[5 + HBM_I * 2]) mod 1 << 32
         }
 
-        pipe_to_hbms.din(pack_hbm_settings.pack(matrix_data_start_addrs, matrix_data_element_counts))
+        pipe_ctrl_to_hbms.din(pack_hbm_settings.pack(matrix_data_start_addrs, matrix_data_element_counts))
     }
-    when pipe_to_ddr1.dout : bool[] packed_ddr1_settings {
+    when pipe_ctrl_to_ddr1.dout : bool[] packed_ddr1_settings {
         int x_vector_addr,
         int y_vector_addr,
         int num_x_pages,
@@ -680,7 +678,7 @@ module SUSpMV_Full {
         y_result_writer.submit_y_vector_addr(y_vector_addr, num_y_repetitions)
     }
 
-    when pipe_to_hbms.dout : bool[] packed_hbm_settings {
+    when pipe_ctrl_to_hbms.dout : bool[] packed_hbm_settings {
         int[NUM_HBMS] matrix_data_start_addrs,
         int[NUM_HBMS] matrix_data_element_counts = pack_hbm_settings.unpack(packed_hbm_settings)
 
@@ -695,8 +693,8 @@ module SUSpMV_Full {
     // Shared data for SLRs
     // To cross SLR1 -> SLR2
     Tuple2 pack_x_vector_info_slr2
-    action_pipeline#(DEPTH: SINGLE_SLR_CROSSING) pipe_x_vector_info_slr2
-    data_pipeline#(DEPTH: SINGLE_SLR_CROSSING) pipe_x_page_releases_slr2
+    action_pipeline_cross_slr#(FROM_DEPTH: 3, TO_DEPTH: 3) pipe_x_vector_info_slr2
+    data_pipeline_cross_slr#(FROM_DEPTH: 3, TO_DEPTH: 3) pipe_x_page_releases_slr2
 
     pipe_x_page_releases_slr2.din = suspmv_slr2.x_releases
     x_vector_reader.x_page_releases[0:NUM_HBMS] = pipe_x_page_releases_slr2.dout
@@ -711,10 +709,10 @@ module SUSpMV_Full {
 
     // To cross SLR1 -> SLR2
     Tuple3 pack_y_valid_slr2
-    action_pipeline#(DEPTH: SINGLE_SLR_CROSSING) pipe_y_valid_slr2
+    action_pipeline_cross_slr#(FROM_DEPTH: 3, TO_DEPTH: 3) pipe_y_valid_slr2
 
-    data_pipeline#(DEPTH: SINGLE_SLR_CROSSING) pipe_start_y_bursts_slr2
-    data_pipeline#(DEPTH: SINGLE_SLR_CROSSING) pipe_may_y_valid_slr2
+    data_pipeline_cross_slr#(FROM_DEPTH: 3, TO_DEPTH: 3) pipe_start_y_bursts_slr2
+    data_pipeline_cross_slr#(FROM_DEPTH: 3, TO_DEPTH: 3) pipe_may_y_valid_slr2
 
     pipe_start_y_bursts_slr2.din = y_result_writer.unit_may_starts[0:NUM_HBMS]
     suspmv_slr2.start_y_bursts = pipe_start_y_bursts_slr2.dout
@@ -732,28 +730,28 @@ module SUSpMV_Full {
     }
 
     // Connect all HBMs
-    data_pipeline#(DEPTH: DOUBLE_SLR_CROSSING) pipe_may_push_hbm00
-    pipe_may_push_hbm00.din = suspmv_slr2.may_pushes[0]
-    hbm00_reader.ready_for_lots_of_data = pipe_may_push_hbm00.dout
-    action_pipeline#(DEPTH: DOUBLE_SLR_CROSSING) pipe_weights_hbm00
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 2, MIDDLE_DEPTH: 6, TO_DEPTH: 5) pipe_may_push_hbm00_slr2
+    pipe_may_push_hbm00_slr2.din = suspmv_slr2.may_pushes[0]
+    hbm00_reader.ready_for_lots_of_data = pipe_may_push_hbm00_slr2.dout
+    action_pipeline_cross_slr_twice#(FROM_DEPTH: 5, MIDDLE_DEPTH: 6, TO_DEPTH: 2) pipe_weights_hbm00_slr2
     when hbm00_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        pipe_weights_hbm00.din(elements[0])
+        pipe_weights_hbm00_slr2.din(elements[0])
     }
-    when pipe_weights_hbm00.dout : bool[256] hbm_data {
+    when pipe_weights_hbm00_slr2.dout : bool[256] hbm_data {
         suspmv_slr2.hbm_valids[0] = true
         suspmv_slr2.hbm_datas[0] = hbm_data
     } else {
         suspmv_slr2.hbm_valids[0] = false
     }
 
-    data_pipeline#(DEPTH: DOUBLE_SLR_CROSSING) pipe_may_push_hbm01
-    pipe_may_push_hbm01.din = suspmv_slr2.may_pushes[1]
-    hbm01_reader.ready_for_lots_of_data = pipe_may_push_hbm01.dout
-    action_pipeline#(DEPTH: DOUBLE_SLR_CROSSING) pipe_weights_hbm01
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 2, MIDDLE_DEPTH: 6, TO_DEPTH: 5) pipe_may_push_hbm01_slr2
+    pipe_may_push_hbm01_slr2.din = suspmv_slr2.may_pushes[1]
+    hbm01_reader.ready_for_lots_of_data = pipe_may_push_hbm01_slr2.dout
+    action_pipeline_cross_slr_twice#(FROM_DEPTH: 5, MIDDLE_DEPTH: 6, TO_DEPTH: 2) pipe_weights_hbm01_slr2
     when hbm01_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        pipe_weights_hbm01.din(elements[0])
+        pipe_weights_hbm01_slr2.din(elements[0])
     }
-    when pipe_weights_hbm01.dout : bool[256] hbm_data {
+    when pipe_weights_hbm01_slr2.dout : bool[256] hbm_data {
         suspmv_slr2.hbm_valids[1] = true
         suspmv_slr2.hbm_datas[1] = hbm_data
     } else {

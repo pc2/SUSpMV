@@ -25,6 +25,7 @@ tests/*/U280*/
 VCK5000*/
 U280*/
 .vscode/
+!.vscode/settings.json
 host/CMakeFiles
 host/suspmv
 host/Makefile
