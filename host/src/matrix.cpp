@@ -214,8 +214,15 @@ Matrix Matrix::load(std::string path) {
     // Read entries
     // ------------------------------------------------------------
 
+
+    m.entries.push_back(Entry{x: 1, y: 5, val: 1.0});
+    m.entries.push_back(Entry{x: 1, y: 10, val: 1.0});
+    m.entries.push_back(Entry{x: 1, y: 15, val: 1.0});
+    m.entries.push_back(Entry{x: 1, y: 20, val: 1.0});
+    m.entries.push_back(Entry{x: 1, y: 25, val: 1.0});
+
     std::string line;
-    while (std::getline(file, line)) {
+    while (std::getline(file, line) && false) {
         auto first = line.find_first_not_of(" \t\r\n");
         if (first == std::string::npos) {
             continue;
@@ -404,9 +411,20 @@ std::vector<float> ComputeUnitData::mul(std::vector<float>& x_vec) {
     return result;
 }
 
+bool has_bank_conflics(uint64_t *y, uint64_t new_idx) {
+    for (uint64_t i = 0; i < new_idx; i++) {
+        if (y[i] % NUM_Y_BANKS == y[new_idx] % NUM_Y_BANKS && y[i] != y[new_idx]) {
+            // bank conflict
+            return true;
+        }
+    }
+    return false;
+}
+
 void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBlock>& data, bool is_last_in_y) {
     uint64_t first_entry_idx = 0;
     uint64_t block_count = 0;
+    uint64_t cur_y = 0;
 
     while (true) {
         block_count += 1;
@@ -420,28 +438,43 @@ void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBloc
             if(j >= entries.size()) {
                 break;
             }
-            // TODO: Insert zeros when delta_y would not fit in 8 bit. 
-            if(j+1 >= entries.size()) {
-                dy[i] = 1;
-            } else {
-                dy[i] = static_cast<uint8_t>(entries[j+1].y - entries[j].y);
+
+            uint64_t delta_y = 1;
+            if (j+1 < entries.size()) {
+                delta_y = entries[j+1].y - entries[j].y;
             }
-            assert(entries[j].x < TILE_X_WIDTH);
-            assert(entries[j].y < MAX_TILE_Y_HEIGHT);
-            x[i] = entries[j].x;
-            y[i] = entries[j].y;
-            val[i] = entries[j].val;
+
+            uint64_t entry_y = entries[j].y;
+            if (entry_y != cur_y) {
+                // insert zero
+                x[i] = 0;
+                y[i] = entries[j].y;
+                dy[i] = delta_y;
+                val[i] = 0.0;
+            }
+
+            if (delta_y > 255) {
+                // insert zero
+                for (uint64_t tries = 0; tries < 16; tries++) {
+                    uint64_t next_y = entries[j].y + 255 - tries;
+                    y[i] = next_y;
+                    if (i == 5 || !has_bank_conflics(y, i)) {
+                        break;
+                    }
+                }
+                x[i] = 0;
+                y[i] = entries[j].y;
+                dy[i] = delta_y;
+                val[i] = 0.0;
+            } else {
+                x[i] = entries[j].x;
+                y[i] = entries[j].y;
+                dy[i] = delta_y;
+                val[i] = entries[j].val;
+            }
 
             // check for bank conflicts
-            bool bank_conflict = false;
-            for (uint64_t k = 0; k < i; k++) {
-                if (y[i] % NUM_Y_BANKS == y[k] % NUM_Y_BANKS && y[i] != y[k]) {
-                    // bank conflict
-                    bank_conflict = true;
-                    break;
-                }
-            }
-            if (bank_conflict) {
+            if (has_bank_conflics(y, i)) {
                 break;
             }
             count += 1;
@@ -639,7 +672,13 @@ ComputeUnitData Matrix::get_compute_unit_data(uint64_t compute_units, uint64_t n
         }
 
         for(size_t tile_x = 0; tile_x < current_x_tile_split.size(); tile_x++) {
-            append_tile_entries(current_x_tile_split[tile_x], hbm_buffers[cur_hbm], tile_x == current_x_tile_split.size()-1);
+            Builder builder;
+            bool last_in_y = tile_x == current_x_tile_split.size()-1;
+            for(size_t entry_idx = 0; entry_idx < current_x_tile_split[tile_x].size(); entry_idx++) {
+                bool last_in_tile = entry_idx == current_x_tile_split[tile_x].size() - 1;
+                builder.add(current_x_tile_split[tile_x][entry_idx], last_in_tile, last_in_tile && last_in_y);
+            }
+            hbm_buffers[cur_hbm] = builder.blocks;
         }
     }
 
@@ -651,4 +690,207 @@ ComputeUnitData Matrix::get_compute_unit_data(uint64_t compute_units, uint64_t n
         height: height,
         y_froms: y_froms
     };
+}
+
+Builder::Builder() {
+    first_entry_in_tile = true;
+    y_pos = 0;
+}
+
+bool Builder::has_bank_conflict(uint64_t *y, uint64_t new_idx) {
+    for (uint64_t i = 0; i < new_idx; i++) {
+        if (y[i] % NUM_Y_BANKS == y[new_idx] % NUM_Y_BANKS && y[i] != y[new_idx]) {
+            // bank conflict
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Builder::has_y_conflict(uint64_t y) {
+    // A y-pos can only be reused after `MIN_BLOCKS_PER_TILE` blocks
+    // => Check if `entry.y` was used recently in a different tile
+    //    I.e. if there was at least one different y in between
+    /*bool new_tile = false;
+    for (int64_t i = MIN_BLOCKS_PER_TILE-1; i >= 0; i--) {
+        if (i > blocks.size())
+        if (recent_y[i] != y) {
+            new_tile = true;
+        }
+        if (new_tile && recent_y[i] == y) {
+            return i+1;
+        }
+    }*/
+    return false;
+}
+
+void Builder::add(Entry &entry, bool last_in_x, bool last_in_y) {
+    assert(entry.x < TILE_X_WIDTH);
+    assert(entry.y < MAX_TILE_Y_HEIGHT);
+
+    if (first_entry_in_tile && entry.y != 0) {
+        entries.push_back(BuilderEntry{ x: 0, y: 0, val: 0.0, last_in_x: false, last_in_y: false });
+    }
+    first_entry_in_tile = false;
+
+    uint64_t delta_y = entry.y - y_pos;
+    while (delta_y > 255) {
+        entries.push_back(BuilderEntry{ x: 0, y: y_pos + 255, val: 0.0, last_in_x: false, last_in_y: false });
+        delta_y -= 255;
+        y_pos += 255;
+    }
+
+    while (has_y_conflict(entry.y)) {
+        build_block();
+    }
+
+    entries.push_back(BuilderEntry{ x: entry.x, y: entry.y, val: entry.val, last_in_x: last_in_x, last_in_y: last_in_y });
+    while ((last_in_y && entries.size() != 0) || entries.size() == 7) {
+        build_block();
+    }
+
+    if (last_in_y) {
+        first_entry_in_tile = true;
+        y_pos = 0;
+    }
+}
+
+void Builder::build_block() {
+    float    val[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    uint64_t x[6]   = {0, 0, 0, 0, 0, 0};
+    uint64_t y[6]   = {0, 0, 0, 0, 0, 0};
+    uint8_t  dy[6]  = {0, 0, 0, 0, 0, 0};
+    uint64_t count = 0;
+    for (uint64_t i = 0; i < 6; i++) {
+        if (i >= entries.size()) {
+            break;
+        }
+
+        uint64_t delta_y = 1;
+        if (i+1 < entries.size()) {
+            delta_y = entries[i+1].y - entries[i].y;
+        }
+
+        assert(delta_y <= 255);
+
+        x[i] = entries[i].x;
+        y[i] = entries[i].y;
+        dy[i] = delta_y;
+        val[i] = entries[i].val;
+
+        if (has_bank_conflict(y, i)) {
+            break;
+        }
+        count += 1;
+        if (entries[i].last_in_x) {
+            break;
+        }
+    }
+    
+    // check if we can use a `Float6` block here
+    bool use_float6 = true;
+    // only use Float6 iff
+    // - we actually have six values
+    // - it is not the last block of the tile (must be Float5)
+    if (count != 6) {
+        use_float6 = false;
+    }
+    // - no dy may be at more than 1
+    for (uint64_t i = 0; i < 6; i++) {
+        if (dy[i] > 1) {
+            use_float6 = false;
+            break;
+        }
+    }
+    // - the last bits must be representable by a combination of mode and x values
+    //   => compute the last mask by setting every necessary last bits (smaller new x value implies last bit)
+    bool required_last_mask[6] = {false, false, false, false, false, false};
+    for (int i = 0; i < 6; i++) {
+        if (dy[i] != 0) {
+            required_last_mask[i] = true;
+        }
+    }
+    // Remove implicit lasts before adding last mask
+    for(int i = 0; i < 6 - 1; i++) {
+        if(x[i+1] <= x[i]) {
+            required_last_mask[i] = false;
+        }
+    }
+
+    // check if the computed last_mask is available
+    uint8_t required_last = 0b000000;
+    for(int i = 0; i < 6; i++) {
+        if(required_last_mask[i]) {
+            required_last |= 1 << i;
+        }
+    }
+    uint8_t mode = 0b1111;
+    for (uint64_t i = 0; i < 15; i++) {
+        if (LAST_MASKS[i] == required_last) {
+            mode = i;
+            break;
+        }
+    }
+    if (mode == 0b1111) {
+        use_float6 = false;
+    }
+
+    // append new block
+    if (use_float6) {
+        MatrixDataBlock block;
+        block.float6 = Float6{
+            weights: { val[0], val[1], val[2], val[3], val[4], val[5] },
+            x_index_5: x[5],
+            x_index_4: x[4],
+            x_index_3: x[3],
+            x_index_2: x[2],
+            x_index_1: x[1],
+            x_index_0: x[0],
+            mode     : mode,
+        };
+        blocks.push_back(block);
+        entries.erase(entries.begin(), entries.begin() + 6);
+        std::cout << block << std::endl;
+    } else {
+        if(count > 5) {
+            count = 5; // Float5 can only send 5 floats.
+        }
+        MatrixDataBlock block;
+        bool last_in_x = count >= entries.size();
+        bool last_in_y = last_in_x;// && is_last_in_y;
+        block.float5 = Float5{
+            weights: { val[0], val[1], val[2], val[3], val[4] },
+            y_delta0 : dy[0],
+            y_delta1 : dy[1],
+            y_delta2 : dy[2],
+            y_delta3 : dy[3],
+            y_delta4 : dy[4],
+            last_in_x : last_in_x ? 1u : 0u,
+            last_in_y : last_in_y ? 1u : 0u,
+            x_index_4: x[4],
+            x_index_3: x[3],
+            x_index_2: x[2],
+            x_index_1: x[1],
+            x_index_0: x[0],
+            mode     : 0b1111,
+        };
+        blocks.push_back(block);
+        entries.erase(entries.begin(), entries.begin() + count);
+        std::cout << block << std::endl;
+        /*if(last_in_x) {
+            std::cout << "first_entry_idx: " << first_entry_idx << std::endl;
+            std::cout << "count: " << count << std::endl;
+            std::cout << "entries.size(): " << entries.size() << std::endl;
+            assert(first_entry_idx + count == entries.size());
+            // Check that on a last block, the output accumulator will be zero. 
+            for(int i = 4; i >= 0; i--) {
+                if(dy[i] == 0) {
+                    assert(val[i] == 0.0);
+                } else {
+                    break;
+                }
+            }
+            break;
+        }*/
+    }
 }

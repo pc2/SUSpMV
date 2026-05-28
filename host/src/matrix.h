@@ -48,6 +48,29 @@ union MatrixDataBlock {
     Float6 float6;
 };
 
+struct BuilderEntry {
+    uint64_t x;
+    uint64_t y;
+    float val;
+    bool last_in_x;
+    bool last_in_y;
+};
+
+struct Builder {
+    std::vector<MatrixDataBlock> blocks;
+    std::vector<BuilderEntry> entries;
+    bool first_entry_in_tile;
+    uint64_t y_pos;
+
+    Builder();
+    void add(Entry &entry, bool last_in_tile, bool last_in_y);
+
+private:
+    bool has_bank_conflict(uint64_t *y, uint64_t new_idx);
+    bool has_y_conflict(uint64_t y);
+    void build_block();
+};
+
 std::ostream& operator<<(std::ostream& ostr, MatrixDataBlock m_data);
 
 struct ComputeUnitData {
