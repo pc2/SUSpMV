@@ -72,7 +72,6 @@ module primitive_pipeline_from_slr_crossing #(
     (* shreg_extract = "no" *)
     (* user_sll_reg = 1 *)
     reg[WIDTH-1:0] suspmv_din_laguna_reg;
-// system_i/arch/target_ip_00_000/internal_target_ip_00_000/inst/pipe_ctrl_to_ddr1/pipeline_regs/pipeline_stages_reg[0][59]
 
     always_ff @(posedge clk) begin
         suspmv_din_laguna_reg <= din_laguna;
@@ -103,7 +102,6 @@ module primitive_pipeline_slr_crossing_to_slr_crossing #(
     (* shreg_extract = "no" *)
     (* user_sll_reg = 1 *)
     reg[WIDTH-1:0] suspmv_din_laguna_reg;
-// system_i/arch/target_ip_00_000/internal_target_ip_00_000/inst/pipe_ctrl_to_ddr1/pipeline_regs/pipeline_stages_reg[0][59]
 
     always_ff @(posedge clk) begin
         suspmv_din_laguna_reg <= din_laguna;

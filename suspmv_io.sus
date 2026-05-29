@@ -643,8 +643,8 @@ module SUSpMV_Full {
     // =========== //
 
     // Pipeline regs to get from SLR0 to SLR1
-    Tuple4 pack_ddr1_settings
-    action_pipeline_cross_slr#(FROM_DEPTH: 3, TO_DEPTH: 3) pipe_ctrl_to_ddr1
+    Tuple4 pack_ddr_settings
+    action_pipeline#(DEPTH: NO_SLR_CROSSING) pipe_ctrl_to_ddr
     
     Tuple2 pack_hbm_settings
     action_pipeline#(DEPTH: NO_SLR_CROSSING) pipe_ctrl_to_hbms
@@ -656,7 +656,7 @@ module SUSpMV_Full {
         int y_vector_addr = BitsToUInt(ctrl.input_regs[1])
         int num_x_pages = BitsToUInt(ctrl.input_regs[2]) mod 1 << 32
         int num_y_repetitions = BitsToUInt(ctrl.input_regs[3]) mod 1 << 32
-        pipe_ctrl_to_ddr1.din(pack_ddr1_settings.pack(x_vector_addr, y_vector_addr, num_x_pages, num_y_repetitions))
+        pipe_ctrl_to_ddr.din(pack_ddr_settings.pack(x_vector_addr, y_vector_addr, num_x_pages, num_y_repetitions))
 
         int[NUM_HBMS] matrix_data_start_addrs
         int[NUM_HBMS] matrix_data_element_counts
@@ -668,11 +668,11 @@ module SUSpMV_Full {
 
         pipe_ctrl_to_hbms.din(pack_hbm_settings.pack(matrix_data_start_addrs, matrix_data_element_counts))
     }
-    when pipe_ctrl_to_ddr1.dout : bool[] packed_ddr1_settings {
+    when pipe_ctrl_to_ddr.dout : bool[] packed_ddr1_settings {
         int x_vector_addr,
         int y_vector_addr,
         int num_x_pages,
-        int num_y_repetitions = pack_ddr1_settings.unpack(packed_ddr1_settings)
+        int num_y_repetitions = pack_ddr_settings.unpack(packed_ddr1_settings)
 
         x_vector_reader.start_loading(x_vector_addr, num_x_pages, num_y_repetitions)
         y_result_writer.submit_y_vector_addr(y_vector_addr, num_y_repetitions)
@@ -692,83 +692,103 @@ module SUSpMV_Full {
 
     // Shared data for SLRs
     // To cross SLR1 -> SLR2
+    Tuple2 pack_x_vector_info_slr1
     Tuple2 pack_x_vector_info_slr2
-    action_pipeline_cross_slr#(FROM_DEPTH: 3, TO_DEPTH: 3) pipe_x_vector_info_slr2
-    data_pipeline_cross_slr#(FROM_DEPTH: 3, TO_DEPTH: 3) pipe_x_page_releases_slr2
+    action_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_x_vector_info_slr0_to_slr1
+    action_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_x_vector_info_slr1_to_slr2
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_x_page_releases_slr2_to_slr0
 
-    pipe_x_page_releases_slr2.din = suspmv_slr2.x_releases
-    x_vector_reader.x_page_releases[0:NUM_HBMS] = pipe_x_page_releases_slr2.dout
+    pipe_x_page_releases_slr2_to_slr0.din = suspmv_slr2.x_releases
+    x_vector_reader.x_page_releases[0:NUM_HBMS] = pipe_x_page_releases_slr2_to_slr0.dout
 
     when x_vector_reader.x_valid : float[16] x_values, bool x_last {
-        pipe_x_vector_info_slr2.din(pack_x_vector_info_slr2.pack(x_values, x_last))
+        pipe_x_vector_info_slr0_to_slr1.din(pack_x_vector_info_slr1.pack(x_values, x_last))
     }
-    when pipe_x_vector_info_slr2.dout : bool[] packed {
+    when pipe_x_vector_info_slr0_to_slr1.dout : bool[] packed {
+        float[16] x_values, bool x_last = pack_x_vector_info_slr1.unpack(packed)
+        pipe_x_vector_info_slr1_to_slr2.din(pack_x_vector_info_slr2.pack(x_values, x_last))
+    }
+
+    when pipe_x_vector_info_slr1_to_slr2.dout : bool[] packed {
         float[16] x_values, bool x_last = pack_x_vector_info_slr2.unpack(packed)
         suspmv_slr2.push_x_data(x_values, x_last)
     }
 
     // To cross SLR1 -> SLR2
     Tuple3 pack_y_valid_slr2
-    action_pipeline_cross_slr#(FROM_DEPTH: 3, TO_DEPTH: 3) pipe_y_valid_slr2
+    action_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_y_valid_to_slr2_to_slr0
 
-    data_pipeline_cross_slr#(FROM_DEPTH: 3, TO_DEPTH: 3) pipe_start_y_bursts_slr2
-    data_pipeline_cross_slr#(FROM_DEPTH: 3, TO_DEPTH: 3) pipe_may_y_valid_slr2
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_start_y_bursts_slr0_to_slr2
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_may_y_valid_slr0_to_slr2
 
-    pipe_start_y_bursts_slr2.din = y_result_writer.unit_may_starts[0:NUM_HBMS]
-    suspmv_slr2.start_y_bursts = pipe_start_y_bursts_slr2.dout
+    pipe_start_y_bursts_slr0_to_slr2.din = y_result_writer.unit_may_starts[0:NUM_HBMS]
+    suspmv_slr2.start_y_bursts = pipe_start_y_bursts_slr0_to_slr2.dout
 
-    pipe_may_y_valid_slr2.din = y_result_writer.may_write
-    suspmv_slr2.may_y_valid = pipe_may_y_valid_slr2.dout
+    pipe_may_y_valid_slr0_to_slr2.din = y_result_writer.may_write
+    suspmv_slr2.may_y_valid = pipe_may_y_valid_slr0_to_slr2.dout
 
     when suspmv_slr2.y_valid : float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out {
-        pipe_y_valid_slr2.din(pack_y_valid_slr2.pack(y_values_out, num_y_values_out, is_last_y_out))
+        pipe_y_valid_to_slr2_to_slr0.din(pack_y_valid_slr2.pack(y_values_out, num_y_values_out, is_last_y_out))
     }
 
-    when pipe_y_valid_slr2.dout : bool[] packed {
+    when pipe_y_valid_to_slr2_to_slr0.dout : bool[] packed {
         float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out = pack_y_valid_slr2.unpack(packed)
         y_result_writer.write(y_values_out, num_y_values_out, is_last_y_out)
     }
 
     // Connect all HBMs
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 2, MIDDLE_DEPTH: 8, TO_DEPTH: 5) pipe_may_push_hbm00_slr2
-    pipe_may_push_hbm00_slr2.din = suspmv_slr2.may_pushes[0]
-    hbm00_reader.ready_for_lots_of_data = pipe_may_push_hbm00_slr2.dout
-    action_pipeline_cross_slr_twice#(FROM_DEPTH: 5, MIDDLE_DEPTH: 8, TO_DEPTH: 2) pipe_weights_hbm00_slr2
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 3, MIDDLE_DEPTH: 8, TO_DEPTH: 7) pipe_may_push_hbm00_slr2_to_slr0
+    pipe_may_push_hbm00_slr2_to_slr0.din = suspmv_slr2.may_pushes[0]
+    hbm00_reader.ready_for_lots_of_data = pipe_may_push_hbm00_slr2_to_slr0.dout
+    action_pipeline_cross_slr_twice#(FROM_DEPTH: 7, MIDDLE_DEPTH: 8, TO_DEPTH: 3) pipe_weights_hbm00_slr0_to_slr2
     when hbm00_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        pipe_weights_hbm00_slr2.din(elements[0])
+        pipe_weights_hbm00_slr0_to_slr2.din(elements[0])
     }
-    when pipe_weights_hbm00_slr2.dout : bool[256] hbm_data {
+    when pipe_weights_hbm00_slr0_to_slr2.dout : bool[256] hbm_data {
         suspmv_slr2.hbm_valids[0] = true
         suspmv_slr2.hbm_datas[0] = hbm_data
     } else {
         suspmv_slr2.hbm_valids[0] = false
     }
 
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 2, MIDDLE_DEPTH: 8, TO_DEPTH: 5) pipe_may_push_hbm01_slr2
-    pipe_may_push_hbm01_slr2.din = suspmv_slr2.may_pushes[1]
-    hbm01_reader.ready_for_lots_of_data = pipe_may_push_hbm01_slr2.dout
-    action_pipeline_cross_slr_twice#(FROM_DEPTH: 5, MIDDLE_DEPTH: 8, TO_DEPTH: 2) pipe_weights_hbm01_slr2
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 3, MIDDLE_DEPTH: 8, TO_DEPTH: 7) pipe_may_push_hbm01_slr2_to_slr0
+    pipe_may_push_hbm01_slr2_to_slr0.din = suspmv_slr2.may_pushes[1]
+    hbm01_reader.ready_for_lots_of_data = pipe_may_push_hbm01_slr2_to_slr0.dout
+    action_pipeline_cross_slr_twice#(FROM_DEPTH: 7, MIDDLE_DEPTH: 8, TO_DEPTH: 3) pipe_weights_hbm01_slr0_to_slr2
     when hbm01_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        pipe_weights_hbm01_slr2.din(elements[0])
+        pipe_weights_hbm01_slr0_to_slr2.din(elements[0])
     }
-    when pipe_weights_hbm01_slr2.dout : bool[256] hbm_data {
+    when pipe_weights_hbm01_slr0_to_slr2.dout : bool[256] hbm_data {
         suspmv_slr2.hbm_valids[1] = true
         suspmv_slr2.hbm_datas[1] = hbm_data
     } else {
         suspmv_slr2.hbm_valids[1] = false
     }
 
+    data_pipeline#(DEPTH: 16) pipe_aresetn_slr0
+    data_pipeline_cross_slr#(FROM_DEPTH: 8, TO_DEPTH: 16) pipe_aresetn_slr0_to_slr1
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 8, MIDDLE_DEPTH: 8, TO_DEPTH: 16) pipe_aresetn_slr0_to_slr2
 
-    when !aresetn {
+    pipe_aresetn_slr0.din = !aresetn
+    pipe_aresetn_slr0_to_slr1.din = !aresetn
+    pipe_aresetn_slr0_to_slr2.din = !aresetn
+
+    when pipe_aresetn_slr0.dout {
         ctrl.rst()
         x_vector_reader.rst()
         y_result_writer.rst()
-
-        suspmv_slr2.rst()
 
         hbm00_reader.rst()
         hbm00_writer_tie_off.rst()
         hbm01_reader.rst()
         hbm01_writer_tie_off.rst()
+    }
+
+    when pipe_aresetn_slr0_to_slr1.dout {
+
+    }
+
+    when pipe_aresetn_slr0_to_slr2.dout {
+        suspmv_slr2.rst()
     }
 }
