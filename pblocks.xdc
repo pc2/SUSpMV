@@ -1,82 +1,73 @@
 
-# set_property USER_SLR_ASSIGNMENT SLR0 [get_cells suspmv_slr0]
 create_pblock pblock_suspmv_slr0
 # add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells suspmv_slr0]
 # resize_pblock [get_pblocks pblock_suspmv_slr0] -add {CLOCKREGION_X0Y0:CLOCKREGION_X7Y3}
-
-resize_pblock [get_pblocks pblock_suspmv_slr0] -add {SLICE_X0Y0:SLICE_X232Y239 SLICE_X0Y0:SLICE_X232Y239 BIAS_X0Y0:BIAS_X0Y7 BITSLICE_CONTROL_X0Y0:BITSLICE_CONTROL_X0Y31 BITSLICE_RX_TX_X0Y0:BITSLICE_RX_TX_X0Y207 BITSLICE_TX_X0Y0:BITSLICE_TX_X0Y31 BLI_HBM_APB_INTF_X0Y0:BLI_HBM_APB_INTF_X31Y0 BLI_HBM_AXI_INTF_X0Y0:BLI_HBM_AXI_INTF_X31Y0 BUFCE_LEAF_X0Y0:BUFCE_LEAF_X1183Y15 BUFCE_ROW_X0Y0:BUFCE_ROW_X0Y95 BUFCE_ROW_FSR_X0Y0:BUFCE_ROW_FSR_X261Y3 BUFGCE_X0Y0:BUFGCE_X0Y95 BUFGCE_DIV_X0Y0:BUFGCE_DIV_X0Y15 BUFGCTRL_X0Y0:BUFGCTRL_X0Y31 BUFG_GT_X0Y0:BUFG_GT_X1Y95 BUFG_GT_X0Y0:BUFG_GT_X1Y95 BUFG_GT_SYNC_X0Y0:BUFG_GT_SYNC_X1Y59 BUFG_GT_SYNC_X0Y0:BUFG_GT_SYNC_X1Y59 CFGIO_SITE_X0Y0:CFGIO_SITE_X0Y0 CMACE4_X0Y0:CMACE4_X0Y1 CONFIG_SITE_X0Y0:CONFIG_SITE_X0Y0 DSP48E2_X0Y0:DSP48E2_X31Y89 DSP48E2_X0Y0:DSP48E2_X31Y89 GTYE4_CHANNEL_X0Y0:GTYE4_CHANNEL_X1Y15 GTYE4_COMMON_X0Y0:GTYE4_COMMON_X1Y3 HARD_SYNC_X0Y0:HARD_SYNC_X27Y7 HBM_REF_CLK_X0Y0:HBM_REF_CLK_X0Y1 HPIOBDIFFINBUF_X0Y0:HPIOBDIFFINBUF_X0Y95 HPIOBDIFFOUTBUF_X0Y0:HPIOBDIFFOUTBUF_X0Y95 HPIOB_DCI_SNGL_X0Y0:HPIOB_DCI_SNGL_X0Y15 HPIO_RCLK_PRBS_X0Y0:HPIO_RCLK_PRBS_X0Y3 HPIO_VREF_SITE_X0Y0:HPIO_VREF_SITE_X0Y7 HPIO_ZMATCH_BLK_HCLK_X0Y0:HPIO_ZMATCH_BLK_HCLK_X0Y3 IOB_X0Y0:IOB_X0Y207 LAGUNA_X0Y0:LAGUNA_X31Y119 LAGUNA_X0Y0:LAGUNA_X31Y119 MMCM_X0Y0:MMCM_X0Y3 PCIE4CE4_X0Y0:PCIE4CE4_X1Y1 PCIE4CE4_X0Y0:PCIE4CE4_X1Y1 PLL_X0Y0:PLL_X0Y7 RAMB18_X0Y0:RAMB18_X13Y95 RAMB18_X0Y0:RAMB18_X13Y95 RAMB36_X0Y0:RAMB36_X13Y47 RAMB36_X0Y0:RAMB36_X13Y47 RIU_OR_X0Y0:RIU_OR_X0Y15 SYSMONE4_X0Y0:SYSMONE4_X0Y0 URAM288_X0Y0:URAM288_X4Y63 URAM288_X0Y0:URAM288_X4Y63} -locs keep_all -replace
+resize_pblock [get_pblocks pblock_suspmv_slr0] -add {SLR0}
 set_property IS_SOFT FALSE [get_pblocks pblock_suspmv_slr0]
 
-# set_property USER_SLR_ASSIGNMENT SLR1 [get_cells suspmv_slr1]
 create_pblock pblock_suspmv_slr1
 # add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells suspmv_slr1]
 # resize_pblock [get_pblocks pblock_suspmv_slr1] -add {CLOCKREGION_X0Y4:CLOCKREGION_X7Y7}
-
-resize_pblock [get_pblocks pblock_suspmv_slr1] -add {SLICE_X0Y240:SLICE_X232Y479 SLICE_X0Y240:SLICE_X232Y479 BIAS_X0Y8:BIAS_X0Y15 BITSLICE_CONTROL_X0Y32:BITSLICE_CONTROL_X0Y63 BITSLICE_RX_TX_X0Y208:BITSLICE_RX_TX_X0Y415 BITSLICE_TX_X0Y32:BITSLICE_TX_X0Y63 BUFCE_LEAF_X0Y16:BUFCE_LEAF_X1183Y31 BUFCE_ROW_X0Y96:BUFCE_ROW_X0Y191 BUFCE_ROW_FSR_X0Y4:BUFCE_ROW_FSR_X261Y7 BUFGCE_X0Y96:BUFGCE_X0Y191 BUFGCE_DIV_X0Y16:BUFGCE_DIV_X0Y31 BUFGCTRL_X0Y32:BUFGCTRL_X0Y63 BUFG_GT_X0Y96:BUFG_GT_X1Y191 BUFG_GT_X0Y96:BUFG_GT_X1Y191 BUFG_GT_SYNC_X0Y60:BUFG_GT_SYNC_X1Y119 BUFG_GT_SYNC_X0Y60:BUFG_GT_SYNC_X1Y119 CFGIO_SITE_X0Y1:CFGIO_SITE_X0Y1 CMACE4_X0Y2:CMACE4_X0Y4 CONFIG_SITE_X0Y1:CONFIG_SITE_X0Y1 DSP48E2_X0Y90:DSP48E2_X31Y185 DSP48E2_X0Y90:DSP48E2_X31Y185 GTYE4_CHANNEL_X0Y16:GTYE4_CHANNEL_X1Y31 GTYE4_COMMON_X0Y4:GTYE4_COMMON_X1Y7 HARD_SYNC_X0Y8:HARD_SYNC_X27Y15 HPIOBDIFFINBUF_X0Y96:HPIOBDIFFINBUF_X0Y191 HPIOBDIFFOUTBUF_X0Y96:HPIOBDIFFOUTBUF_X0Y191 HPIOB_DCI_SNGL_X0Y16:HPIOB_DCI_SNGL_X0Y31 HPIO_RCLK_PRBS_X0Y4:HPIO_RCLK_PRBS_X0Y7 HPIO_VREF_SITE_X0Y8:HPIO_VREF_SITE_X0Y15 HPIO_ZMATCH_BLK_HCLK_X0Y4:HPIO_ZMATCH_BLK_HCLK_X0Y7 ILKNE4_X0Y0:ILKNE4_X1Y1 IOB_X0Y208:IOB_X0Y415 LAGUNA_X0Y120:LAGUNA_X31Y359 LAGUNA_X0Y120:LAGUNA_X31Y359 MMCM_X0Y4:MMCM_X0Y7 PCIE40E4_X0Y0:PCIE40E4_X0Y0 PLL_X0Y8:PLL_X0Y15 RAMB18_X0Y96:RAMB18_X13Y191 RAMB18_X0Y96:RAMB18_X13Y191 RAMB36_X0Y48:RAMB36_X13Y95 RAMB36_X0Y48:RAMB36_X13Y95 RIU_OR_X0Y16:RIU_OR_X0Y31 SYSMONE4_X0Y1:SYSMONE4_X0Y1 URAM288_X0Y64:URAM288_X4Y127 URAM288_X0Y64:URAM288_X4Y127} -locs keep_all -replace
+resize_pblock [get_pblocks pblock_suspmv_slr1] -add {SLR1}
 set_property IS_SOFT FALSE [get_pblocks pblock_suspmv_slr1]
 
-set_property USER_SLR_ASSIGNMENT SLR2 [get_cells suspmv_slr2]
 create_pblock pblock_suspmv_slr2
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells suspmv_slr2]
 # resize_pblock [get_pblocks pblock_suspmv_slr2] -add {CLOCKREGION_X0Y8:CLOCKREGION_X7Y11}
-
-resize_pblock [get_pblocks pblock_suspmv_slr2] -add {SLICE_X0Y480:SLICE_X232Y719 SLICE_X0Y480:SLICE_X232Y719 BIAS_X0Y16:BIAS_X0Y23 BITSLICE_CONTROL_X0Y64:BITSLICE_CONTROL_X0Y95 BITSLICE_RX_TX_X0Y416:BITSLICE_RX_TX_X0Y623 BITSLICE_TX_X0Y64:BITSLICE_TX_X0Y95 BUFCE_LEAF_X0Y32:BUFCE_LEAF_X1183Y47 BUFCE_ROW_X0Y192:BUFCE_ROW_X0Y287 BUFCE_ROW_FSR_X0Y8:BUFCE_ROW_FSR_X261Y11 BUFGCE_X0Y192:BUFGCE_X0Y287 BUFGCE_DIV_X0Y32:BUFGCE_DIV_X0Y47 BUFGCTRL_X0Y64:BUFGCTRL_X0Y95 BUFG_GT_X0Y192:BUFG_GT_X1Y287 BUFG_GT_X0Y192:BUFG_GT_X1Y287 BUFG_GT_SYNC_X0Y120:BUFG_GT_SYNC_X1Y179 BUFG_GT_SYNC_X0Y120:BUFG_GT_SYNC_X1Y179 CFGIO_SITE_X0Y2:CFGIO_SITE_X0Y2 CMACE4_X0Y5:CMACE4_X0Y7 CONFIG_SITE_X0Y2:CONFIG_SITE_X0Y2 DSP48E2_X0Y186:DSP48E2_X31Y281 DSP48E2_X0Y186:DSP48E2_X31Y281 GTYE4_CHANNEL_X0Y32:GTYE4_CHANNEL_X1Y47 GTYE4_COMMON_X0Y8:GTYE4_COMMON_X1Y11 HARD_SYNC_X0Y16:HARD_SYNC_X27Y23 HPIOBDIFFINBUF_X0Y192:HPIOBDIFFINBUF_X0Y287 HPIOBDIFFOUTBUF_X0Y192:HPIOBDIFFOUTBUF_X0Y287 HPIOB_DCI_SNGL_X0Y32:HPIOB_DCI_SNGL_X0Y47 HPIO_RCLK_PRBS_X0Y8:HPIO_RCLK_PRBS_X0Y11 HPIO_VREF_SITE_X0Y16:HPIO_VREF_SITE_X0Y23 HPIO_ZMATCH_BLK_HCLK_X0Y8:HPIO_ZMATCH_BLK_HCLK_X0Y11 ILKNE4_X0Y2:ILKNE4_X1Y3 IOB_X0Y416:IOB_X0Y623 LAGUNA_X0Y360:LAGUNA_X31Y599 LAGUNA_X0Y360:LAGUNA_X31Y599 MMCM_X0Y8:MMCM_X0Y11 PCIE40E4_X0Y1:PCIE40E4_X0Y1 PLL_X0Y16:PLL_X0Y23 RAMB18_X0Y192:RAMB18_X13Y287 RAMB18_X0Y192:RAMB18_X13Y287 RAMB36_X0Y96:RAMB36_X13Y143 RAMB36_X0Y96:RAMB36_X13Y143 RIU_OR_X0Y32:RIU_OR_X0Y47 SYSMONE4_X0Y2:SYSMONE4_X0Y2 URAM288_X0Y128:URAM288_X4Y191 URAM288_X0Y128:URAM288_X4Y191} -locs keep_all -replace
+resize_pblock [get_pblocks pblock_suspmv_slr2] -add {SLR2}
 set_property IS_SOFT FALSE [get_pblocks pblock_suspmv_slr2]
 
 # XY Vector memory on SLR1 in the center
 create_pblock pblock_xy_vector
+set_property PARENT [get_pblocks pblock_suspmv_slr1] [get_pblocks pblock_xy_vector]
 add_cells_to_pblock [get_pblocks pblock_xy_vector] [get_cells -quiet [list x_vector_reader y_result_writer]]
 resize_pblock [get_pblocks pblock_xy_vector] -add {CLOCKREGION_X4Y4:CLOCKREGION_X5Y7}
 
-set_property USER_SLR_ASSIGNMENT SLR1 [get_cells -quiet [list x_vector_reader y_result_writer]]
-
 # CTRL goes in the center of SLR0, so it's close to all HBMs
 create_pblock pblock_ctrl
+set_property PARENT [get_pblocks pblock_suspmv_slr0] [get_pblocks pblock_ctrl]
 add_cells_to_pblock [get_pblocks pblock_ctrl] [get_cells ctrl]
 resize_pblock [get_pblocks pblock_ctrl] -add {CLOCKREGION_X4Y1:CLOCKREGION_X4Y1}
 
-set_property USER_SLR_ASSIGNMENT SLR0 [get_cells ctrl]
-
 
 # HBM Banks stay at the Bottom of SLR0
-create_pblock hbm_access_pblock
-add_cells_to_pblock [get_pblocks hbm_access_pblock] [get_cells hbm*_reader]
-resize_pblock [get_pblocks hbm_access_pblock] -add {CLOCKREGION_X0Y0:CLOCKREGION_X7Y0}
+create_pblock pblock_hbm00_03
+resize_pblock pblock_hbm00_03 -add {CLOCKREGION_X0Y0:CLOCKREGION_X0Y0}
+add_cells_to_pblock [get_pblocks pblock_hbm00_03] [get_cells [list hbm00_reader hbm01_reader]]
 
-set_property USER_SLR_ASSIGNMENT SLR0 [get_cells hbm*_reader]
 
 # Long lines crossing SLRs. 
 # Covered by (* user_sll_reg = 1 *)?
 # set_property USER_SLL_REG 1 [get_cells */suspmv_din_laguna_reg]
 # set_property USER_SLL_REG 1 [get_cells */suspmv_dout_laguna_reg]
 
-set_property USER_SLR_ASSIGNMENT SLR0 [get_cells pipe_ctrl_to_hbms]
-set_property USER_SLR_ASSIGNMENT SLR0 [get_cells pipe_ctrl_to_ddr1/from_slr]
-set_property USER_SLR_ASSIGNMENT SLR1 [get_cells pipe_ctrl_to_ddr1/to_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_ctrl_to_hbms]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_ctrl_to_ddr1/from_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells pipe_ctrl_to_ddr1/to_slr]
 
-set_property USER_SLR_ASSIGNMENT SLR1 [get_cells pipe_x_vector_info_slr2/from_slr]
-set_property USER_SLR_ASSIGNMENT SLR2 [get_cells pipe_x_vector_info_slr2/to_slr]
-set_property USER_SLR_ASSIGNMENT SLR2 [get_cells pipe_x_page_releases_slr2/from_slr]
-set_property USER_SLR_ASSIGNMENT SLR1 [get_cells pipe_x_page_releases_slr2/to_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells pipe_x_vector_info_slr2/from_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells pipe_x_vector_info_slr2/to_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells pipe_x_page_releases_slr2/from_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells pipe_x_page_releases_slr2/to_slr]
 
-set_property USER_SLR_ASSIGNMENT SLR1 [get_cells pipe_start_y_bursts_slr2/from_slr]
-set_property USER_SLR_ASSIGNMENT SLR2 [get_cells pipe_start_y_bursts_slr2/to_slr]
-set_property USER_SLR_ASSIGNMENT SLR1 [get_cells pipe_may_y_valid_slr2/from_slr]
-set_property USER_SLR_ASSIGNMENT SLR2 [get_cells pipe_may_y_valid_slr2/to_slr]
-set_property USER_SLR_ASSIGNMENT SLR2 [get_cells pipe_y_valid_slr2/from_slr]
-set_property USER_SLR_ASSIGNMENT SLR1 [get_cells pipe_y_valid_slr2/to_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells pipe_start_y_bursts_slr2/from_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells pipe_start_y_bursts_slr2/to_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells pipe_may_y_valid_slr2/from_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells pipe_may_y_valid_slr2/to_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells pipe_y_valid_slr2/from_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells pipe_y_valid_slr2/to_slr]
 
 # Long lines for HBMs
-set_property USER_SLR_ASSIGNMENT SLR0 [get_cells -quiet pipe_weights_*_slr2/from_slr]
-set_property USER_SLR_ASSIGNMENT SLR1 [get_cells -quiet pipe_weights_*_slr2/middle_slr]
-set_property USER_SLR_ASSIGNMENT SLR2 [get_cells -quiet pipe_weights_*_slr2/to_slr]
-set_property USER_SLR_ASSIGNMENT SLR2 [get_cells -quiet pipe_may_push_*_slr2/from_slr]
-set_property USER_SLR_ASSIGNMENT SLR1 [get_cells -quiet pipe_may_push_*_slr2/middle_slr]
-set_property USER_SLR_ASSIGNMENT SLR0 [get_cells -quiet pipe_may_push_*_slr2/to_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells -quiet pipe_weights_*_slr2/from_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells -quiet pipe_weights_*_slr2/middle_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells -quiet pipe_weights_*_slr2/to_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells -quiet pipe_may_push_*_slr2/from_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells -quiet pipe_may_push_*_slr2/middle_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells -quiet pipe_may_push_*_slr2/to_slr]
 
-set_property USER_SLR_ASSIGNMENT SLR0 [get_cells -quiet pipe_weights_*_slr1/from_slr]
-set_property USER_SLR_ASSIGNMENT SLR1 [get_cells -quiet pipe_weights_*_slr1/to_slr]
-set_property USER_SLR_ASSIGNMENT SLR1 [get_cells -quiet pipe_may_push_*_slr1/from_slr]
-set_property USER_SLR_ASSIGNMENT SLR0 [get_cells -quiet pipe_may_push_*_slr1/to_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells -quiet pipe_weights_*_slr1/from_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells -quiet pipe_weights_*_slr1/to_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells -quiet pipe_may_push_*_slr1/from_slr]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells -quiet pipe_may_push_*_slr1/to_slr]
 
-set_property USER_SLR_ASSIGNMENT SLR0 [get_cells -quiet pipe_weights_*_slr0]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells -quiet pipe_weights_*_slr0]

@@ -730,10 +730,10 @@ module SUSpMV_Full {
     }
 
     // Connect all HBMs
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 2, MIDDLE_DEPTH: 6, TO_DEPTH: 5) pipe_may_push_hbm00_slr2
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 2, MIDDLE_DEPTH: 8, TO_DEPTH: 5) pipe_may_push_hbm00_slr2
     pipe_may_push_hbm00_slr2.din = suspmv_slr2.may_pushes[0]
     hbm00_reader.ready_for_lots_of_data = pipe_may_push_hbm00_slr2.dout
-    action_pipeline_cross_slr_twice#(FROM_DEPTH: 5, MIDDLE_DEPTH: 6, TO_DEPTH: 2) pipe_weights_hbm00_slr2
+    action_pipeline_cross_slr_twice#(FROM_DEPTH: 5, MIDDLE_DEPTH: 8, TO_DEPTH: 2) pipe_weights_hbm00_slr2
     when hbm00_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
         pipe_weights_hbm00_slr2.din(elements[0])
     }
@@ -744,10 +744,10 @@ module SUSpMV_Full {
         suspmv_slr2.hbm_valids[0] = false
     }
 
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 2, MIDDLE_DEPTH: 6, TO_DEPTH: 5) pipe_may_push_hbm01_slr2
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 2, MIDDLE_DEPTH: 8, TO_DEPTH: 5) pipe_may_push_hbm01_slr2
     pipe_may_push_hbm01_slr2.din = suspmv_slr2.may_pushes[1]
     hbm01_reader.ready_for_lots_of_data = pipe_may_push_hbm01_slr2.dout
-    action_pipeline_cross_slr_twice#(FROM_DEPTH: 5, MIDDLE_DEPTH: 6, TO_DEPTH: 2) pipe_weights_hbm01_slr2
+    action_pipeline_cross_slr_twice#(FROM_DEPTH: 5, MIDDLE_DEPTH: 8, TO_DEPTH: 2) pipe_weights_hbm01_slr2
     when hbm01_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
         pipe_weights_hbm01_slr2.din(elements[0])
     }
