@@ -432,11 +432,11 @@ module SUSpMV_Full {
     gen int DDR_AXI_WRITE_WIDTH = 512
     gen int HBM_AXI_WIDTH = 256
 
-    gen int NUM_HBMS = 2
+    gen int UNITS_SLR0 = 2
+    gen int UNITS_SLR1 = 2
+    gen int UNITS_SLR2 = 2
 
-
-    gen int NO_SLR_CROSSING = 6
-
+    gen int NUM_HBMS = UNITS_SLR0 + UNITS_SLR1 + UNITS_SLR2
 
     //xrt_ctrl_slave #(NUM_INPUT_REGS: 6 + 4 * NUM_HBMS, NUM_OUTPUT_REGS: 0, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
     tapasco_ctrl_slave #(NUM_INPUT_REGS: 4 + 2 * NUM_HBMS, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
@@ -532,11 +532,209 @@ module SUSpMV_Full {
     x_vector_reader.rlast =                        maxi_ddr00_rlast
 
 
+    // ========= //
+    //  Kernels  //
+    // ========= //
+    SUSpMV_SLR#(NUM_UNITS: UNITS_SLR0) suspmv_slr0
+    SUSpMV_SLR#(NUM_UNITS: UNITS_SLR1) suspmv_slr1
+    SUSpMV_SLR#(NUM_UNITS: UNITS_SLR2) suspmv_slr2
+
+    // =========== //
+    //  Addresses  //
+    // =========== //
+
+    // Pipeline regs to get from SLR0 to SLR1
+    Tuple4 pack_ddr_settings
+    action_pipeline#(DEPTH: 6) pipe_ctrl_to_ddr
+    
+    Tuple2 pack_hbm_settings
+    action_pipeline#(DEPTH: 6) pipe_ctrl_to_hbms
+    
+    when ctrl.start {
+        int x_vector_addr = BitsToUInt(ctrl.input_regs[0])
+        int y_vector_addr = BitsToUInt(ctrl.input_regs[1])
+        int num_x_pages = BitsToUInt(ctrl.input_regs[2]) mod 1 << 32
+        int num_y_repetitions = BitsToUInt(ctrl.input_regs[3]) mod 1 << 32
+        pipe_ctrl_to_ddr.din(pack_ddr_settings.pack(x_vector_addr, y_vector_addr, num_x_pages, num_y_repetitions))
+
+        int[NUM_HBMS] matrix_data_start_addrs
+        int[NUM_HBMS] matrix_data_element_counts
+        for int HBM_I in 0..NUM_HBMS {
+            // Pipeline regs to reach both ends of SLR0
+            matrix_data_start_addrs[HBM_I] = BitsToUInt(ctrl.input_regs[4 + HBM_I * 2])
+            matrix_data_element_counts[HBM_I] = BitsToUInt(ctrl.input_regs[5 + HBM_I * 2]) mod 1 << 32
+        }
+
+        pipe_ctrl_to_hbms.din(pack_hbm_settings.pack(matrix_data_start_addrs, matrix_data_element_counts))
+    }
+    when pipe_ctrl_to_ddr.dout : bool[] packed_ddr1_settings {
+        int x_vector_addr,
+        int y_vector_addr,
+        int num_x_pages,
+        int num_y_repetitions = pack_ddr_settings.unpack(packed_ddr1_settings)
+
+        x_vector_reader.start_loading(x_vector_addr, num_x_pages, num_y_repetitions)
+        y_result_writer.submit_y_vector_addr(y_vector_addr, num_y_repetitions)
+    }
+
+    // SUS TODO: Local Actions (https://github.com/pc2/sus-compiler/issues/198)
+    int[NUM_HBMS] matrix_data_start_addrs
+    int[NUM_HBMS] matrix_data_element_counts
+    bool set_matrix_data
+
+    bool[256][NUM_HBMS] hbm_weight_datas
+    bool[NUM_HBMS] hbm_weight_valids
+    bool[NUM_HBMS] hbm_may_pushes
+
+    when pipe_ctrl_to_hbms.dout : bool[] packed_hbm_settings {
+        matrix_data_start_addrs, matrix_data_element_counts = pack_hbm_settings.unpack(packed_hbm_settings)
+        set_matrix_data = true
+    } else {
+        set_matrix_data = false
+    }
+    
+    when y_result_writer.write_has_been_committed {
+        ctrl.finish(64'b0)
+    }
+
+    // Shared data for SLRs
+    Tuple2 pack_x_vector_info_slr1
+    Tuple2 pack_x_vector_info_slr2
+    action_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_x_vector_info_slr0_to_slr1
+    action_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_x_vector_info_slr1_to_slr2
+    data_pipeline#(DEPTH: 6) pipe_x_page_releases_slr0_to_slr0
+    data_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_x_page_releases_slr1_to_slr0
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_x_page_releases_slr2_to_slr0
+
+    pipe_x_page_releases_slr0_to_slr0.din = suspmv_slr0.x_releases
+    pipe_x_page_releases_slr1_to_slr0.din = suspmv_slr1.x_releases
+    pipe_x_page_releases_slr2_to_slr0.din = suspmv_slr2.x_releases
+    x_vector_reader.x_page_releases[0:UNITS_SLR0] = pipe_x_page_releases_slr0_to_slr0.dout
+    x_vector_reader.x_page_releases[UNITS_SLR0+:UNITS_SLR1] = pipe_x_page_releases_slr1_to_slr0.dout
+    x_vector_reader.x_page_releases[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2] = pipe_x_page_releases_slr2_to_slr0.dout
+
+    when x_vector_reader.x_valid : float[16] x_values, bool x_last {
+        pipe_x_vector_info_slr0_to_slr1.din(pack_x_vector_info_slr1.pack(x_values, x_last))
+        suspmv_slr0.push_x_data(x_values, x_last)
+    }
+    when pipe_x_vector_info_slr0_to_slr1.dout : bool[] packed {
+        float[16] x_values, bool x_last = pack_x_vector_info_slr1.unpack(packed)
+        pipe_x_vector_info_slr1_to_slr2.din(pack_x_vector_info_slr2.pack(x_values, x_last))
+        suspmv_slr1.push_x_data(x_values, x_last)
+    }
+
+    when pipe_x_vector_info_slr1_to_slr2.dout : bool[] packed {
+        float[16] x_values, bool x_last = pack_x_vector_info_slr2.unpack(packed)
+        suspmv_slr2.push_x_data(x_values, x_last)
+    }
+
+    data_pipeline#(DEPTH: 6) pipe_start_y_bursts_slr0_to_slr0
+    data_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_start_y_bursts_slr0_to_slr1
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_start_y_bursts_slr0_to_slr2
+    data_pipeline#(DEPTH: 6) pipe_may_y_valid_slr0_to_slr0
+    data_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_may_y_valid_slr0_to_slr1
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_may_y_valid_slr0_to_slr2
+
+    pipe_start_y_bursts_slr0_to_slr0.din = y_result_writer.unit_may_starts[0:UNITS_SLR0]
+    suspmv_slr0.start_y_bursts = pipe_start_y_bursts_slr0_to_slr0.dout
+    pipe_start_y_bursts_slr0_to_slr1.din = y_result_writer.unit_may_starts[UNITS_SLR0+:UNITS_SLR1]
+    suspmv_slr1.start_y_bursts = pipe_start_y_bursts_slr0_to_slr1.dout
+    pipe_start_y_bursts_slr0_to_slr2.din = y_result_writer.unit_may_starts[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2]
+    suspmv_slr2.start_y_bursts = pipe_start_y_bursts_slr0_to_slr2.dout
+
+    pipe_may_y_valid_slr0_to_slr0.din = y_result_writer.may_write
+    suspmv_slr0.may_y_valid = pipe_may_y_valid_slr0_to_slr0.dout
+    pipe_may_y_valid_slr0_to_slr1.din = y_result_writer.may_write
+    suspmv_slr1.may_y_valid = pipe_may_y_valid_slr0_to_slr1.dout
+    pipe_may_y_valid_slr0_to_slr2.din = y_result_writer.may_write
+    suspmv_slr2.may_y_valid = pipe_may_y_valid_slr0_to_slr2.dout
+
+    // To cross SLR1 -> SLR2
+    Tuple3 pack_y_valid_slr1
+    action_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_y_valid_to_slr1_to_slr0
+    Tuple3 pack_y_valid_slr2
+    action_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_y_valid_to_slr2_to_slr1
+
+    when suspmv_slr2.y_valid : float[16] y_values_slr2, int#(FROM: 0, TO: 17) num_y_values_slr2, bool is_last_y_slr2 {
+        pipe_y_valid_to_slr2_to_slr1.din(pack_y_valid_slr2.pack(y_values_slr2, num_y_values_slr2, is_last_y_slr2))
+    }
+
+    when pipe_y_valid_to_slr2_to_slr1.dout : bool[] packed_y_slr1 {
+        pipe_y_valid_to_slr1_to_slr0.din(packed_y_slr1)
+    }
+    when suspmv_slr1.y_valid : float[16] y_values_slr1, int#(FROM: 0, TO: 17) num_y_values_slr1, bool is_last_y_slr1 {
+        pipe_y_valid_to_slr1_to_slr0.din(pack_y_valid_slr1.pack(y_values_slr1, num_y_values_slr1, is_last_y_slr1))
+    }
+    when pipe_y_valid_to_slr1_to_slr0.dout : bool[] packed_y_slr0 {
+        float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out = pack_y_valid_slr2.unpack(packed_y_slr0)
+        y_result_writer.write(y_values_out, num_y_values_out, is_last_y_out)
+    }
+    when suspmv_slr0.y_valid : float[16] y_values_slr0, int#(FROM: 0, TO: 17) num_y_values_slr0, bool is_last_y_slr0 {
+        y_result_writer.write(y_values_slr0, num_y_values_slr0, is_last_y_slr0)
+    }
+
+    // =================== //
+    // Pipe HBM Weights up //
+    // =================== //
+    
+    data_pipeline#(DEPTH: 2) pipe_hbm_may_push_slr0_to_slr0
+    pipe_hbm_may_push_slr0_to_slr0.din = suspmv_slr0.may_pushes
+    data_pipeline#(DEPTH: 2) pipe_hbm_weights_slr0_to_slr0
+    hbm_may_pushes[0:UNITS_SLR0] = pipe_hbm_may_push_slr0_to_slr0.dout
+    Tuple2 pack_hbm_weights_slr0
+    pipe_hbm_weights_slr0_to_slr0.din = pack_hbm_weights_slr0.pack(hbm_weight_valids[0:UNITS_SLR0], hbm_weight_datas[0:UNITS_SLR0])
+    suspmv_slr0.hbm_valids, suspmv_slr0.hbm_datas = pack_hbm_weights_slr0.unpack(pipe_hbm_weights_slr0_to_slr0.dout)
+
+    data_pipeline_cross_slr#(FROM_DEPTH: 2, TO_DEPTH: 6) pipe_hbm_may_push_slr1_to_slr0
+    pipe_hbm_may_push_slr1_to_slr0.din = suspmv_slr1.may_pushes
+    data_pipeline_cross_slr#(FROM_DEPTH: 6, TO_DEPTH: 2) pipe_hbm_weights_slr0_to_slr1
+    hbm_may_pushes[UNITS_SLR0+:UNITS_SLR1] = pipe_hbm_may_push_slr1_to_slr0.dout
+    Tuple2 pack_hbm_weights_slr1
+    pipe_hbm_weights_slr0_to_slr1.din = pack_hbm_weights_slr1.pack(hbm_weight_valids[UNITS_SLR0+:UNITS_SLR1], hbm_weight_datas[UNITS_SLR0+:UNITS_SLR1])
+    suspmv_slr1.hbm_valids, suspmv_slr1.hbm_datas = pack_hbm_weights_slr1.unpack(pipe_hbm_weights_slr0_to_slr1.dout)
+
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 2, MIDDLE_DEPTH: 8, TO_DEPTH: 6) pipe_hbm_may_push_slr2_to_slr0
+    pipe_hbm_may_push_slr2_to_slr0.din = suspmv_slr2.may_pushes
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 6, MIDDLE_DEPTH: 8, TO_DEPTH: 2) pipe_hbm_weights_slr0_to_slr2
+    hbm_may_pushes[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2] = pipe_hbm_may_push_slr2_to_slr0.dout
+    Tuple2 pack_hbm_weights_slr2
+    pipe_hbm_weights_slr0_to_slr2.din = pack_hbm_weights_slr2.pack(hbm_weight_valids[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2], hbm_weight_datas[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2])
+    suspmv_slr2.hbm_valids, suspmv_slr2.hbm_datas = pack_hbm_weights_slr2.unpack(pipe_hbm_weights_slr0_to_slr2.dout)
+
+    // ====== //
+    // Resets //
+    // ====== //
+
+    data_pipeline#(DEPTH: 16) pipe_aresetn_slr0
+    data_pipeline_cross_slr#(FROM_DEPTH: 8, TO_DEPTH: 16) pipe_aresetn_slr0_to_slr1
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 8, MIDDLE_DEPTH: 8, TO_DEPTH: 16) pipe_aresetn_slr0_to_slr2
+
+    pipe_aresetn_slr0.din = !aresetn
+    pipe_aresetn_slr0_to_slr1.din = !aresetn
+    pipe_aresetn_slr0_to_slr2.din = !aresetn
+
+    when pipe_aresetn_slr0.dout {
+        ctrl.rst()
+        x_vector_reader.rst()
+        y_result_writer.rst()
+
+        suspmv_slr0.rst()
+    }
+
+    when pipe_aresetn_slr0_to_slr1.dout {
+        suspmv_slr1.rst()
+    }
+
+    when pipe_aresetn_slr0_to_slr2.dout {
+        suspmv_slr2.rst()
+    }
+
+
     // ===================================================== //
     //  AXI4-Full HBM Reader for the Sparse Matrix Elements  //
     // ===================================================== //
 
-    domain hbm0
+    domain hbm00
     axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm00_reader
     axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm00_writer_tie_off
     output bool                                     maxi_hbm00_awvalid  = hbm00_writer_tie_off.awvalid
@@ -584,8 +782,22 @@ module SUSpMV_Full {
     hbm00_reader.rresp =                            maxi_hbm00_rresp
     hbm00_reader.rlast =                            maxi_hbm00_rlast
 
-
-    domain hbm1
+    bool _hbm00_reader_may_request = hbm00_reader.may_request_new_read
+    when set_matrix_data {
+        hbm00_reader.request_new_read(matrix_data_start_addrs[00], matrix_data_element_counts[00], [])
+    }
+    hbm00_reader.ready_for_lots_of_data = hbm_may_pushes[00]
+    when hbm00_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+        hbm_weight_valids[00] = true
+        hbm_weight_datas[00] = elements[0]
+    } else {
+        hbm_weight_valids[00] = false
+    }
+    when pipe_aresetn_slr0.dout {
+        hbm00_reader.rst()
+        hbm00_writer_tie_off.rst()
+    }
+    domain hbm01
     axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm01_reader
     axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm01_writer_tie_off
     output bool                                     maxi_hbm01_awvalid  = hbm01_writer_tie_off.awvalid
@@ -632,163 +844,272 @@ module SUSpMV_Full {
     hbm01_reader.rdata =                            maxi_hbm01_rdata
     hbm01_reader.rresp =                            maxi_hbm01_rresp
     hbm01_reader.rlast =                            maxi_hbm01_rlast
-    
-    // ========= //
-    //  Kernels  //
-    // ========= //
-    SUSpMV_SLR#(NUM_UNITS: NUM_HBMS) suspmv_slr2
 
-    // =========== //
-    //  Addresses  //
-    // =========== //
-
-    // Pipeline regs to get from SLR0 to SLR1
-    Tuple4 pack_ddr_settings
-    action_pipeline#(DEPTH: NO_SLR_CROSSING) pipe_ctrl_to_ddr
-    
-    Tuple2 pack_hbm_settings
-    action_pipeline#(DEPTH: NO_SLR_CROSSING) pipe_ctrl_to_hbms
-    
-    bool _hbm0_reader_may_request = hbm00_reader.may_request_new_read
-    bool _hbm1_reader_may_request = hbm01_reader.may_request_new_read
-    when ctrl.start {
-        int x_vector_addr = BitsToUInt(ctrl.input_regs[0])
-        int y_vector_addr = BitsToUInt(ctrl.input_regs[1])
-        int num_x_pages = BitsToUInt(ctrl.input_regs[2]) mod 1 << 32
-        int num_y_repetitions = BitsToUInt(ctrl.input_regs[3]) mod 1 << 32
-        pipe_ctrl_to_ddr.din(pack_ddr_settings.pack(x_vector_addr, y_vector_addr, num_x_pages, num_y_repetitions))
-
-        int[NUM_HBMS] matrix_data_start_addrs
-        int[NUM_HBMS] matrix_data_element_counts
-        for int HBM_I in 0..NUM_HBMS {
-            // Pipeline regs to reach both ends of SLR0
-            matrix_data_start_addrs[HBM_I] = BitsToUInt(ctrl.input_regs[4 + HBM_I * 2])
-            matrix_data_element_counts[HBM_I] = BitsToUInt(ctrl.input_regs[5 + HBM_I * 2]) mod 1 << 32
-        }
-
-        pipe_ctrl_to_hbms.din(pack_hbm_settings.pack(matrix_data_start_addrs, matrix_data_element_counts))
+    bool _hbm01_reader_may_request = hbm01_reader.may_request_new_read
+    when set_matrix_data {
+        hbm01_reader.request_new_read(matrix_data_start_addrs[01], matrix_data_element_counts[01], [])
     }
-    when pipe_ctrl_to_ddr.dout : bool[] packed_ddr1_settings {
-        int x_vector_addr,
-        int y_vector_addr,
-        int num_x_pages,
-        int num_y_repetitions = pack_ddr_settings.unpack(packed_ddr1_settings)
-
-        x_vector_reader.start_loading(x_vector_addr, num_x_pages, num_y_repetitions)
-        y_result_writer.submit_y_vector_addr(y_vector_addr, num_y_repetitions)
-    }
-
-    when pipe_ctrl_to_hbms.dout : bool[] packed_hbm_settings {
-        int[NUM_HBMS] matrix_data_start_addrs,
-        int[NUM_HBMS] matrix_data_element_counts = pack_hbm_settings.unpack(packed_hbm_settings)
-
-        hbm00_reader.request_new_read(matrix_data_start_addrs[0], matrix_data_element_counts[0], [])
-        hbm01_reader.request_new_read(matrix_data_start_addrs[1], matrix_data_element_counts[1], [])
-    }
-    
-    when y_result_writer.write_has_been_committed {
-        ctrl.finish(64'b0)
-    }
-
-    // Shared data for SLRs
-    // To cross SLR1 -> SLR2
-    Tuple2 pack_x_vector_info_slr1
-    Tuple2 pack_x_vector_info_slr2
-    action_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_x_vector_info_slr0_to_slr1
-    action_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_x_vector_info_slr1_to_slr2
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_x_page_releases_slr2_to_slr0
-
-    pipe_x_page_releases_slr2_to_slr0.din = suspmv_slr2.x_releases
-    x_vector_reader.x_page_releases[0:NUM_HBMS] = pipe_x_page_releases_slr2_to_slr0.dout
-
-    when x_vector_reader.x_valid : float[16] x_values, bool x_last {
-        pipe_x_vector_info_slr0_to_slr1.din(pack_x_vector_info_slr1.pack(x_values, x_last))
-    }
-    when pipe_x_vector_info_slr0_to_slr1.dout : bool[] packed {
-        float[16] x_values, bool x_last = pack_x_vector_info_slr1.unpack(packed)
-        pipe_x_vector_info_slr1_to_slr2.din(pack_x_vector_info_slr2.pack(x_values, x_last))
-    }
-
-    when pipe_x_vector_info_slr1_to_slr2.dout : bool[] packed {
-        float[16] x_values, bool x_last = pack_x_vector_info_slr2.unpack(packed)
-        suspmv_slr2.push_x_data(x_values, x_last)
-    }
-
-    // To cross SLR1 -> SLR2
-    Tuple3 pack_y_valid_slr2
-    action_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_y_valid_to_slr2_to_slr0
-
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_start_y_bursts_slr0_to_slr2
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_may_y_valid_slr0_to_slr2
-
-    pipe_start_y_bursts_slr0_to_slr2.din = y_result_writer.unit_may_starts[0:NUM_HBMS]
-    suspmv_slr2.start_y_bursts = pipe_start_y_bursts_slr0_to_slr2.dout
-
-    pipe_may_y_valid_slr0_to_slr2.din = y_result_writer.may_write
-    suspmv_slr2.may_y_valid = pipe_may_y_valid_slr0_to_slr2.dout
-
-    when suspmv_slr2.y_valid : float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out {
-        pipe_y_valid_to_slr2_to_slr0.din(pack_y_valid_slr2.pack(y_values_out, num_y_values_out, is_last_y_out))
-    }
-
-    when pipe_y_valid_to_slr2_to_slr0.dout : bool[] packed {
-        float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out = pack_y_valid_slr2.unpack(packed)
-        y_result_writer.write(y_values_out, num_y_values_out, is_last_y_out)
-    }
-
-    // Connect all HBMs
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 3, MIDDLE_DEPTH: 8, TO_DEPTH: 7) pipe_may_push_hbm00_slr2_to_slr0
-    pipe_may_push_hbm00_slr2_to_slr0.din = suspmv_slr2.may_pushes[0]
-    hbm00_reader.ready_for_lots_of_data = pipe_may_push_hbm00_slr2_to_slr0.dout
-    action_pipeline_cross_slr_twice#(FROM_DEPTH: 7, MIDDLE_DEPTH: 8, TO_DEPTH: 3) pipe_weights_hbm00_slr0_to_slr2
-    when hbm00_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        pipe_weights_hbm00_slr0_to_slr2.din(elements[0])
-    }
-    when pipe_weights_hbm00_slr0_to_slr2.dout : bool[256] hbm_data {
-        suspmv_slr2.hbm_valids[0] = true
-        suspmv_slr2.hbm_datas[0] = hbm_data
-    } else {
-        suspmv_slr2.hbm_valids[0] = false
-    }
-
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 3, MIDDLE_DEPTH: 8, TO_DEPTH: 7) pipe_may_push_hbm01_slr2_to_slr0
-    pipe_may_push_hbm01_slr2_to_slr0.din = suspmv_slr2.may_pushes[1]
-    hbm01_reader.ready_for_lots_of_data = pipe_may_push_hbm01_slr2_to_slr0.dout
-    action_pipeline_cross_slr_twice#(FROM_DEPTH: 7, MIDDLE_DEPTH: 8, TO_DEPTH: 3) pipe_weights_hbm01_slr0_to_slr2
+    hbm01_reader.ready_for_lots_of_data = hbm_may_pushes[01]
     when hbm01_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        pipe_weights_hbm01_slr0_to_slr2.din(elements[0])
-    }
-    when pipe_weights_hbm01_slr0_to_slr2.dout : bool[256] hbm_data {
-        suspmv_slr2.hbm_valids[1] = true
-        suspmv_slr2.hbm_datas[1] = hbm_data
+        hbm_weight_valids[01] = true
+        hbm_weight_datas[01] = elements[0]
     } else {
-        suspmv_slr2.hbm_valids[1] = false
+        hbm_weight_valids[01] = false
     }
-
-    data_pipeline#(DEPTH: 16) pipe_aresetn_slr0
-    data_pipeline_cross_slr#(FROM_DEPTH: 8, TO_DEPTH: 16) pipe_aresetn_slr0_to_slr1
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 8, MIDDLE_DEPTH: 8, TO_DEPTH: 16) pipe_aresetn_slr0_to_slr2
-
-    pipe_aresetn_slr0.din = !aresetn
-    pipe_aresetn_slr0_to_slr1.din = !aresetn
-    pipe_aresetn_slr0_to_slr2.din = !aresetn
-
     when pipe_aresetn_slr0.dout {
-        ctrl.rst()
-        x_vector_reader.rst()
-        y_result_writer.rst()
-
-        hbm00_reader.rst()
-        hbm00_writer_tie_off.rst()
         hbm01_reader.rst()
         hbm01_writer_tie_off.rst()
     }
+    domain hbm02
+    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm02_reader
+    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm02_writer_tie_off
+    output bool                                     maxi_hbm02_awvalid  = hbm02_writer_tie_off.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm02_awaddr   = hbm02_writer_tie_off.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm02_awlen    = hbm02_writer_tie_off.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm02_awsize   = hbm02_writer_tie_off.awsize
+    output bool[2]                                  maxi_hbm02_awburst  = hbm02_writer_tie_off.awburst
+    output bool[3]                                  maxi_hbm02_awprot   = hbm02_writer_tie_off.awprot
+    output bool[4]                                  maxi_hbm02_awcache  = hbm02_writer_tie_off.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm02_awqos    = hbm02_writer_tie_off.awqos
+    output bool                                     maxi_hbm02_awlock   = hbm02_writer_tie_off.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm02_awregion = hbm02_writer_tie_off.awregion
+    output bool                                     maxi_hbm02_wvalid   = hbm02_writer_tie_off.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm02_wdata    = hbm02_writer_tie_off.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm02_wstrb    = hbm02_writer_tie_off.wstrb
+    output bool                                     maxi_hbm02_wlast    = hbm02_writer_tie_off.wlast
+    output bool                                     maxi_hbm02_bready   = hbm02_writer_tie_off.bready
+    input  bool                                     maxi_hbm02_wready'0
+    input  bool                                     maxi_hbm02_bvalid
+    input  bool[2]                                  maxi_hbm02_bresp
+    input  bool                                     maxi_hbm02_awready
+    hbm02_writer_tie_off.awready =                  maxi_hbm02_awready
+    hbm02_writer_tie_off.wready =                   maxi_hbm02_wready
+    hbm02_writer_tie_off.bvalid =                   maxi_hbm02_bvalid
+    hbm02_writer_tie_off.bresp =                    maxi_hbm02_bresp
+    output bool                                     maxi_hbm02_arvalid  = hbm02_reader.arvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm02_araddr   = hbm02_reader.araddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm02_arlen    = hbm02_reader.arlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm02_arsize   = hbm02_reader.arsize
+    output bool[2]                                  maxi_hbm02_arburst  = hbm02_reader.arburst
+    output bool[3]                                  maxi_hbm02_arprot   = hbm02_reader.arprot
+    output bool[4]                                  maxi_hbm02_arcache  = hbm02_reader.arcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm02_arqos    = hbm02_reader.arqos
+    output bool                                     maxi_hbm02_arlock   = hbm02_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm02_arregion = hbm02_reader.arregion
+    output bool                                     maxi_hbm02_rready   = hbm02_reader.rready
+    input  bool                                     maxi_hbm02_arready'0
+    input  bool                                     maxi_hbm02_rvalid
+    input  bool[HBM_AXI_WIDTH]                      maxi_hbm02_rdata
+    input  bool[2]                                  maxi_hbm02_rresp
+    input  bool                                     maxi_hbm02_rlast
+    hbm02_reader.arready =                          maxi_hbm02_arready
+    hbm02_reader.rvalid =                           maxi_hbm02_rvalid
+    hbm02_reader.rdata =                            maxi_hbm02_rdata
+    hbm02_reader.rresp =                            maxi_hbm02_rresp
+    hbm02_reader.rlast =                            maxi_hbm02_rlast
 
-    when pipe_aresetn_slr0_to_slr1.dout {
-
+    bool _hbm02_reader_may_request = hbm02_reader.may_request_new_read
+    when set_matrix_data {
+        hbm02_reader.request_new_read(matrix_data_start_addrs[02], matrix_data_element_counts[02], [])
     }
+    hbm02_reader.ready_for_lots_of_data = hbm_may_pushes[02]
+    when hbm02_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+        hbm_weight_valids[02] = true
+        hbm_weight_datas[02] = elements[0]
+    } else {
+        hbm_weight_valids[02] = false
+    }
+    when pipe_aresetn_slr0.dout {
+        hbm02_reader.rst()
+        hbm02_writer_tie_off.rst()
+    }
+    domain hbm03
+    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm03_reader
+    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm03_writer_tie_off
+    output bool                                     maxi_hbm03_awvalid  = hbm03_writer_tie_off.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm03_awaddr   = hbm03_writer_tie_off.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm03_awlen    = hbm03_writer_tie_off.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm03_awsize   = hbm03_writer_tie_off.awsize
+    output bool[2]                                  maxi_hbm03_awburst  = hbm03_writer_tie_off.awburst
+    output bool[3]                                  maxi_hbm03_awprot   = hbm03_writer_tie_off.awprot
+    output bool[4]                                  maxi_hbm03_awcache  = hbm03_writer_tie_off.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm03_awqos    = hbm03_writer_tie_off.awqos
+    output bool                                     maxi_hbm03_awlock   = hbm03_writer_tie_off.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm03_awregion = hbm03_writer_tie_off.awregion
+    output bool                                     maxi_hbm03_wvalid   = hbm03_writer_tie_off.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm03_wdata    = hbm03_writer_tie_off.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm03_wstrb    = hbm03_writer_tie_off.wstrb
+    output bool                                     maxi_hbm03_wlast    = hbm03_writer_tie_off.wlast
+    output bool                                     maxi_hbm03_bready   = hbm03_writer_tie_off.bready
+    input  bool                                     maxi_hbm03_wready'0
+    input  bool                                     maxi_hbm03_bvalid
+    input  bool[2]                                  maxi_hbm03_bresp
+    input  bool                                     maxi_hbm03_awready
+    hbm03_writer_tie_off.awready =                  maxi_hbm03_awready
+    hbm03_writer_tie_off.wready =                   maxi_hbm03_wready
+    hbm03_writer_tie_off.bvalid =                   maxi_hbm03_bvalid
+    hbm03_writer_tie_off.bresp =                    maxi_hbm03_bresp
+    output bool                                     maxi_hbm03_arvalid  = hbm03_reader.arvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm03_araddr   = hbm03_reader.araddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm03_arlen    = hbm03_reader.arlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm03_arsize   = hbm03_reader.arsize
+    output bool[2]                                  maxi_hbm03_arburst  = hbm03_reader.arburst
+    output bool[3]                                  maxi_hbm03_arprot   = hbm03_reader.arprot
+    output bool[4]                                  maxi_hbm03_arcache  = hbm03_reader.arcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm03_arqos    = hbm03_reader.arqos
+    output bool                                     maxi_hbm03_arlock   = hbm03_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm03_arregion = hbm03_reader.arregion
+    output bool                                     maxi_hbm03_rready   = hbm03_reader.rready
+    input  bool                                     maxi_hbm03_arready'0
+    input  bool                                     maxi_hbm03_rvalid
+    input  bool[HBM_AXI_WIDTH]                      maxi_hbm03_rdata
+    input  bool[2]                                  maxi_hbm03_rresp
+    input  bool                                     maxi_hbm03_rlast
+    hbm03_reader.arready =                          maxi_hbm03_arready
+    hbm03_reader.rvalid =                           maxi_hbm03_rvalid
+    hbm03_reader.rdata =                            maxi_hbm03_rdata
+    hbm03_reader.rresp =                            maxi_hbm03_rresp
+    hbm03_reader.rlast =                            maxi_hbm03_rlast
 
-    when pipe_aresetn_slr0_to_slr2.dout {
-        suspmv_slr2.rst()
+    bool _hbm03_reader_may_request = hbm03_reader.may_request_new_read
+    when set_matrix_data {
+        hbm03_reader.request_new_read(matrix_data_start_addrs[03], matrix_data_element_counts[03], [])
+    }
+    hbm03_reader.ready_for_lots_of_data = hbm_may_pushes[03]
+    when hbm03_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+        hbm_weight_valids[03] = true
+        hbm_weight_datas[03] = elements[0]
+    } else {
+        hbm_weight_valids[03] = false
+    }
+    when pipe_aresetn_slr0.dout {
+        hbm03_reader.rst()
+        hbm03_writer_tie_off.rst()
+    }
+    domain hbm04
+    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm04_reader
+    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm04_writer_tie_off
+    output bool                                     maxi_hbm04_awvalid  = hbm04_writer_tie_off.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm04_awaddr   = hbm04_writer_tie_off.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm04_awlen    = hbm04_writer_tie_off.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm04_awsize   = hbm04_writer_tie_off.awsize
+    output bool[2]                                  maxi_hbm04_awburst  = hbm04_writer_tie_off.awburst
+    output bool[3]                                  maxi_hbm04_awprot   = hbm04_writer_tie_off.awprot
+    output bool[4]                                  maxi_hbm04_awcache  = hbm04_writer_tie_off.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm04_awqos    = hbm04_writer_tie_off.awqos
+    output bool                                     maxi_hbm04_awlock   = hbm04_writer_tie_off.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm04_awregion = hbm04_writer_tie_off.awregion
+    output bool                                     maxi_hbm04_wvalid   = hbm04_writer_tie_off.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm04_wdata    = hbm04_writer_tie_off.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm04_wstrb    = hbm04_writer_tie_off.wstrb
+    output bool                                     maxi_hbm04_wlast    = hbm04_writer_tie_off.wlast
+    output bool                                     maxi_hbm04_bready   = hbm04_writer_tie_off.bready
+    input  bool                                     maxi_hbm04_wready'0
+    input  bool                                     maxi_hbm04_bvalid
+    input  bool[2]                                  maxi_hbm04_bresp
+    input  bool                                     maxi_hbm04_awready
+    hbm04_writer_tie_off.awready =                  maxi_hbm04_awready
+    hbm04_writer_tie_off.wready =                   maxi_hbm04_wready
+    hbm04_writer_tie_off.bvalid =                   maxi_hbm04_bvalid
+    hbm04_writer_tie_off.bresp =                    maxi_hbm04_bresp
+    output bool                                     maxi_hbm04_arvalid  = hbm04_reader.arvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm04_araddr   = hbm04_reader.araddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm04_arlen    = hbm04_reader.arlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm04_arsize   = hbm04_reader.arsize
+    output bool[2]                                  maxi_hbm04_arburst  = hbm04_reader.arburst
+    output bool[3]                                  maxi_hbm04_arprot   = hbm04_reader.arprot
+    output bool[4]                                  maxi_hbm04_arcache  = hbm04_reader.arcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm04_arqos    = hbm04_reader.arqos
+    output bool                                     maxi_hbm04_arlock   = hbm04_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm04_arregion = hbm04_reader.arregion
+    output bool                                     maxi_hbm04_rready   = hbm04_reader.rready
+    input  bool                                     maxi_hbm04_arready'0
+    input  bool                                     maxi_hbm04_rvalid
+    input  bool[HBM_AXI_WIDTH]                      maxi_hbm04_rdata
+    input  bool[2]                                  maxi_hbm04_rresp
+    input  bool                                     maxi_hbm04_rlast
+    hbm04_reader.arready =                          maxi_hbm04_arready
+    hbm04_reader.rvalid =                           maxi_hbm04_rvalid
+    hbm04_reader.rdata =                            maxi_hbm04_rdata
+    hbm04_reader.rresp =                            maxi_hbm04_rresp
+    hbm04_reader.rlast =                            maxi_hbm04_rlast
+
+    bool _hbm04_reader_may_request = hbm04_reader.may_request_new_read
+    when set_matrix_data {
+        hbm04_reader.request_new_read(matrix_data_start_addrs[04], matrix_data_element_counts[04], [])
+    }
+    hbm04_reader.ready_for_lots_of_data = hbm_may_pushes[04]
+    when hbm04_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+        hbm_weight_valids[04] = true
+        hbm_weight_datas[04] = elements[0]
+    } else {
+        hbm_weight_valids[04] = false
+    }
+    when pipe_aresetn_slr0.dout {
+        hbm04_reader.rst()
+        hbm04_writer_tie_off.rst()
+    }
+    domain hbm05
+    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm05_reader
+    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm05_writer_tie_off
+    output bool                                     maxi_hbm05_awvalid  = hbm05_writer_tie_off.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm05_awaddr   = hbm05_writer_tie_off.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm05_awlen    = hbm05_writer_tie_off.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm05_awsize   = hbm05_writer_tie_off.awsize
+    output bool[2]                                  maxi_hbm05_awburst  = hbm05_writer_tie_off.awburst
+    output bool[3]                                  maxi_hbm05_awprot   = hbm05_writer_tie_off.awprot
+    output bool[4]                                  maxi_hbm05_awcache  = hbm05_writer_tie_off.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm05_awqos    = hbm05_writer_tie_off.awqos
+    output bool                                     maxi_hbm05_awlock   = hbm05_writer_tie_off.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm05_awregion = hbm05_writer_tie_off.awregion
+    output bool                                     maxi_hbm05_wvalid   = hbm05_writer_tie_off.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm05_wdata    = hbm05_writer_tie_off.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm05_wstrb    = hbm05_writer_tie_off.wstrb
+    output bool                                     maxi_hbm05_wlast    = hbm05_writer_tie_off.wlast
+    output bool                                     maxi_hbm05_bready   = hbm05_writer_tie_off.bready
+    input  bool                                     maxi_hbm05_wready'0
+    input  bool                                     maxi_hbm05_bvalid
+    input  bool[2]                                  maxi_hbm05_bresp
+    input  bool                                     maxi_hbm05_awready
+    hbm05_writer_tie_off.awready =                  maxi_hbm05_awready
+    hbm05_writer_tie_off.wready =                   maxi_hbm05_wready
+    hbm05_writer_tie_off.bvalid =                   maxi_hbm05_bvalid
+    hbm05_writer_tie_off.bresp =                    maxi_hbm05_bresp
+    output bool                                     maxi_hbm05_arvalid  = hbm05_reader.arvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm05_araddr   = hbm05_reader.araddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm05_arlen    = hbm05_reader.arlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm05_arsize   = hbm05_reader.arsize
+    output bool[2]                                  maxi_hbm05_arburst  = hbm05_reader.arburst
+    output bool[3]                                  maxi_hbm05_arprot   = hbm05_reader.arprot
+    output bool[4]                                  maxi_hbm05_arcache  = hbm05_reader.arcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm05_arqos    = hbm05_reader.arqos
+    output bool                                     maxi_hbm05_arlock   = hbm05_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm05_arregion = hbm05_reader.arregion
+    output bool                                     maxi_hbm05_rready   = hbm05_reader.rready
+    input  bool                                     maxi_hbm05_arready'0
+    input  bool                                     maxi_hbm05_rvalid
+    input  bool[HBM_AXI_WIDTH]                      maxi_hbm05_rdata
+    input  bool[2]                                  maxi_hbm05_rresp
+    input  bool                                     maxi_hbm05_rlast
+    hbm05_reader.arready =                          maxi_hbm05_arready
+    hbm05_reader.rvalid =                           maxi_hbm05_rvalid
+    hbm05_reader.rdata =                            maxi_hbm05_rdata
+    hbm05_reader.rresp =                            maxi_hbm05_rresp
+    hbm05_reader.rlast =                            maxi_hbm05_rlast
+
+    bool _hbm05_reader_may_request = hbm05_reader.may_request_new_read
+    when set_matrix_data {
+        hbm05_reader.request_new_read(matrix_data_start_addrs[05], matrix_data_element_counts[05], [])
+    }
+    hbm05_reader.ready_for_lots_of_data = hbm_may_pushes[05]
+    when hbm05_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+        hbm_weight_valids[05] = true
+        hbm_weight_datas[05] = elements[0]
+    } else {
+        hbm_weight_valids[05] = false
+    }
+    when pipe_aresetn_slr0.dout {
+        hbm05_reader.rst()
+        hbm05_writer_tie_off.rst()
     }
 }

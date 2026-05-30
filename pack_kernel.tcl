@@ -76,18 +76,19 @@ add_bus_interface maxi_ddr00 512
 associate_bus_interface maxi_ddr00 X_VEC
 associate_bus_interface maxi_ddr00 Y_VEC_OUT
 
-# HBM CTRL regs
-add_ctrl_reg HBM00_ADDR {Start addr of HBM00 memory} 0x028 64
-add_ctrl_reg HBM00_COUNT {Number of 256-bit blocks to be read from HBM00} 0x030 32
+# HBMs
+for {set hbmI 0} {$hbmI < 6} {incr hbmI} {
+    set idx [format "%02d" $hbmI]
 
-add_bus_interface maxi_hbm00 256
-associate_bus_interface maxi_hbm00 HBM00_ADDR
+    set addr_offset  [expr {0x028 + $hbmI * 0x10}]
+    set count_offset [expr {0x030 + $hbmI * 0x10}]
 
-add_ctrl_reg HBM01_ADDR {Start addr of HBM01 memory} 0x038 64
-add_ctrl_reg HBM01_COUNT {Number of 256-bit blocks to be read from HBM01} 0x040 32
+    add_ctrl_reg HBM${idx}_ADDR "Start addr of HBM${idx} memory" $addr_offset 64
+    add_ctrl_reg HBM${idx}_COUNT "Number of 256-bit blocks to be read from HBM${idx}" $count_offset 32
 
-add_bus_interface maxi_hbm01 256
-associate_bus_interface maxi_hbm01 HBM01_ADDR
+    add_bus_interface maxi_hbm${idx} 256
+    associate_bus_interface maxi_hbm${idx} HBM${idx}_ADDR
+}
 
 set_property core_revision 2 [ipx::current_core]
 ipx::create_xgui_files [ipx::current_core]
