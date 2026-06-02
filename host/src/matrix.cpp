@@ -297,13 +297,20 @@ bool Matrix::compare(Matrix &m) {
 
 std::vector<float> Matrix::mul(std::vector<float>& v) {
     assert(v.size() == width);
-    std::vector<float> r(height, 0.0);
+    std::vector<double> r(height, 0.0);
 
     for (Entry &entry : this->entries) {
         r[entry.y] += entry.val * v[entry.x];
+        if(entry.y == 1133) {
+            std::cout << "Matrix::mul Mul by x " << entry.x << " gives " << entry.val * v[entry.x] << std::endl;
+        }
     }
 
-    return r;
+    std::vector<float> result(height);
+    for(size_t i = 0; i < height; i++) {
+        result[i] = static_cast<float>(r[i]);
+    }
+    return result;
 }
 
 std::vector<float> ComputeUnitData::mul(std::vector<float>& x_vec) {
@@ -415,7 +422,7 @@ std::vector<float> ComputeUnitData::mul(std::vector<float>& x_vec) {
                     cur_subaccum += static_cast<double>(term);
 
                     if(lasts[i]) {
-                        cur_y_tile[cur_y] = +cur_accumulator + cur_subaccum;
+                        cur_y_tile[cur_y] += cur_accumulator + cur_subaccum;
                         cur_y += 1;
                         cur_accumulator = 0.0;
                         cur_subaccum = 0.0;
@@ -429,10 +436,10 @@ std::vector<float> ComputeUnitData::mul(std::vector<float>& x_vec) {
     return result;
 }
 
-Matrix ComputeUnitData::convert(uint64_t cols, uint64_t rows) {
+Matrix ComputeUnitData::convert() {
     Matrix m = Matrix{
-    	width: cols,
-        height: rows,
+    	width: this->width,
+        height: this->height,
         entries: std::vector<Entry>()
     };
 

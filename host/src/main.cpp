@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
     check_mul(m, data, x_vec);
     
     if(iterations == 0) {
-		Matrix m2 = data.convert(m.width, m.height);
+		Matrix m2 = data.convert();
 		m.compare(m2);
 
         dump_hex(m, data, x_vec);

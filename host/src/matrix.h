@@ -88,7 +88,7 @@ struct ComputeUnitData {
 
     /// For sanity-check against the hardware impl
     std::vector<float> mul(std::vector<float>& v);
-    Matrix convert(uint64_t cols, uint64_t rows);
+    Matrix convert();
 };
 
 struct Matrix {
