@@ -839,37 +839,44 @@ bool Builder::has_y_conflict(uint64_t y) {
     return false;
 }
 
-void Builder::add(Entry &entry, bool last_in_x, bool last_in_y) {
+void Builder::add(Entry entry, bool last_in_x, bool last_in_y) {
     assert(entry.x < TILE_X_WIDTH);
     assert(entry.y < MAX_TILE_Y_HEIGHT);
 
+	// if the first entry is not in row 0, we must add a dummy-entry to increment the row
     if (first_entry_in_tile && entry.y != 0) {
-        entries.push_back(BuilderEntry{ x: 0, y: 0, val: 0.0, last_in_x: false, last_in_y: false });
+    	add(Entry{ x: 0, y: 0, val: 0.0}, false, false);
     }
     first_entry_in_tile = false;
 
-    uint64_t delta_y = entry.y - y_pos;
+	uint64_t delta_y = entry.y - y_pos;
 	assert(entry.y >= y_pos);
     while (delta_y > 255) {
-        entries.push_back(BuilderEntry{ x: 0, y: y_pos + 255, val: 0.0, last_in_x: false, last_in_y: false });
-        delta_y -= 255;
-        y_pos += 255;
+    	// insert dummy entries to bridge the gap
+    	// => call `Builder::add` recursively in case this causes other conflicts
+    	add(Entry{ x: 0, y: y_pos + 255, val: 0.0}, false, false);
+    	delta_y = entry.y - y_pos;
     }
 
-    while (has_y_conflict(entry.y)) {
-        std::cout << "conflict" << std::endl;
-        build_block();
-    }
-int i = 0;
+	if (has_y_conflict(entry.y)) {
+		// add another dummy entry to bridge the gap from the previous entry
+		// => this additional entry has zero overhead, because we add empty blocks afterwards anyways
+		entries.push_back(BuilderEntry{ x: 0, y: entry.y, val: 0.0, last_in_x: false, last_in_y: false });
+		while (has_y_conflict(entry.y)) {
+			// add empty blocks until there is no conflict anymore
+			build_block();
+		}
+	}
+
+	// push back the actual new entry
     entries.push_back(BuilderEntry{ x: entry.x, y: entry.y, val: entry.val, last_in_x: last_in_x, last_in_y: last_in_y });
     while (((last_in_x || last_in_y) && entries.size() != 0) || entries.size() == 7) {
-    	std::cout << "build" << i << "  " <<  entries.size() << "  " << last_in_x << last_in_y<< std::endl;
+    	// we have enough entries buffered to build a new block
         build_block();
         i++;
     }
 
     if (last_in_x || last_in_y) {
-        std::cout << entries.size() << std::endl;
         first_entry_in_tile = true;
         y_pos = 0;
     } else {
@@ -889,9 +896,11 @@ void Builder::build_block() {
             break;
         }
 
-        uint64_t delta_y = 1;
+        uint64_t delta_y = 0;
         if (i+1 < entries.size() && !entries[i].last_in_x) {
             delta_y = entries[i+1].y - entries[i].y;
+        } else if (entries[i].last_in_x) {
+	        delta_y = 1;
         }
 
         assert(delta_y <= 255);

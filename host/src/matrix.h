@@ -65,7 +65,7 @@ struct Builder {
     uint64_t y_pos;
 
     Builder();
-    void add(Entry &entry, bool last_in_tile, bool last_in_y);
+    void add(Entry entry, bool last_in_tile, bool last_in_y);
 
 private:
     bool has_bank_conflict(uint64_t *y, uint64_t len, uint64_t new_y);
