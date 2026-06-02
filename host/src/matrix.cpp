@@ -903,7 +903,7 @@ void Builder::build_block() {
         if (i+1 < entries.size() && !entries[i].last_in_x) {
             delta_y = entries[i+1].y - entries[i].y;
         } else if (entries[i].last_in_x) {
-	        delta_y = 1;
+	        delta_y = 0;
         }
 
         assert(delta_y <= 255);
@@ -1004,7 +1004,7 @@ void Builder::build_block() {
             y_delta1 : dy[1],
             y_delta2 : dy[2],
             y_delta3 : dy[3],
-            y_delta4 : dy[4],
+            y_delta4 : last_in_x ? 1u : dy[4], // flush the accumulator on last x
             last_in_x : last_in_x ? 1u : 0u,
             last_in_y : last_in_y ? 1u : 0u,
             x_index_4: x[4],
