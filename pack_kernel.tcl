@@ -77,7 +77,7 @@ associate_bus_interface maxi_ddr00 X_VEC
 associate_bus_interface maxi_ddr00 Y_VEC_OUT
 
 # HBMs
-for {set hbmI 0} {$hbmI < 6} {incr hbmI} {
+for {set hbmI 0} {$hbmI < 32} {incr hbmI} {
     set idx [format "%02d" $hbmI]
 
     set addr_offset  [expr {0x028 + $hbmI * 0x10}]

@@ -1,20 +1,22 @@
 
 create_pblock pblock_suspmv_slr0
-add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells suspmv_slr0]
 # resize_pblock [get_pblocks pblock_suspmv_slr0] -add {CLOCKREGION_X0Y0:CLOCKREGION_X7Y3}
 resize_pblock [get_pblocks pblock_suspmv_slr0] -add {SLR0}
 set_property IS_SOFT FALSE [get_pblocks pblock_suspmv_slr0]
 
 create_pblock pblock_suspmv_slr1
-add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells suspmv_slr1]
 # resize_pblock [get_pblocks pblock_suspmv_slr1] -add {CLOCKREGION_X0Y4:CLOCKREGION_X7Y7}
 resize_pblock [get_pblocks pblock_suspmv_slr1] -add {SLR1}
 set_property IS_SOFT FALSE [get_pblocks pblock_suspmv_slr1]
 
 create_pblock pblock_suspmv_slr2
-add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells suspmv_slr2]
 # resize_pblock [get_pblocks pblock_suspmv_slr2] -add {CLOCKREGION_X0Y8:CLOCKREGION_X7Y11}
 resize_pblock [get_pblocks pblock_suspmv_slr2] -add {SLR2}
+set_property IS_SOFT FALSE [get_pblocks pblock_suspmv_slr2]
+
+# Special pblock to keep the x/y reader/writer together
+create_pblock keep_x_y_left_side_of_slr0
+resize_pblock keep_x_y_left_side_of_slr0 -add {CLOCKREGION_X3Y2:CLOCKREGION_X3Y3}
 set_property IS_SOFT FALSE [get_pblocks pblock_suspmv_slr2]
 
 # XY Vector memory on SLR1 in the center
@@ -41,10 +43,14 @@ set_property IS_SOFT FALSE [get_pblocks pblock_suspmv_slr2]
 # set_property USER_SLL_REG 1 [get_cells */suspmv_din_laguna_reg]
 # set_property USER_SLL_REG 1 [get_cells */suspmv_dout_laguna_reg]
 
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells suspmv_slr0]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells suspmv_slr1]
+add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells suspmv_slr2]
+
 # SLR0 local connections
-add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells ctrl]
-add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells x_vector_reader]
-add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells y_result_writer]
+add_cells_to_pblock [get_pblocks keep_x_y_left_side_of_slr0] [get_cells ctrl]
+add_cells_to_pblock [get_pblocks keep_x_y_left_side_of_slr0] [get_cells x_vector_reader]
+add_cells_to_pblock [get_pblocks keep_x_y_left_side_of_slr0] [get_cells y_result_writer]
 
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_ctrl_to_hbms]
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_ctrl_to_ddr]
@@ -76,3 +82,15 @@ add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells pipe_*_slr0_to_s
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells pipe_*_slr2_to_slr0/from_slr]
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells pipe_*_slr2_to_slr0/middle_slr]
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_*_slr2_to_slr0/to_slr]
+
+
+# Add cluster constraints, to keep separate modules separate as much as possible
+# set_property USER_CLUSTER ctrl_cluster [get_cells ctrl]
+# set_property USER_CLUSTER x_vector_reader_cluster [get_cells x_vector_reader]
+# set_property USER_CLUSTER y_result_writer_cluster [get_cells y_result_writer]
+# set_property USER_CLUSTER slr0_unit1_cluster [get_cells suspmv_slr0/unit]
+# set_property USER_CLUSTER slr0_unit2_cluster [get_cells suspmv_slr0/unit_2]
+# set_property USER_CLUSTER slr1_unit1_cluster [get_cells suspmv_slr1/unit]
+# set_property USER_CLUSTER slr1_unit2_cluster [get_cells suspmv_slr1/unit_2]
+# set_property USER_CLUSTER slr2_unit1_cluster [get_cells suspmv_slr2/unit]
+# set_property USER_CLUSTER slr2_unit2_cluster [get_cells suspmv_slr2/unit_2]

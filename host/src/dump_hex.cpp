@@ -62,7 +62,7 @@ void store_matrix_size(std::string path, Matrix& m, ComputeUnitData& data) {
 }
 
 int dump_hex(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec) {
-    std::vector<float> expected_result = m.mul(x_vec);
+    std::vector<float> expected_result = data.mul(x_vec);
 
     // Store the vector 
     store<float, 512>("x_vec.mem", x_vec);
