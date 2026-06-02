@@ -285,12 +285,10 @@ bool Matrix::compare(Matrix &m) {
 		if (entries[i].x != m.entries[i].x || entries[i].y != m.entries[i].y || entries[i].val != m.entries[i].val) {
             std::cout << entries[i] << "  " << m.entries[i] << std::endl;
 			equal = false;
-		} else {
-            //std::cout << entries[i] << std::endl;
 		}
 	}
 	if (!equal) {	
-        std::cout << "DISCREPANCY BETWEEN matrices FOUND!" << std::endl;
+        std::cout << "matrices differ!" << std::endl;
 	}
 	return equal;
 }
@@ -301,9 +299,6 @@ std::vector<float> Matrix::mul(std::vector<float>& v) {
 
     for (Entry &entry : this->entries) {
         r[entry.y] += entry.val * v[entry.x];
-        if(entry.y == 1133) {
-            std::cout << "Matrix::mul Mul by x " << entry.x << " gives " << entry.val * v[entry.x] << std::endl;
-        }
     }
 
     std::vector<float> result(height);
@@ -332,9 +327,9 @@ std::vector<float> ComputeUnitData::mul(std::vector<float>& x_vec) {
         for(size_t i = 0; i < MAX_TILE_Y_HEIGHT; i++) {
             cur_y_tile[i] = 0.0;
         }
-        std::cout << "Compute Unit " << compute_unit << std::endl;
+        //std::cout << "Compute Unit " << compute_unit << std::endl;
         for(MatrixDataBlock& elem : this->hbm_buffers[compute_unit]) {
-            std::cout << elem << std::endl;
+            //std::cout << elem << std::endl;
             if(elem.float5.mode == 0b1111) {
                 // It's a float5
                 uint64_t x_indices[5] = {
@@ -386,7 +381,7 @@ std::vector<float> ComputeUnitData::mul(std::vector<float>& x_vec) {
                     uint64_t y_to = this->y_froms[section+1];
                     for(size_t y = y_from; y < y_to; y++) {
                         result[y] = static_cast<float>(cur_y_tile[y - y_from]);
-                        std::cout << "Write to Y " << y << ": " << result[y] << std::endl;
+                        //std::cout << "Write to Y " << y << ": " << result[y] << std::endl;
                     }
                     for(size_t i = 0; i < MAX_TILE_Y_HEIGHT; i++) {
                         cur_y_tile[i] = 0.0;
@@ -525,208 +520,6 @@ Matrix ComputeUnitData::convert() {
     return m;
 }
 
-bool has_bank_conflics(uint64_t *y, uint64_t new_idx) {
-    for (uint64_t i = 0; i < new_idx; i++) {
-        if (y[i] % NUM_Y_BANKS == y[new_idx] % NUM_Y_BANKS && y[i] != y[new_idx]) {
-            // bank conflict
-            return true;
-        }
-    }
-    return false;
-}
-
-void append_tile_entries(std::vector<Entry>& entries, std::vector<MatrixDataBlock>& data, bool is_last_in_y) {
-    uint64_t first_entry_idx = 0;
-    uint64_t block_count = 0;
-    uint64_t cur_y = 0;
-
-    while (true) {
-        block_count += 1;
-        float    val[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-        uint64_t x[6]   = {0, 0, 0, 0, 0, 0};
-        uint64_t y[6]   = {0, 0, 0, 0, 0, 0};
-        uint8_t  dy[6]  = {0, 0, 0, 0, 0, 0};
-        uint64_t count  = 0;
-        for (uint64_t i = 0; i < 6; i++) {
-            uint64_t j = first_entry_idx + i;
-            if(j >= entries.size()) {
-                break;
-            }
-
-            uint64_t delta_y = 1;
-            if (j+1 < entries.size()) {
-                delta_y = entries[j+1].y - entries[j].y;
-            }
-
-            uint64_t entry_y = entries[j].y;
-            if (entry_y != cur_y) {
-                // insert zero
-                x[i] = 0;
-                y[i] = entries[j].y;
-                dy[i] = delta_y;
-                val[i] = 0.0;
-            }
-
-            if (delta_y > 255) {
-                // insert zero
-                for (uint64_t tries = 0; tries < 16; tries++) {
-                    uint64_t next_y = entries[j].y + 255 - tries;
-                    y[i] = next_y;
-                    if (i == 5 || !has_bank_conflics(y, i)) {
-                        break;
-                    }
-                }
-                x[i] = 0;
-                y[i] = entries[j].y;
-                dy[i] = delta_y;
-                val[i] = 0.0;
-            } else {
-                x[i] = entries[j].x;
-                y[i] = entries[j].y;
-                dy[i] = delta_y;
-                val[i] = entries[j].val;
-            }
-
-            // check for bank conflicts
-            if (has_bank_conflics(y, i)) {
-                break;
-            }
-            count += 1;
-        }
-        
-        // check if we can use a `Float6` block here
-        bool use_float6 = true;
-        // only use Float6 iff
-        // - we actually have six values
-        // - it is not the last block of the tile (must be Float5)
-        if (count != 6) {
-            use_float6 = false;
-        }
-        // - no dy may be at more than 1
-        for (uint64_t i = 0; i < 6; i++) {
-            if (dy[i] > 1) {
-                use_float6 = false;
-                break;
-            }
-        }
-        // - the last bits must be representable by a combination of mode and x values
-        //   => compute the last mask by setting every necessary last bits (smaller new x value implies last bit)
-        bool required_last_mask[6] = {false, false, false, false, false, false};
-        for (int i = 0; i < 6; i++) {
-            if (dy[i] != 0) {
-                required_last_mask[i] = true;
-            }
-        }
-        // Remove implicit lasts before adding last mask
-        for(int i = 0; i < 6 - 1; i++) {
-            if(x[i+1] <= x[i]) {
-                required_last_mask[i] = false;
-            }
-        }
-
-        // check if the computed last_mask is available
-        uint8_t required_last = 0b000000;
-        for(int i = 0; i < 6; i++) {
-            if(required_last_mask[i]) {
-                required_last |= 1 << i;
-            }
-        }
-        uint8_t mode = 0b1111;
-        for (uint64_t i = 0; i < 15; i++) {
-            if (LAST_MASKS[i] == required_last) {
-                mode = i;
-                break;
-            }
-        }
-        if (mode == 0b1111) {
-            use_float6 = false;
-        }
-
-        // append new block
-        if (use_float6) {
-            MatrixDataBlock block;
-            block.float6 = Float6{
-                weights: { val[0], val[1], val[2], val[3], val[4], val[5] },
-                x_index_5: x[5],
-                x_index_4: x[4],
-                x_index_3: x[3],
-                x_index_2: x[2],
-                x_index_1: x[1],
-                x_index_0: x[0],
-                mode     : mode,
-            };
-            data.push_back(block);
-            first_entry_idx += 6;
-        } else {
-            if(count > 5) {
-                count = 5; // Float5 can only send 5 floats.
-            }
-            MatrixDataBlock block;
-            bool last_in_x = first_entry_idx + count >= entries.size();
-            bool last_in_y = last_in_x && is_last_in_y;
-            block.float5 = Float5{
-                weights: { val[0], val[1], val[2], val[3], val[4] },
-                y_delta0 : dy[0],
-                y_delta1 : dy[1],
-                y_delta2 : dy[2],
-                y_delta3 : dy[3],
-                y_delta4 : dy[4],
-                last_in_x : last_in_x ? 1u : 0u,
-                last_in_y : last_in_y ? 1u : 0u,
-                x_index_4: x[4],
-                x_index_3: x[3],
-                x_index_2: x[2],
-                x_index_1: x[1],
-                x_index_0: x[0],
-                mode     : 0b1111,
-            };
-            data.push_back(block);
-            std::cout << block << std::endl;
-            if(last_in_x) {
-                std::cout << "first_entry_idx: " << first_entry_idx << std::endl;
-                std::cout << "count: " << count << std::endl;
-                std::cout << "entries.size(): " << entries.size() << std::endl;
-                assert(first_entry_idx + count == entries.size());
-                // Check that on a last block, the output accumulator will be zero. 
-                for(int i = 4; i >= 0; i--) {
-                    if(dy[i] == 0) {
-                        assert(val[i] == 0.0);
-                    } else {
-                        break;
-                    }
-                }
-                break;
-            }
-            first_entry_idx += count;
-        }
-    }
-
-    // in case the tile is very empty, we must add some filler blocks to prevent conflicts with the next tile.
-    while ((block_count < MIN_BLOCKS_PER_TILE) && !is_last_in_y) {
-        block_count += 1;
-
-        MatrixDataBlock block;
-        block.float5 = Float5{
-            weights: { 0.0, 0.0, 0.0, 0.0, 0.0 },
-            y_delta0 : 0,
-            y_delta1 : 0,
-            y_delta2 : 0,
-            y_delta3 : 0,
-            y_delta4 : 0,
-            last_in_x : 0u, // Append blocks for an empty start to the next tile. 
-            last_in_y : 0u,
-            x_index_4: 0,
-            x_index_3: 0,
-            x_index_2: 0,
-            x_index_1: 0,
-            x_index_0: 0,
-            mode     : 0b1111,
-        };
-        //std::cout << "MinBlockFillerBlock" << std::endl;
-        data.push_back(block);
-    }
-}
-
 // Currently we pass num_y_repeats as a simple parameter. In the future this function should itself decide how many repeats to use. 
 ComputeUnitData Matrix::get_compute_unit_data(uint64_t compute_units, uint64_t num_y_repeats) {
     uint64_t tiles_per_row = (width + TILE_X_WIDTH - 1) / TILE_X_WIDTH;
@@ -774,6 +567,9 @@ ComputeUnitData Matrix::get_compute_unit_data(uint64_t compute_units, uint64_t n
         assert(from <= to);
         assert(to <= this->entries.size());
         std::span<Entry> entries_here = std::span(this->entries).subspan(from, to - from);
+        
+        builders[cur_hbm].y_max = y_froms[i+1] - y_froms[i] - 1;
+        builders[cur_hbm].y_max_seen = 0;
 
         for(Entry& e : entries_here) {
             assert(e.x < this->width);
@@ -817,6 +613,8 @@ ComputeUnitData Matrix::get_compute_unit_data(uint64_t compute_units, uint64_t n
 Builder::Builder() {
     first_entry_in_tile = true;
     y_pos = 0;
+    y_max = 0;
+    y_max_seen = 0;
 }
 
 bool Builder::has_bank_conflict(uint64_t *y, uint64_t len, uint64_t new_y) {
@@ -879,8 +677,24 @@ void Builder::add(Entry entry, bool last_in_x, bool last_in_y) {
 		}
 	}
 
-	// push back the actual new entry
-    entries.push_back(BuilderEntry{ x: entry.x, y: entry.y, val: entry.val, last_in_x: last_in_x, last_in_y: last_in_y });
+	// the accelerator deduces the y-increment at a last_in_y by tracking the largest y value
+	// => y_max must appear at least once in a y-section
+    y_max_seen = std::max(y_max_seen, entry.y);
+    assert(y_max_seen <= y_max);
+	if (y_max_seen < y_max && last_in_x && last_in_y) {
+		std::cout << y_max << "   " << y_max_seen << std::endl;
+		// we must add an additional entry at the very end to inform the accelerator about the y-span of the y-section
+		
+		// push back the actual new entry
+		entries.push_back(BuilderEntry{ x: entry.x, y: entry.y, val: entry.val, last_in_x: false, last_in_y: false });
+    	y_pos = entry.y;
+		// add the dummy entry at y_max
+		add(Entry{ x: 0, y: y_max, val: 0.0}, true, true);
+	} else {
+		// push back the actual new entry
+		entries.push_back(BuilderEntry{ x: entry.x, y: entry.y, val: entry.val, last_in_x: last_in_x , last_in_y: last_in_y });
+	}
+
     while (((last_in_x || last_in_y) && entries.size() != 0) || entries.size() == 7) {
     	// we have enough entries buffered to build a new block
         build_block();
@@ -1027,20 +841,5 @@ void Builder::build_block() {
         }
         entries.erase(entries.begin(), entries.begin() + count);
         std::cout << block << std::endl;
-        /*if(last_in_x) {
-            std::cout << "first_entry_idx: " << first_entry_idx << std::endl;
-            std::cout << "count: " << count << std::endl;
-            std::cout << "entries.size(): " << entries.size() << std::endl;
-            assert(first_entry_idx + count == entries.size());
-            // Check that on a last block, the output accumulator will be zero. 
-            for(int i = 4; i >= 0; i--) {
-                if(dy[i] == 0) {
-                    assert(val[i] == 0.0);
-                } else {
-                    break;
-                }
-            }
-            break;
-        }*/
     }
 }
