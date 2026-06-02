@@ -68,8 +68,8 @@ int main(int argc, char **argv) {
     ComputeUnitData data = m.get_compute_unit_data(COMPUTE_UNITS, y_repeats);
     std::cout << "ComputeUnitData done" << std::endl;
 
-    //std::vector<float> x_vec = random_x_vec(m.width);
-    std::vector<float> x_vec(m.width, 1.0);
+    std::vector<float> x_vec = random_x_vec(m.width);
+    //std::vector<float> x_vec(m.width, 1.0);
 
     check_mul(m, data, x_vec);
     

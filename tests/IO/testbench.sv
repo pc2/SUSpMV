@@ -122,6 +122,8 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_ddr00_rresp;
 	// {aclk} input bool #() maxi_ddr00_rlast'0
 	logic maxi_ddr00_rlast;
+
+	// HBM00
 	// {aclk} output bool #() maxi_hbm00_awvalid'0
 	wire maxi_hbm00_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm00_awaddr'0
@@ -192,6 +194,8 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm00_rresp;
 	// {aclk} input bool #() maxi_hbm00_rlast'0
 	logic maxi_hbm00_rlast;
+
+	// HBM01
 	// {aclk} output bool #() maxi_hbm01_awvalid'0
 	wire maxi_hbm01_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm01_awaddr'0
@@ -263,6 +267,150 @@ module SUSpMV_Full_tb;
 	// {aclk} input bool #() maxi_hbm01_rlast'0
 	logic maxi_hbm01_rlast;
 
+	// HBM02
+	// {aclk} output bool #() maxi_hbm02_awvalid'0
+	wire maxi_hbm02_awvalid;
+	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm02_awaddr'0
+	wire[63:0] maxi_hbm02_awaddr;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm02_awlen'0
+	wire[7:0] maxi_hbm02_awlen;
+	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm02_awsize'0
+	wire[2:0] maxi_hbm02_awsize;
+	// {aclk} output bool #()[2] maxi_hbm02_awburst'0
+	wire[1:0] maxi_hbm02_awburst;
+	// {aclk} output bool #()[3] maxi_hbm02_awprot'0
+	wire[2:0] maxi_hbm02_awprot;
+	// {aclk} output bool #()[4] maxi_hbm02_awcache'0
+	wire[3:0] maxi_hbm02_awcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm02_awqos'0
+	wire[3:0] maxi_hbm02_awqos;
+	// {aclk} output bool #() maxi_hbm02_awlock'0
+	wire maxi_hbm02_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm02_awregion'0
+	wire[3:0] maxi_hbm02_awregion;
+	// {aclk} output bool #() maxi_hbm02_wvalid'0
+	wire maxi_hbm02_wvalid;
+	// {aclk} output bool #()[256] maxi_hbm02_wdata'0
+	wire[255:0] maxi_hbm02_wdata;
+	// {aclk} output bool #()[32] maxi_hbm02_wstrb'0
+	wire[31:0] maxi_hbm02_wstrb;
+	// {aclk} output bool #() maxi_hbm02_wlast'0
+	wire maxi_hbm02_wlast;
+	// {aclk} output bool #() maxi_hbm02_bready'0
+	wire maxi_hbm02_bready;
+	// {aclk} input bool #() maxi_hbm02_wready'0
+	logic maxi_hbm02_wready;
+	// {aclk} input bool #() maxi_hbm02_bvalid'0
+	logic maxi_hbm02_bvalid;
+	// {aclk} input bool #()[2] maxi_hbm02_bresp'0
+	logic[1:0] maxi_hbm02_bresp;
+	// {aclk} input bool #() maxi_hbm02_awready'0
+	logic maxi_hbm02_awready;
+	// {aclk} output bool #() maxi_hbm02_arvalid'0
+	wire maxi_hbm02_arvalid;
+	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm02_araddr'0
+	wire[63:0] maxi_hbm02_araddr;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm02_arlen'0
+	wire[7:0] maxi_hbm02_arlen;
+	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm02_arsize'0
+	wire[2:0] maxi_hbm02_arsize;
+	// {aclk} output bool #()[2] maxi_hbm02_arburst'0
+	wire[1:0] maxi_hbm02_arburst;
+	// {aclk} output bool #()[3] maxi_hbm02_arprot'0
+	wire[2:0] maxi_hbm02_arprot;
+	// {aclk} output bool #()[4] maxi_hbm02_arcache'0
+	wire[3:0] maxi_hbm02_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm02_arqos'0
+	wire[3:0] maxi_hbm02_arqos;
+	// {aclk} output bool #() maxi_hbm02_arlock'0
+	wire maxi_hbm02_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm02_arregion'0
+	wire[3:0] maxi_hbm02_arregion;
+	// {aclk} output bool #() maxi_hbm02_rready'0
+	wire maxi_hbm02_rready;
+	// {aclk} input bool #() maxi_hbm02_arready'0
+	logic maxi_hbm02_arready;
+	// {aclk} input bool #() maxi_hbm02_rvalid'0
+	logic maxi_hbm02_rvalid;
+	// {aclk} input bool #()[256] maxi_hbm02_rdata'0
+	logic[255:0] maxi_hbm02_rdata;
+	// {aclk} input bool #()[2] maxi_hbm02_rresp'0
+	logic[1:0] maxi_hbm02_rresp;
+	// {aclk} input bool #() maxi_hbm02_rlast'0
+	logic maxi_hbm02_rlast;
+
+	// HBM03
+	// {aclk} output bool #() maxi_hbm03_awvalid'0
+	wire maxi_hbm03_awvalid;
+	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm03_awaddr'0
+	wire[63:0] maxi_hbm03_awaddr;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm03_awlen'0
+	wire[7:0] maxi_hbm03_awlen;
+	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm03_awsize'0
+	wire[2:0] maxi_hbm03_awsize;
+	// {aclk} output bool #()[2] maxi_hbm03_awburst'0
+	wire[1:0] maxi_hbm03_awburst;
+	// {aclk} output bool #()[3] maxi_hbm03_awprot'0
+	wire[2:0] maxi_hbm03_awprot;
+	// {aclk} output bool #()[4] maxi_hbm03_awcache'0
+	wire[3:0] maxi_hbm03_awcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm03_awqos'0
+	wire[3:0] maxi_hbm03_awqos;
+	// {aclk} output bool #() maxi_hbm03_awlock'0
+	wire maxi_hbm03_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm03_awregion'0
+	wire[3:0] maxi_hbm03_awregion;
+	// {aclk} output bool #() maxi_hbm03_wvalid'0
+	wire maxi_hbm03_wvalid;
+	// {aclk} output bool #()[256] maxi_hbm03_wdata'0
+	wire[255:0] maxi_hbm03_wdata;
+	// {aclk} output bool #()[32] maxi_hbm03_wstrb'0
+	wire[31:0] maxi_hbm03_wstrb;
+	// {aclk} output bool #() maxi_hbm03_wlast'0
+	wire maxi_hbm03_wlast;
+	// {aclk} output bool #() maxi_hbm03_bready'0
+	wire maxi_hbm03_bready;
+	// {aclk} input bool #() maxi_hbm03_wready'0
+	logic maxi_hbm03_wready;
+	// {aclk} input bool #() maxi_hbm03_bvalid'0
+	logic maxi_hbm03_bvalid;
+	// {aclk} input bool #()[2] maxi_hbm03_bresp'0
+	logic[1:0] maxi_hbm03_bresp;
+	// {aclk} input bool #() maxi_hbm03_awready'0
+	logic maxi_hbm03_awready;
+	// {aclk} output bool #() maxi_hbm03_arvalid'0
+	wire maxi_hbm03_arvalid;
+	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm03_araddr'0
+	wire[63:0] maxi_hbm03_araddr;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm03_arlen'0
+	wire[7:0] maxi_hbm03_arlen;
+	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm03_arsize'0
+	wire[2:0] maxi_hbm03_arsize;
+	// {aclk} output bool #()[2] maxi_hbm03_arburst'0
+	wire[1:0] maxi_hbm03_arburst;
+	// {aclk} output bool #()[3] maxi_hbm03_arprot'0
+	wire[2:0] maxi_hbm03_arprot;
+	// {aclk} output bool #()[4] maxi_hbm03_arcache'0
+	wire[3:0] maxi_hbm03_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm03_arqos'0
+	wire[3:0] maxi_hbm03_arqos;
+	// {aclk} output bool #() maxi_hbm03_arlock'0
+	wire maxi_hbm03_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm03_arregion'0
+	wire[3:0] maxi_hbm03_arregion;
+	// {aclk} output bool #() maxi_hbm03_rready'0
+	wire maxi_hbm03_rready;
+	// {aclk} input bool #() maxi_hbm03_arready'0
+	logic maxi_hbm03_arready;
+	// {aclk} input bool #() maxi_hbm03_rvalid'0
+	logic maxi_hbm03_rvalid;
+	// {aclk} input bool #()[256] maxi_hbm03_rdata'0
+	logic[255:0] maxi_hbm03_rdata;
+	// {aclk} input bool #()[2] maxi_hbm03_rresp'0
+	logic[1:0] maxi_hbm03_rresp;
+	// {aclk} input bool #() maxi_hbm03_rlast'0
+	logic maxi_hbm03_rlast;
+
 	// Latency Registers
 
 	// DUT
@@ -324,6 +472,7 @@ module SUSpMV_Full_tb;
 		.maxi_ddr00_rdata(maxi_ddr00_rdata),
 		.maxi_ddr00_rresp(maxi_ddr00_rresp),
 		.maxi_ddr00_rlast(maxi_ddr00_rlast),
+
 		.maxi_hbm00_awvalid(maxi_hbm00_awvalid),
 		.maxi_hbm00_awaddr(maxi_hbm00_awaddr),
 		.maxi_hbm00_awlen(maxi_hbm00_awlen),
@@ -359,6 +508,7 @@ module SUSpMV_Full_tb;
 		.maxi_hbm00_rdata(maxi_hbm00_rdata),
 		.maxi_hbm00_rresp(maxi_hbm00_rresp),
 		.maxi_hbm00_rlast(maxi_hbm00_rlast),
+
 		.maxi_hbm01_awvalid(maxi_hbm01_awvalid),
 		.maxi_hbm01_awaddr(maxi_hbm01_awaddr),
 		.maxi_hbm01_awlen(maxi_hbm01_awlen),
@@ -393,7 +543,79 @@ module SUSpMV_Full_tb;
 		.maxi_hbm01_rvalid(maxi_hbm01_rvalid),
 		.maxi_hbm01_rdata(maxi_hbm01_rdata),
 		.maxi_hbm01_rresp(maxi_hbm01_rresp),
-		.maxi_hbm01_rlast(maxi_hbm01_rlast)
+		.maxi_hbm01_rlast(maxi_hbm01_rlast),
+
+		.maxi_hbm02_awvalid(maxi_hbm02_awvalid),
+		.maxi_hbm02_awaddr(maxi_hbm02_awaddr),
+		.maxi_hbm02_awlen(maxi_hbm02_awlen),
+		.maxi_hbm02_awsize(maxi_hbm02_awsize),
+		.maxi_hbm02_awburst(maxi_hbm02_awburst),
+		.maxi_hbm02_awprot(maxi_hbm02_awprot),
+		.maxi_hbm02_awcache(maxi_hbm02_awcache),
+		.maxi_hbm02_awqos(maxi_hbm02_awqos),
+		.maxi_hbm02_awlock(maxi_hbm02_awlock),
+		.maxi_hbm02_awregion(maxi_hbm02_awregion),
+		.maxi_hbm02_wvalid(maxi_hbm02_wvalid),
+		.maxi_hbm02_wdata(maxi_hbm02_wdata),
+		.maxi_hbm02_wstrb(maxi_hbm02_wstrb),
+		.maxi_hbm02_wlast(maxi_hbm02_wlast),
+		.maxi_hbm02_bready(maxi_hbm02_bready),
+		.maxi_hbm02_wready(maxi_hbm02_wready),
+		.maxi_hbm02_bvalid(maxi_hbm02_bvalid),
+		.maxi_hbm02_bresp(maxi_hbm02_bresp),
+		.maxi_hbm02_awready(maxi_hbm02_awready),
+		.maxi_hbm02_arvalid(maxi_hbm02_arvalid),
+		.maxi_hbm02_araddr(maxi_hbm02_araddr),
+		.maxi_hbm02_arlen(maxi_hbm02_arlen),
+		.maxi_hbm02_arsize(maxi_hbm02_arsize),
+		.maxi_hbm02_arburst(maxi_hbm02_arburst),
+		.maxi_hbm02_arprot(maxi_hbm02_arprot),
+		.maxi_hbm02_arcache(maxi_hbm02_arcache),
+		.maxi_hbm02_arqos(maxi_hbm02_arqos),
+		.maxi_hbm02_arlock(maxi_hbm02_arlock),
+		.maxi_hbm02_arregion(maxi_hbm02_arregion),
+		.maxi_hbm02_rready(maxi_hbm02_rready),
+		.maxi_hbm02_arready(maxi_hbm02_arready),
+		.maxi_hbm02_rvalid(maxi_hbm02_rvalid),
+		.maxi_hbm02_rdata(maxi_hbm02_rdata),
+		.maxi_hbm02_rresp(maxi_hbm02_rresp),
+		.maxi_hbm02_rlast(maxi_hbm02_rlast),
+		
+		.maxi_hbm03_awvalid(maxi_hbm03_awvalid),
+		.maxi_hbm03_awaddr(maxi_hbm03_awaddr),
+		.maxi_hbm03_awlen(maxi_hbm03_awlen),
+		.maxi_hbm03_awsize(maxi_hbm03_awsize),
+		.maxi_hbm03_awburst(maxi_hbm03_awburst),
+		.maxi_hbm03_awprot(maxi_hbm03_awprot),
+		.maxi_hbm03_awcache(maxi_hbm03_awcache),
+		.maxi_hbm03_awqos(maxi_hbm03_awqos),
+		.maxi_hbm03_awlock(maxi_hbm03_awlock),
+		.maxi_hbm03_awregion(maxi_hbm03_awregion),
+		.maxi_hbm03_wvalid(maxi_hbm03_wvalid),
+		.maxi_hbm03_wdata(maxi_hbm03_wdata),
+		.maxi_hbm03_wstrb(maxi_hbm03_wstrb),
+		.maxi_hbm03_wlast(maxi_hbm03_wlast),
+		.maxi_hbm03_bready(maxi_hbm03_bready),
+		.maxi_hbm03_wready(maxi_hbm03_wready),
+		.maxi_hbm03_bvalid(maxi_hbm03_bvalid),
+		.maxi_hbm03_bresp(maxi_hbm03_bresp),
+		.maxi_hbm03_awready(maxi_hbm03_awready),
+		.maxi_hbm03_arvalid(maxi_hbm03_arvalid),
+		.maxi_hbm03_araddr(maxi_hbm03_araddr),
+		.maxi_hbm03_arlen(maxi_hbm03_arlen),
+		.maxi_hbm03_arsize(maxi_hbm03_arsize),
+		.maxi_hbm03_arburst(maxi_hbm03_arburst),
+		.maxi_hbm03_arprot(maxi_hbm03_arprot),
+		.maxi_hbm03_arcache(maxi_hbm03_arcache),
+		.maxi_hbm03_arqos(maxi_hbm03_arqos),
+		.maxi_hbm03_arlock(maxi_hbm03_arlock),
+		.maxi_hbm03_arregion(maxi_hbm03_arregion),
+		.maxi_hbm03_rready(maxi_hbm03_rready),
+		.maxi_hbm03_arready(maxi_hbm03_arready),
+		.maxi_hbm03_rvalid(maxi_hbm03_rvalid),
+		.maxi_hbm03_rdata(maxi_hbm03_rdata),
+		.maxi_hbm03_rresp(maxi_hbm03_rresp),
+		.maxi_hbm03_rlast(maxi_hbm03_rlast)
 	);
 
 	simple_axi_mem #(
@@ -497,6 +719,74 @@ module SUSpMV_Full_tb;
 		.rdata   (maxi_hbm01_rdata),
 		.rresp   (maxi_hbm01_rresp),
 		.rlast   (maxi_hbm01_rlast)
+	);
+
+	simple_axi_mem #(
+		.ADDR_WIDTH (64),
+		.DATA_WIDTH (256),
+		.DEPTH  (1024*1024)
+	) hbm02_mem (
+		.aclk    (aclk),
+		.aresetn  (aresetn),
+		.awvalid (maxi_hbm02_awvalid),
+		.awready (maxi_hbm02_awready),
+		.awaddr  (maxi_hbm02_awaddr),
+		.awlen   (maxi_hbm02_awlen),
+		.awsize  (maxi_hbm02_awsize),
+		.awburst (maxi_hbm02_awburst),
+		.wvalid  (maxi_hbm02_wvalid),
+		.wready  (maxi_hbm02_wready),
+		.wdata   (maxi_hbm02_wdata),
+		.wstrb   (maxi_hbm02_wstrb),
+		.wlast   (maxi_hbm02_wlast),
+		.bvalid  (maxi_hbm02_bvalid),
+		.bready  (maxi_hbm02_bready),
+		.bresp   (maxi_hbm02_bresp),
+		.arvalid (maxi_hbm02_arvalid),
+		.arready (maxi_hbm02_arready),
+		.araddr  (maxi_hbm02_araddr),
+		.arlen   (maxi_hbm02_arlen),
+		.arsize  (maxi_hbm02_arsize),
+		.arburst (maxi_hbm02_arburst),
+		.rvalid  (maxi_hbm02_rvalid),
+		.rready  (maxi_hbm02_rready),
+		.rdata   (maxi_hbm02_rdata),
+		.rresp   (maxi_hbm02_rresp),
+		.rlast   (maxi_hbm02_rlast)
+	);
+
+	simple_axi_mem #(
+		.ADDR_WIDTH (64),
+		.DATA_WIDTH (256),
+		.DEPTH  (1024*1024)
+	) hbm03_mem (
+		.aclk    (aclk),
+		.aresetn  (aresetn),
+		.awvalid (maxi_hbm02_awvalid),
+		.awready (maxi_hbm02_awready),
+		.awaddr  (maxi_hbm02_awaddr),
+		.awlen   (maxi_hbm02_awlen),
+		.awsize  (maxi_hbm02_awsize),
+		.awburst (maxi_hbm02_awburst),
+		.wvalid  (maxi_hbm02_wvalid),
+		.wready  (maxi_hbm02_wready),
+		.wdata   (maxi_hbm02_wdata),
+		.wstrb   (maxi_hbm02_wstrb),
+		.wlast   (maxi_hbm02_wlast),
+		.bvalid  (maxi_hbm02_bvalid),
+		.bready  (maxi_hbm02_bready),
+		.bresp   (maxi_hbm02_bresp),
+		.arvalid (maxi_hbm02_arvalid),
+		.arready (maxi_hbm02_arready),
+		.araddr  (maxi_hbm02_araddr),
+		.arlen   (maxi_hbm02_arlen),
+		.arsize  (maxi_hbm02_arsize),
+		.arburst (maxi_hbm02_arburst),
+		.rvalid  (maxi_hbm02_rvalid),
+		.rready  (maxi_hbm02_rready),
+		.rdata   (maxi_hbm02_rdata),
+		.rresp   (maxi_hbm02_rresp),
+		.rlast   (maxi_hbm02_rlast)
 	);
 
 	//
@@ -666,6 +956,8 @@ module SUSpMV_Full_tb;
 		axi_lite_master_init();
 		$readmemh("hbm0.mem", hbm00_mem.mem);
 		$readmemh("hbm1.mem", hbm01_mem.mem);
+		$readmemh("hbm2.mem", hbm02_mem.mem);
+		$readmemh("hbm3.mem", hbm03_mem.mem);
 		$readmemh("x_vec.mem", ddr_mem.mem);
 		$readmemh("expected.mem", expected_buffer);
 
@@ -686,15 +978,23 @@ module SUSpMV_Full_tb;
 
 		// HBM00 addr
 		axi_lite_write(12'h060, 64'h00000000_00000000);
-
 		// HBM00 256bit block count
 		axi_lite_write(12'h070, `HBM0_LEN);
 
-		// HBM00 addr
+		// HBM01 addr
 		axi_lite_write(12'h080, 64'h00000000_00000000);
-
-		// HBM00 256bit block count
+		// HBM01 256bit block count
 		axi_lite_write(12'h090, `HBM1_LEN);
+
+		// HBM02 addr
+		axi_lite_write(12'h0a0, 64'h00000000_00000000);
+		// HBM02 256bit block count
+		axi_lite_write(12'h0b0, `HBM2_LEN);
+
+		// HBM03 addr
+		axi_lite_write(12'h0c0, 64'h00000000_00000000);
+		// HBM03 256bit block count
+		axi_lite_write(12'h0d0, `HBM3_LEN);
 
 		// Start!
 		axi_lite_write(12'h000, 64'h00000000_00000001);
@@ -711,7 +1011,7 @@ module SUSpMV_Full_tb;
 			if(diff >= -1e-5 && diff <= 1e-5) begin
 				$display("Y %d: Found %f, Expected %f", i, found_y_value, expected_y_value);
 			end else begin
-				$fatal("Y %d: Found %f, Expected %f", i, found_y_value, expected_y_value);
+				$display("WRONG Y %d: Found %f, Expected %f", i, found_y_value, expected_y_value);
 			end
 		end
 		

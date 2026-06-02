@@ -159,5 +159,6 @@ host/test/arc130/arc130.mtx:
 # host/test/arc130/arc130.mtx
 # host/test/1138_bus/1138_bus.mtx
 tests/IO/test_data: host/suspmv
-	cd tests/IO/ && ../../host/suspmv ../../host/test/1138_bus/1138_bus.mtx 0 1
-#	cd tests/IO/ && ../../host/suspmv ../../host/test/arc130/arc130.mtx 0 4
+#	cd tests/IO/ && ../../host/suspmv ../../host/test/bcsstk16/bcsstk16.mtx 0 2
+#	cd tests/IO/ && ../../host/suspmv ../../host/test/1138_bus/1138_bus.mtx 0 2
+	cd tests/IO/ && ../../host/suspmv ../../host/test/arc130/arc130.mtx 0 4

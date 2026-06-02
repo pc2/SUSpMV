@@ -437,6 +437,7 @@ module SUSpMV_Full {
     gen int UNITS_SLR2 = 2
 
     //gen int NUM_HBMS = UNITS_SLR0 + UNITS_SLR1 + UNITS_SLR2
+    gen int NUM_UNITS = UNITS_SLR0 + UNITS_SLR1 + UNITS_SLR2
     gen int NUM_HBMS = 32
 
     //xrt_ctrl_slave #(NUM_INPUT_REGS: 6 + 4 * NUM_HBMS, NUM_OUTPUT_REGS: 0, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
@@ -481,8 +482,8 @@ module SUSpMV_Full {
     // ======================================================== //
     //  AXI4-Full DDR interface for X vector & result Y vector  //
     // ======================================================== //
-    XDataLoader#(NUM_KERNELS: NUM_HBMS) x_vector_reader
-    YVectorWriter#(NUM_KERNELS: NUM_HBMS) y_result_writer
+    XDataLoader#(NUM_KERNELS: NUM_UNITS) x_vector_reader
+    YVectorWriter#(NUM_KERNELS: NUM_UNITS) y_result_writer
 
     domain ddr_write
     output bool                                    maxi_ddr00_awvalid = y_result_writer.awvalid
