@@ -146,13 +146,12 @@ Matrix Matrix::load(std::string path) {
         throw std::runtime_error("Only coordinate format supported");
     }
 
-    if (field != "real") {
+    if (field != "real" && field != "integer" && field != "pattern") {
         // other options are:
-        // - integer (would be possible to support with rounding errors)
         // - complex (not supported by hardware)
-        // - pattern (not supported by hardware)
-        throw std::runtime_error("Only real matrices supported");
+        throw std::runtime_error("Only real, integer, or pattern matrices supported");
     }
+    bool pattern = field == "pattern";
 
     if (symmetry != "general" && symmetry != "symmetric" && symmetry != "skew-symmetric") {
         // other options are:
@@ -230,7 +229,12 @@ Matrix Matrix::load(std::string path) {
         size_t row;
         float value;
 
-        entry_stream >> row >> col >> value;
+		if (pattern) {
+	        entry_stream >> row >> col;
+	        value = 1.0;
+		} else {
+			entry_stream >> row >> col >> value;
+		}
 
         if (!entry_stream) {
             throw std::runtime_error(
@@ -873,7 +877,6 @@ void Builder::add(Entry entry, bool last_in_x, bool last_in_y) {
     while (((last_in_x || last_in_y) && entries.size() != 0) || entries.size() == 7) {
     	// we have enough entries buffered to build a new block
         build_block();
-        i++;
     }
 
     if (last_in_x || last_in_y) {
