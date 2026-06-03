@@ -208,6 +208,7 @@ Matrix Matrix::load(std::string path) {
         height: rows,
         entries: std::vector<Entry>()
     };
+    m.entries.reserve(nnz);
 
     // ------------------------------------------------------------
     // Read entries
