@@ -812,7 +812,7 @@ void Builder::build_block() {
         	conflict_entries.push_back(BuilderEntry{ x: entries[i].x, y: entries[i].y, val: entries[i].val, last_in_x: entries[i].last_in_x, last_in_y: entries[i].last_in_y, block_idx: blocks.size() });
         }
         entries.erase(entries.begin(), entries.begin() + 6);
-        std::cout << block << std::endl;
+        //std::cout << block << std::endl;
     } else {
         if(count > 5) {
             count = 5; // Float5 can only send 5 floats.
@@ -841,6 +841,6 @@ void Builder::build_block() {
         	conflict_entries.push_back(BuilderEntry{ x: entries[i].x, y: entries[i].y, val: entries[i].val, last_in_x: entries[i].last_in_x, last_in_y: entries[i].last_in_y, block_idx: blocks.size() });
         }
         entries.erase(entries.begin(), entries.begin() + count);
-        std::cout << block << std::endl;
+        //std::cout << block << std::endl;
     }
 }

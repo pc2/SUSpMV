@@ -8,8 +8,6 @@
 
 int dump_hex(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec);
 
-#define SUSPMV_PE_ID 100
-
 std::vector<float> random_x_vec(size_t len) {
     std::vector<float> x_vec(len, 0.0);
 
@@ -82,7 +80,7 @@ int main(int argc, char **argv) {
     }
 
     // initialize TaPaSCo
-    tapasco::Tapasco tapasco;
+    tapasco::Tapasco tapasco = tapasco::Tapasco(tapasco::tlkm_access::TlkmAccessExclusive, TAPASCO_DEVICE_IDX);
 
     // upload matrix to device distributed across hbm banks
     for (uint64_t i = 0; i < COMPUTE_UNITS; i++) {
@@ -105,8 +103,12 @@ int main(int argc, char **argv) {
         auto job = tapasco.launch(
             SUSPMV_PE_ID,
             ret_val,
-            m.width, m.height,
-            v_buffer, r_buffer
+            v_buffer, r_buffer,
+            data.x_tiles, data.y_repeats,
+            HBM_BASE + HBM_STRIDE * 0, data.hbm_buffers[0].size(),
+            HBM_BASE + HBM_STRIDE * 1, data.hbm_buffers[1].size(),
+            HBM_BASE + HBM_STRIDE * 2, data.hbm_buffers[2].size(),
+            HBM_BASE + HBM_STRIDE * 3, data.hbm_buffers[3].size()
         );
         job();
         std::cout << "Cycles: " << cycles << std::endl;
