@@ -7,7 +7,7 @@ create_project -force proj /tmp/proj -part xcu280-fsvh2892-2L-e
 add_files -fileset sources_1 ../../U280/sus_codegen.sv
 add_files -fileset sources_1 ../../slr_crossing.sv
 add_files -fileset sim_1 testbench.sv
-add_files -fileset sim_1 {hbm0.mem hbm1.mem hbm2.mem hbm3.mem x_vec.mem expected.mem}
+add_files -fileset sim_1 {hbm0.mem hbm1.mem hbm2.mem hbm3.mem hbm4.mem hbm5.mem hbm6.mem hbm7.mem x_vec.mem expected.mem}
 add_files -fileset sim_1 matrix_params.vh
 
 import_ip [glob -type f ../../sus-float/UltraScalePlus/xci_files/*.xci]
