@@ -4,7 +4,7 @@ const size_t MIN_BLOCKS_PER_TILE = 18;
 const size_t NUM_Y_BANKS = 16;
 
 // accelerator config
-const uint64_t COMPUTE_UNITS = 4;
+const uint64_t COMPUTE_UNITS = 8;
 const uint64_t MAX_TILE_Y_HEIGHT = 2048 * NUM_Y_BANKS;
 
 // memory layout
