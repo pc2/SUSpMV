@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
         std::vector<float> reference = m.mul(x_vec);
         uint64_t errors = 0;
         for (uint64_t i = 0; i < m.height; i++) {
-            if (std::abs(result[i] - reference[i]) > 0.1) {
+            if (!are_equalish(result[i], reference[i])) {
                 std::cout << result[i] << " " <<  reference[i] << std::endl;
                 errors += 1;
             }
