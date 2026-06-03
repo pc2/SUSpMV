@@ -247,6 +247,10 @@ Matrix Matrix::load(std::string path) {
         // Matrix Market uses 1-based indexing
         col -= 1;
         row -= 1;
+
+        if (value == 0.0) {
+            continue;
+        }
         
         m.entries.push_back(Entry{x: col, y: row, val: value});
         // Expand symmetry
