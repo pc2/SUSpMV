@@ -317,7 +317,7 @@ module LineBusMerge#(int SIZE) {
     split float[16][SIZE] y_values_line_regs
     split int#(FROM, TO)[SIZE] num_y_values_line_regs
     split bool[SIZE] is_last_y_line_regs
-
+    
     valids_regs[0] = valids[0]
     y_values_line_regs[0] = y_values[0]
     num_y_values_line_regs[0] = num_y_values[0]
@@ -333,17 +333,15 @@ module LineBusMerge#(int SIZE) {
             reg num_y_values_line_regs[I] = num_y_values_line_offset
             reg is_last_y_line_regs[I] = is_last_y_line_offset
         } else {
-            reg valids_regs[I] = valids[I - 1]
-            reg y_values_line_regs[I] = y_values[I - 1]
-            reg num_y_values_line_regs[I] = num_y_values[I - 1]
-            reg is_last_y_line_regs[I] = is_last_y[I - 1]
+            reg valids_regs[I] = valids_regs[I - 1]
+            reg y_values_line_regs[I] = y_values_line_regs[I - 1]
+            reg num_y_values_line_regs[I] = num_y_values_line_regs[I - 1]
+            reg is_last_y_line_regs[I] = is_last_y_line_regs[I - 1]
         }
     }
 
-    if SIZE > 0 {
-        when valids_regs[SIZE-1] {
-            out_valid(y_values_line_regs[SIZE-1], num_y_values_line_regs[SIZE-1], is_last_y_line_regs[SIZE-1])
-        }
+    when valids_regs[SIZE-1] {
+        out_valid(y_values_line_regs[SIZE-1], num_y_values_line_regs[SIZE-1], is_last_y_line_regs[SIZE-1])
     }
 }
 
@@ -434,7 +432,7 @@ module SUSpMV_Full {
 
     gen int UNITS_SLR0 = 1
     gen int UNITS_SLR1 = 1
-    gen int UNITS_SLR2 = 2
+    gen int UNITS_SLR2 = 6
 
     //gen int NUM_HBMS = UNITS_SLR0 + UNITS_SLR1 + UNITS_SLR2
     gen int NUM_UNITS = UNITS_SLR0 + UNITS_SLR1 + UNITS_SLR2
