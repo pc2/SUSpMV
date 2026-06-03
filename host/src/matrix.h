@@ -101,5 +101,5 @@ struct Matrix {
     static Matrix load(std::string path);
     std::vector<float> mul(std::vector<float>& v);
     bool compare(Matrix &m);
-    ComputeUnitData get_compute_unit_data(uint64_t compute_units, uint64_t num_y_repeats);
+    ComputeUnitData get_compute_unit_data();
 };

@@ -209,6 +209,7 @@ Matrix Matrix::load(std::string path) {
         entries: std::vector<Entry>()
     };
     m.entries.reserve(nnz);
+    std::cout << "Matrix(w: " << cols << ", h: " << rows << ", nz: " << nnz << ")" << std::endl;
 
     // ------------------------------------------------------------
     // Read entries
@@ -521,49 +522,79 @@ Matrix ComputeUnitData::convert() {
     return m;
 }
 
-// Currently we pass num_y_repeats as a simple parameter. In the future this function should itself decide how many repeats to use. 
-ComputeUnitData Matrix::get_compute_unit_data(uint64_t compute_units, uint64_t num_y_repeats) {
-    uint64_t tiles_per_row = (width + TILE_X_WIDTH - 1) / TILE_X_WIDTH;
-    size_t total_y_partitions = compute_units*num_y_repeats;
-
-    // Temporary memory to split a single rows block into its constituent tiles. 
-    std::vector<std::vector<Entry>> current_x_tile_split(tiles_per_row);
-
-    // The final memory buffers, these should be uploaded to the FPGA. 
-    std::vector<std::vector<MatrixDataBlock>> hbm_buffers(compute_units);
+ComputeUnitData Matrix::get_compute_unit_data() {
+	std::cout << "Compute Y Count Prefix Sum" << std::endl;
+	// compute prefix sum for entry count per row
+	std::vector<uint64_t> y_sum_count(height+1, 0);
+	y_sum_count[0] = 0;
+	for (uint64_t y = 0, e = 0; y < height; y++) {
+		while (y >= entries[e].y && e < entries.size()) {
+			e++;
+		}
+		y_sum_count[y+1] = e;
+	}
 
     std::vector<size_t> y_split_points;
-    y_split_points.reserve(total_y_partitions+1);
     std::vector<uint64_t> y_froms;
-    y_froms.reserve(total_y_partitions);
 
-    std::cout << "Determining Y splits" << std::endl;
+	std::cout << "Determining Y splits" << std::endl;
+    uint64_t repeats = std::max((uint64_t) 1, height / (COMPUTE_UNITS*MAX_TILE_Y_HEIGHT)) * 2;
+    bool found = false;
+    while (!found) {
+        std::cout << "Try reapeats = " << repeats << std::endl;
+	    uint64_t partitions = COMPUTE_UNITS*repeats;
+	    y_split_points.clear();
+	    y_froms.clear();
+	    y_split_points.reserve(partitions+1);
+	    y_froms.reserve(partitions);
+		y_split_points.push_back(0);
+		y_froms.push_back(0);
 
-    y_split_points.push_back(0);
-    y_froms.push_back(0);
-    for(size_t i = 1; i < total_y_partitions; i++) {
-        size_t desired_split_location = this->entries.size() * i / total_y_partitions;
+		found = true;
+		for(size_t i = 1; i < partitions; i++) {
+            size_t desired_split_location = this->entries.size() * i / partitions;
+            uint64_t desired_split_y = this->entries[desired_split_location].y;
+            if (desired_split_y <= y_froms[i-1]) {
+                desired_split_y = y_froms[i-1] + 1;
+            }
+            if (desired_split_y >= y_froms[i-1] + MAX_TILE_Y_HEIGHT) {
+                desired_split_y = y_froms[i-1] + MAX_TILE_Y_HEIGHT - 1;
+            }
+            if (desired_split_y >= height) {
+                found = false;
+                break;
+            }
+		    uint64_t desired_split = y_sum_count[desired_split_y];
 
-        uint64_t desired_split_y = this->entries[desired_split_location].y;
-        while(desired_split_location >= 1 && this->entries[desired_split_location-1].y == desired_split_y) {
-            desired_split_location--;
+            y_split_points.push_back(desired_split);
+            y_froms.push_back(desired_split_y);
+	    }
+
+        y_split_points.push_back(entries.size());
+        y_froms.push_back(height);
+        if (y_froms[partitions] - y_froms[partitions-1] > MAX_TILE_Y_HEIGHT) {
+            found = false;
         }
-
-        y_split_points.push_back(desired_split_location);
-        y_froms.push_back(desired_split_y);
+        if (!found) {
+            repeats = std::max(repeats+1, (uint64_t) (repeats * 1.2));
+        }
     }
-    y_split_points.push_back(this->entries.size());
-    y_froms.push_back(this->height);
 
-
-	std::vector<Builder> builders(compute_units);
+    uint64_t tiles_per_row = (width + TILE_X_WIDTH - 1) / TILE_X_WIDTH;
+    size_t total_y_partitions = COMPUTE_UNITS*repeats;
+    // Temporary memory to split a single rows block into its constituent tiles.
+    std::vector<std::vector<Entry>> current_x_tile_split(tiles_per_row);
+    // The final memory buffers, these should be uploaded to the FPGA.
+    std::vector<std::vector<MatrixDataBlock>> hbm_buffers(COMPUTE_UNITS);
+	std::vector<Builder> builders(COMPUTE_UNITS);
     for(size_t i = 0; i < total_y_partitions; i++) {
-        size_t cur_hbm = i % compute_units;
+        size_t cur_hbm = i % COMPUTE_UNITS;
 
         size_t from = y_split_points[i];
         size_t to = y_split_points[i+1];
 
-        std::cout << std::format("Placing Y {}..{} (entries {}..{}) in compute unit {}", y_froms[i], y_froms[i+1], from, to, cur_hbm) << std::endl;
+        std::cout << std::format("Placing Y {}..{} (entries {}..{}) in compute unit {}", y_froms[i], y_froms[i+1], from, to, cur_hbm);
+        uint64_t blocks_before = builders[cur_hbm].blocks.size();
 
         assert(from <= to);
         assert(to <= this->entries.size());
@@ -596,15 +627,19 @@ ComputeUnitData Matrix::get_compute_unit_data(uint64_t compute_units, uint64_t n
                 builders[cur_hbm].add(current_x_tile_split[tile_x][entry_idx], last_in_tile, last_in_tile && last_in_y);
             }
         }
+
+        uint64_t blocks_after = builders[cur_hbm].blocks.size();
+
+        std::cout << std::format(" (in {} blocks)", blocks_after - blocks_before) << std::endl;
     }
-    for(size_t i = 0; i < compute_units; i++) {
+    for(size_t i = 0; i < COMPUTE_UNITS; i++) {
     	hbm_buffers[i] = builders[i].blocks;
 	}
 
     return ComputeUnitData{
         hbm_buffers: hbm_buffers,
         x_tiles: tiles_per_row,
-        y_repeats: num_y_repeats,
+        y_repeats: repeats,
         width: width,
         height: height,
         y_froms: y_froms

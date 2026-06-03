@@ -49,21 +49,18 @@ void check_mul(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 4) {
-        std::cout << "usage: ./suspmv <path to .mtx> <iterations> <y chunks per Compute Unit>\nSet <iterations> to 0 for simulation hex dump" << std::endl;
+    if (argc != 3) {
+        std::cout << "usage: ./suspmv <path to .mtx> <iterations>\nSet <iterations> to 0 for simulation hex dump" << std::endl;
         return 0;
     }
     std::string path(argv[1]);
     uint64_t iterations = std::stoi(argv[2]);
 
-    // Temporary, should be computed automatically in the future
-    uint64_t y_repeats = std::stoi(argv[3]);
-
     // load matrix from file
     std::cout << "Loading " << path << std::endl;
     Matrix m = Matrix::load(path);
     std::cout << "Constructing ComputeUnitData..." << std::endl;
-    ComputeUnitData data = m.get_compute_unit_data(COMPUTE_UNITS, y_repeats);
+    ComputeUnitData data = m.get_compute_unit_data();
     std::cout << "ComputeUnitData done" << std::endl;
 
     std::vector<float> x_vec = random_x_vec(m.width);
@@ -118,6 +115,7 @@ int main(int argc, char **argv) {
         uint64_t errors = 0;
         for (uint64_t i = 0; i < m.height; i++) {
             if (std::abs(result[i] - reference[i]) > 0.1) {
+                std::cout << result[i] << " " <<  reference[i] << std::endl;
                 errors += 1;
             }
         }
