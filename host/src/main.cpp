@@ -8,8 +8,6 @@
 
 int dump_hex(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec);
 
-#define SUSPMV_PE_ID 100
-
 std::vector<float> random_x_vec(size_t len) {
     std::vector<float> x_vec(len, 0.0);
 
@@ -51,21 +49,18 @@ void check_mul(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 4) {
-        std::cout << "usage: ./suspmv <path to .mtx> <iterations> <y chunks per Compute Unit>\nSet <iterations> to 0 for simulation hex dump" << std::endl;
+    if (argc != 3) {
+        std::cout << "usage: ./suspmv <path to .mtx> <iterations>\nSet <iterations> to 0 for simulation hex dump" << std::endl;
         return 0;
     }
     std::string path(argv[1]);
     uint64_t iterations = std::stoi(argv[2]);
 
-    // Temporary, should be computed automatically in the future
-    uint64_t y_repeats = std::stoi(argv[3]);
-
     // load matrix from file
     std::cout << "Loading " << path << std::endl;
     Matrix m = Matrix::load(path);
     std::cout << "Constructing ComputeUnitData..." << std::endl;
-    ComputeUnitData data = m.get_compute_unit_data(COMPUTE_UNITS, y_repeats);
+    ComputeUnitData data = m.get_compute_unit_data();
     std::cout << "ComputeUnitData done" << std::endl;
 
     std::vector<float> x_vec = random_x_vec(m.width);
@@ -82,7 +77,7 @@ int main(int argc, char **argv) {
     }
 
     // initialize TaPaSCo
-    tapasco::Tapasco tapasco;
+    tapasco::Tapasco tapasco = tapasco::Tapasco(tapasco::tlkm_access::TlkmAccessExclusive, TAPASCO_DEVICE_IDX);
 
     // upload matrix to device distributed across hbm banks
     for (uint64_t i = 0; i < COMPUTE_UNITS; i++) {
@@ -105,8 +100,12 @@ int main(int argc, char **argv) {
         auto job = tapasco.launch(
             SUSPMV_PE_ID,
             ret_val,
-            m.width, m.height,
-            v_buffer, r_buffer
+            v_buffer, r_buffer,
+            data.x_tiles, data.y_repeats,
+            HBM_BASE + HBM_STRIDE * 0, data.hbm_buffers[0].size(),
+            HBM_BASE + HBM_STRIDE * 1, data.hbm_buffers[1].size(),
+            HBM_BASE + HBM_STRIDE * 2, data.hbm_buffers[2].size(),
+            HBM_BASE + HBM_STRIDE * 3, data.hbm_buffers[3].size()
         );
         job();
         std::cout << "Cycles: " << cycles << std::endl;
@@ -115,7 +114,8 @@ int main(int argc, char **argv) {
         std::vector<float> reference = m.mul(x_vec);
         uint64_t errors = 0;
         for (uint64_t i = 0; i < m.height; i++) {
-            if (std::abs(result[i] - reference[i]) > 0.1) {
+            if (!are_equalish(result[i], reference[i])) {
+                std::cout << result[i] << " " <<  reference[i] << std::endl;
                 errors += 1;
             }
         }
