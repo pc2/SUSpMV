@@ -51,11 +51,11 @@ void store_matrix_size(std::string path, Matrix& m, ComputeUnitData& data) {
 
     for(size_t i = 0; i < COMPUTE_UNITS; i++) {
         uint64_t hbm_addr = HBM_BASE + HBM_STRIDE * i;
-        out << std::format("`define HBM{}_ADDR {}", i, hbm_addr) << std::endl;
-        out << std::format("`define HBM{}_LEN {}", i, data.hbm_buffers[i].size()) << std::endl;
+        out << std::format("`define HBM{:02}_ADDR {}", i, hbm_addr) << std::endl;
+        out << std::format("`define HBM{:02}_LEN {}", i, data.hbm_buffers[i].size()) << std::endl;
 
         // cue to store the compute unit data in files
-        store<MatrixDataBlock, 256>(std::format("hbm{}.mem", i), data.hbm_buffers[i]);
+        store<MatrixDataBlock, 256>(std::format("hbm{:02}.mem", i), data.hbm_buffers[i]);
     }
 
     out.close();
