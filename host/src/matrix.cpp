@@ -549,12 +549,13 @@ ComputeUnitData Matrix::get_compute_unit_data() {
     std::vector<uint64_t> y_froms;
     double equality_threshold_min = 0.99;
     double equality_threshold_max = 1.01;
-    double equality_threshold_mul = 0.999;
     uint64_t repeats = 0;
     uint64_t base_y = 0;
-    uint64_t initial_height = std::min(MAX_TILE_Y_HEIGHT, height-(COMPUTE_UNITS-1));
+    uint64_t initial_height_min = 1;
+    uint64_t initial_height_max = std::min(MAX_TILE_Y_HEIGHT, height-(COMPUTE_UNITS-1));
     y_froms.insert(y_froms.end(), COMPUTE_UNITS+1, 0);
     while (base_y < height) {
+        uint64_t initial_height = (initial_height_max + initial_height_min + 1) / 2;
         //std::cout << "reapeat = " << repeats+1 << "  " << initial_height << std::endl;
         uint64_t y_end = std::min(base_y + initial_height, height - (COMPUTE_UNITS-1));
         uint64_t base_cost = y_sum_count[y_end] - y_sum_count[base_y] + tiles_per_row;
@@ -574,7 +575,6 @@ ComputeUnitData Matrix::get_compute_unit_data() {
                 break;
             }
             while (max_cost > base_cost * equality_threshold_max && y_end > y_start+1) {
-                // TODO: use binary search
                 // too many entries in this tile causes imbalance
                 // => reduce this tiles size
                 y_end -= 1;
@@ -597,10 +597,13 @@ ComputeUnitData Matrix::get_compute_unit_data() {
         }
         if (retry_with_smaller_initial_height) {
             // TODO: use binary search
-            initial_height = std::max((uint64_t) 1, (uint64_t) (initial_height * equality_threshold_mul));
+            initial_height_max = initial_height-1;
+        } else if (initial_height_max != initial_height_min) {
+            initial_height_min = initial_height;
         } else {
             base_y = y_end;
-            initial_height = std::min(MAX_TILE_Y_HEIGHT, (height-base_y)-(COMPUTE_UNITS-1));
+            initial_height_max = std::min(MAX_TILE_Y_HEIGHT, (height-base_y)-(COMPUTE_UNITS-1));
+            initial_height_min = 1;
             repeats++;
             y_froms.insert(y_froms.end(), COMPUTE_UNITS, 0);
         }
