@@ -542,6 +542,9 @@ ComputeUnitData Matrix::get_compute_unit_data() {
 	std::cout << "Determining Y splits" << std::endl;
     std::vector<size_t> y_split_points;
     std::vector<uint64_t> y_froms;
+    double equality_threshold_min = 0.99;
+    double equality_threshold_max = 1.01;
+    double equality_threshold_mul = 0.999;
     uint64_t repeats = 0;
     uint64_t base_y = 0;
     uint64_t initial_height = std::min(MAX_TILE_Y_HEIGHT, height-(COMPUTE_UNITS-1));
@@ -558,14 +561,14 @@ ComputeUnitData Matrix::get_compute_unit_data() {
             uint64_t y_start = y_end;
             y_end = std::min(y_start + MAX_TILE_Y_HEIGHT, height - (COMPUTE_UNITS-1-c));
             uint64_t max_cost = y_sum_count[y_end] - y_sum_count[y_start] + tiles_per_row;
-            if (max_cost < base_cost * 0.95 && initial_height > 1) {
+            if (max_cost < base_cost * equality_threshold_min && initial_height > 1) {
                 // too few entries in this tile causes imbalance
                 // => reduce overall tile size
                 retry_with_smaller_initial_height = true;
                 //std::cout << " c["<<c<<"].y = " << y_start << "  " << y_end << "  " << max_cost << std::endl;
                 break;
             }
-            while (max_cost > base_cost * 1.05 && y_end > y_start) {
+            while (max_cost > base_cost * equality_threshold_max && y_end > y_start) {
                 // TODO: use binary search
                 // too many entries in this tile causes imbalance
                 // => reduce this tiles size
@@ -589,7 +592,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
         }
         if (retry_with_smaller_initial_height) {
             // TODO: use binary search
-            initial_height = std::max((uint64_t) 1, (uint64_t) (initial_height * 0.99));
+            initial_height = std::max((uint64_t) 1, (uint64_t) (initial_height * equality_threshold_mul));
         } else {
             base_y = y_end;
             initial_height = std::min(MAX_TILE_Y_HEIGHT, (height-base_y)-(COMPUTE_UNITS-1));
