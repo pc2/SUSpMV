@@ -453,8 +453,10 @@ Matrix ComputeUnitData::convert() {
         uint64_t cur_x = 0;
         uint64_t cur_y = 0;
         uint64_t y_section = compute_unit;
+        uint64_t y_max = 0;
         for(MatrixDataBlock& elem : this->hbm_buffers[compute_unit]) {
-            uint64_t y_from = this->y_froms[y_section];
+            uint64_t y_start = this->y_froms[y_section];
+            uint64_t y_end = this->y_froms[y_section+1];
             if(elem.float5.mode == 0b1111) {
                 // It's a float5
                 uint64_t x_indices[5] = {
@@ -473,8 +475,9 @@ Matrix ComputeUnitData::convert() {
                 };
                 for(int i = 0; i < 5; i++) {
                 	if (elem.float5.weights[i] != 0.0) {
-	                    m.entries.push_back(Entry{ x:  cur_x + x_indices[i], y: cur_y + y_from, val: elem.float5.weights[i] });
+	                    m.entries.push_back(Entry{ x:  cur_x + x_indices[i], y: cur_y + y_start, val: elem.float5.weights[i] });
                     }
+                    y_max = std::max(y_max, cur_y);
                     cur_y += dys[i];
                 }
 
@@ -483,6 +486,8 @@ Matrix ComputeUnitData::convert() {
                     cur_y = 0;
                 }
                 if(elem.float5.last_in_y) {
+                    assert(y_max == y_end - y_start - 1);
+                    y_max = 0;
                     cur_x = 0;
                     cur_y = 0;
        				y_section += this->hbm_buffers.size();
@@ -510,8 +515,9 @@ Matrix ComputeUnitData::convert() {
 
                 for(int i = 0; i < 6; i++) {
                 	if (elem.float6.weights[i] != 0.0) {
-	                    m.entries.push_back(Entry{ x:  cur_x + x_indices[i], y: cur_y + y_from, val: elem.float6.weights[i] });
+	                    m.entries.push_back(Entry{ x:  cur_x + x_indices[i], y: cur_y + y_start, val: elem.float6.weights[i] });
                     }
+                    y_max = std::max(y_max, cur_y);
                     if(lasts[i]) {
                         cur_y += 1;
                     }
