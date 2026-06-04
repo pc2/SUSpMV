@@ -527,6 +527,7 @@ Matrix ComputeUnitData::convert() {
 }
 
 ComputeUnitData Matrix::get_compute_unit_data() {
+    uint64_t tiles_per_row = (width + TILE_X_WIDTH - 1) / TILE_X_WIDTH;
 	std::cout << "Compute Y Count Prefix Sum" << std::endl;
 	// compute prefix sum for entry count per row
 	std::vector<uint64_t> y_sum_count(height+1, 0);
@@ -538,53 +539,68 @@ ComputeUnitData Matrix::get_compute_unit_data() {
 		y_sum_count[y+1] = e;
 	}
 
+	std::cout << "Determining Y splits" << std::endl;
     std::vector<size_t> y_split_points;
     std::vector<uint64_t> y_froms;
+    uint64_t repeats = 0;
+    uint64_t base_y = 0;
+    uint64_t initial_height = std::min(MAX_TILE_Y_HEIGHT, height-(COMPUTE_UNITS-1));
+    y_froms.insert(y_froms.end(), 33, 0);
+    while (base_y < height) {
+        //std::cout << "reapeat = " << repeats+1 << "  " << initial_height << std::endl;
+        uint64_t y_end = std::min(base_y + initial_height, height - (COMPUTE_UNITS-1));
+        uint64_t base_cost = y_sum_count[y_end] - y_sum_count[base_y] + tiles_per_row;
+        bool retry_with_smaller_initial_height = false;
+        //std::cout << " c[0].y = " << base_y << "  " << y_end << "  " << base_cost << std::endl;
+        y_froms[repeats*COMPUTE_UNITS+1] = y_end;
 
-	std::cout << "Determining Y splits" << std::endl;
-    uint64_t repeats = std::max((uint64_t) 1, height / (COMPUTE_UNITS*MAX_TILE_Y_HEIGHT)) * 2;
-    bool found = false;
-    while (!found) {
-        std::cout << "Try reapeats = " << repeats << std::endl;
-	    uint64_t partitions = COMPUTE_UNITS*repeats;
-	    y_split_points.clear();
-	    y_froms.clear();
-	    y_split_points.reserve(partitions+1);
-	    y_froms.reserve(partitions);
-		y_split_points.push_back(0);
-		y_froms.push_back(0);
-
-		found = true;
-		for(size_t i = 1; i < partitions; i++) {
-            size_t desired_split_location = this->entries.size() * i / partitions;
-            uint64_t desired_split_y = this->entries[desired_split_location].y;
-            if (desired_split_y <= y_froms[i-1]) {
-                desired_split_y = y_froms[i-1] + 1;
-            }
-            if (desired_split_y >= y_froms[i-1] + MAX_TILE_Y_HEIGHT) {
-                desired_split_y = y_froms[i-1] + MAX_TILE_Y_HEIGHT - 1;
-            }
-            if (desired_split_y >= height) {
-                found = false;
+        for (uint64_t c = 1; c < COMPUTE_UNITS; c++) {
+            uint64_t y_start = y_end;
+            y_end = std::min(y_start + MAX_TILE_Y_HEIGHT, height - (COMPUTE_UNITS-1-c));
+            uint64_t max_cost = y_sum_count[y_end] - y_sum_count[y_start] + tiles_per_row;
+            if (max_cost < base_cost * 0.95 && initial_height > 1) {
+                // too few entries in this tile causes imbalance
+                // => reduce overall tile size
+                retry_with_smaller_initial_height = true;
+                //std::cout << " c["<<c<<"].y = " << y_start << "  " << y_end << "  " << max_cost << std::endl;
                 break;
             }
-		    uint64_t desired_split = y_sum_count[desired_split_y];
-
-            y_split_points.push_back(desired_split);
-            y_froms.push_back(desired_split_y);
-	    }
-
-        y_split_points.push_back(entries.size());
-        y_froms.push_back(height);
-        if (y_froms[partitions] - y_froms[partitions-1] > MAX_TILE_Y_HEIGHT) {
-            found = false;
+            while (max_cost > base_cost * 1.05 && y_end > y_start) {
+                // TODO: use binary search
+                // too many entries in this tile causes imbalance
+                // => reduce this tiles size
+                y_end -= 1;
+                max_cost = y_sum_count[y_end] - y_sum_count[y_start] + tiles_per_row;
+            }
+            if (c == COMPUTE_UNITS-1 && y_end >= height-COMPUTE_UNITS) {
+                // edge case
+                // => the last compute unit in this repeat did just barely not fill up the entire height
+                if (y_start + MAX_TILE_Y_HEIGHT >= height) {
+                    // fill up the rest
+                    y_end = height;
+                } else {
+                    // leave big enough gap to squeeze in another repeat
+                    y_end = height - COMPUTE_UNITS;
+                }
+                max_cost = y_sum_count[y_end] - y_sum_count[y_start] + tiles_per_row;
+            }
+            y_froms[repeats*COMPUTE_UNITS+c+1] = y_end;
+            //std::cout << " c["<<c<<"].y = " << y_start << "  " << y_end << "  " << max_cost << std::endl;
         }
-        if (!found) {
-            repeats = std::max(repeats+1, (uint64_t) (repeats * 1.2));
+        if (retry_with_smaller_initial_height) {
+            // TODO: use binary search
+            initial_height = std::max((uint64_t) 1, (uint64_t) (initial_height * 0.99));
+        } else {
+            base_y = y_end;
+            initial_height = std::min(MAX_TILE_Y_HEIGHT, (height-base_y)-(COMPUTE_UNITS-1));
+            repeats++;
+            y_froms.insert(y_froms.end(), 32, 0);
         }
     }
+    for (uint64_t i = 0; i < y_froms.size(); i++) {
+        y_split_points.push_back(y_sum_count[y_froms[i]]);
+    }
 
-    uint64_t tiles_per_row = (width + TILE_X_WIDTH - 1) / TILE_X_WIDTH;
     size_t total_y_partitions = COMPUTE_UNITS*repeats;
     // Temporary memory to split a single rows block into its constituent tiles.
     std::vector<std::vector<Entry>> current_x_tile_split(tiles_per_row);
