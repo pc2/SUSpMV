@@ -549,6 +549,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
     std::vector<uint64_t> y_froms;
     double equality_threshold_min = 0.99;
     double equality_threshold_max = 1.01;
+    uint64_t equality_threshold_diff = 20;
     uint64_t repeats = 0;
     uint64_t base_y = 0;
     uint64_t initial_height_min = 1;
@@ -567,14 +568,14 @@ ComputeUnitData Matrix::get_compute_unit_data() {
             uint64_t y_start = y_end;
             y_end = std::min(y_start + MAX_TILE_Y_HEIGHT, height - (COMPUTE_UNITS-1-c));
             uint64_t max_cost = y_sum_count[y_end] - y_sum_count[y_start] + tiles_per_row;
-            if (max_cost < base_cost * equality_threshold_min && initial_height > 1) {
+            if (max_cost < base_cost * equality_threshold_min && max_cost < base_cost - equality_threshold_diff && initial_height > 1) {
                 // too few entries in this tile causes imbalance
                 // => reduce overall tile size
                 retry_with_smaller_initial_height = true;
                 //std::cout << " c["<<c<<"].y = " << y_start << "  " << y_end << "  " << max_cost << std::endl;
                 break;
             }
-            while (max_cost > base_cost * equality_threshold_max && y_end > y_start+1) {
+            while (max_cost > base_cost * equality_threshold_max && max_cost > base_cost + equality_threshold_diff && y_end > y_start+1) {
                 // too many entries in this tile causes imbalance
                 // => reduce this tiles size
                 y_end -= 1;
