@@ -430,9 +430,9 @@ module SUSpMV_Full {
     gen int DDR_AXI_WRITE_WIDTH = 512
     gen int HBM_AXI_WIDTH = 256
 
-    gen int UNITS_SLR0 = 1
-    gen int UNITS_SLR1 = 1
-    gen int UNITS_SLR2 = 6
+    gen int UNITS_SLR0 = 7
+    gen int UNITS_SLR1 = 12
+    gen int UNITS_SLR2 = 13
 
     //gen int NUM_HBMS = UNITS_SLR0 + UNITS_SLR1 + UNITS_SLR2
     gen int NUM_UNITS = UNITS_SLR0 + UNITS_SLR1 + UNITS_SLR2
