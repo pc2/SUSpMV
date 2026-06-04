@@ -512,8 +512,8 @@ module SUSpMV_Full {
     gen int DDR_AXI_WRITE_WIDTH = 512
     gen int HBM_AXI_WIDTH = 256
 
-    gen int UNITS_SLR0_LEFT = 6
-    gen int UNITS_SLR0_RIGHT = 2
+    gen int UNITS_SLR0_LEFT = 7
+    gen int UNITS_SLR0_RIGHT = 1
     gen int UNITS_SLR1_LEFT = 7
     gen int UNITS_SLR1_RIGHT = 5
     gen int UNITS_SLR2_LEFT = 7
@@ -669,17 +669,17 @@ module SUSpMV_Full {
     // Now shuffle the HBM indices, so the HBM lines go straight up instead of criss-cross
     gen int[NUM_UNITS] HBM_IDX_PER_UNIT = [
         // SLR0 LEFT
-        0,3,6,9,12,15,
+        0,3,6,9,12,15,18,
         // SLR0 RIGHT
-        20,21,
+        21,
 
         // SLR1 LEFT
-        1,4,7,10,13,16,18,
+        1,4,7,10,13,16,19,
         // SLR1 RIGHT
         22,24,26,28,30,
 
         // SLR2 LEFT
-        2,5,8,11,14,17,19,
+        2,5,8,11,14,17,20,
         // SLR2 RIGHT
         23,25,27,29,31
     ]

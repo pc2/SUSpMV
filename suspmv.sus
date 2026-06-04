@@ -261,6 +261,7 @@ module YCollector {
     state int#(FROM: 0, TO: NUM_Y_BUFFERS) current_back_buffer
 
     bool[NUM_BUCKETS] bucket_write = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
+    double[NUM_BUCKETS] bucket_read_value
     double[NUM_BUCKETS] bucket_write_value
     int[NUM_BUCKETS] bucket_write_index
     int[NUM_BUCKETS] bucket_mux_from
@@ -301,11 +302,20 @@ module YCollector {
                 }
             }
         }
+
+        double[PARALELLISM] per_bucket_old_values
+        double[PARALELLISM] new_partial_sums
+        for int CHANNEL in 0..PARALELLISM {
+            reg per_bucket_old_values[CHANNEL] = bucket_read_value[target_buckets[CHANNEL]]
+            when valids[CHANNEL] {
+                reg new_partial_sums[CHANNEL] = fp64_add(per_bucket_old_values[CHANNEL], partial_sums[CHANNEL])
+            }
+        }
         for int BUCKET_I in 0..NUM_BUCKETS {
             when bucket_write[BUCKET_I] {
                 int mux_from = bucket_mux_from[BUCKET_I]
                 bucket_write_index[BUCKET_I] = target_indices_in_buckets[mux_from]
-                bucket_write_value[BUCKET_I] = partial_sums[mux_from]
+                reg bucket_write_value[BUCKET_I] = new_partial_sums[mux_from]
             }
         }
 
@@ -326,8 +336,8 @@ module YCollector {
 
         when end_of_y_block {
             current_front_buffer = current_front_buffer + 1 mod NUM_Y_BUFFERS
-            // Delay y_end_value by 16 cycles, such that the last y writes have time to be committed before starting to read them again on the other side. 
-            reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg int y_end_value = next_highest_y
+            // Delay y_end_value by 20 cycles, such that the last y writes have time to be committed before starting to read them again on the other side. 
+            reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg int y_end_value = next_highest_y
             y_ends_fifo.push(y_end_value)
             highest_y = 0
         } else {
@@ -353,9 +363,8 @@ module YCollector {
             bucket_ram.write(reset_rotator, 0.0d)
         } else when bucket_write[BUCKET] {
             reg int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer, bucket_write_index[BUCKET])
-            reg double prev_value = bucket_ram.read(front_index)
-            reg double new_value = fp64_add(prev_value, bucket_write_value[BUCKET])
-            bucket_ram.write(front_index, new_value)
+            bucket_read_value[BUCKET] = bucket_ram.read(front_index)
+            bucket_ram.write(front_index, bucket_write_value[BUCKET])
         } else when num_ys_left_per_bucket[BUCKET] != 0 & output_fifo.may_pushes[BUCKET] {
             reg int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer, cur_output_y_per_bucket[BUCKET])
             reg double read_value = bucket_ram.read(back_index)
