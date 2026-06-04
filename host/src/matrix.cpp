@@ -549,12 +549,14 @@ ComputeUnitData Matrix::get_compute_unit_data() {
     std::vector<uint64_t> y_froms;
     double equality_threshold_min = 0.99;
     double equality_threshold_max = 1.01;
-    double equality_threshold_mul = 0.999;
+    uint64_t equality_threshold_diff = 20;
     uint64_t repeats = 0;
     uint64_t base_y = 0;
-    uint64_t initial_height = std::min(MAX_TILE_Y_HEIGHT, height-(COMPUTE_UNITS-1));
+    uint64_t initial_height_min = 1;
+    uint64_t initial_height_max = std::min(MAX_TILE_Y_HEIGHT, height-(COMPUTE_UNITS-1));
     y_froms.insert(y_froms.end(), COMPUTE_UNITS+1, 0);
     while (base_y < height) {
+        uint64_t initial_height = (initial_height_max + initial_height_min + 1) / 2;
         //std::cout << "reapeat = " << repeats+1 << "  " << initial_height << std::endl;
         uint64_t y_end = std::min(base_y + initial_height, height - (COMPUTE_UNITS-1));
         uint64_t base_cost = y_sum_count[y_end] - y_sum_count[base_y] + tiles_per_row;
@@ -566,15 +568,14 @@ ComputeUnitData Matrix::get_compute_unit_data() {
             uint64_t y_start = y_end;
             y_end = std::min(y_start + MAX_TILE_Y_HEIGHT, height - (COMPUTE_UNITS-1-c));
             uint64_t max_cost = y_sum_count[y_end] - y_sum_count[y_start] + tiles_per_row;
-            if (max_cost < base_cost * equality_threshold_min && initial_height > 1) {
+            if (max_cost < base_cost * equality_threshold_min && max_cost < base_cost - equality_threshold_diff && initial_height > 1) {
                 // too few entries in this tile causes imbalance
                 // => reduce overall tile size
                 retry_with_smaller_initial_height = true;
                 //std::cout << " c["<<c<<"].y = " << y_start << "  " << y_end << "  " << max_cost << std::endl;
                 break;
             }
-            while (max_cost > base_cost * equality_threshold_max && y_end > y_start+1) {
-                // TODO: use binary search
+            while (max_cost > base_cost * equality_threshold_max && max_cost > base_cost + equality_threshold_diff && y_end > y_start+1) {
                 // too many entries in this tile causes imbalance
                 // => reduce this tiles size
                 y_end -= 1;
@@ -596,11 +597,13 @@ ComputeUnitData Matrix::get_compute_unit_data() {
             //std::cout << " c["<<c<<"].y = " << y_start << "  " << y_end << "  " << max_cost << std::endl;
         }
         if (retry_with_smaller_initial_height) {
-            // TODO: use binary search
-            initial_height = std::max((uint64_t) 1, (uint64_t) (initial_height * equality_threshold_mul));
+            initial_height_max = initial_height-1;
+        } else if (initial_height_max != initial_height_min) {
+            initial_height_min = initial_height;
         } else {
             base_y = y_end;
-            initial_height = std::min(MAX_TILE_Y_HEIGHT, (height-base_y)-(COMPUTE_UNITS-1));
+            initial_height_max = std::min(MAX_TILE_Y_HEIGHT, (height-base_y)-(COMPUTE_UNITS-1));
+            initial_height_min = 1;
             repeats++;
             y_froms.insert(y_froms.end(), COMPUTE_UNITS, 0);
         }
@@ -627,9 +630,17 @@ ComputeUnitData Matrix::get_compute_unit_data() {
         assert(from <= to);
         assert(to <= this->entries.size());
         std::span<Entry> entries_here = std::span(this->entries).subspan(from, to - from);
-        
-        builders[cur_hbm].y_max = y_froms[i+1] - y_froms[i] - 1;
-        builders[cur_hbm].y_max_seen = 0;
+
+        uint64_t y_max = y_froms[i+1]-1;
+        uint64_t y_max_entry_idx = y_sum_count[y_max];
+        builders[cur_hbm].y_max = y_max - y_froms[i];
+        if (y_max_entry_idx >= entries.size()) {
+            builders[cur_hbm].y_max_tile_idx = 0;
+        } else if (entries[y_max_entry_idx].y == y_max) {
+            builders[cur_hbm].y_max_tile_idx = tiles_per_row + 1;
+        } else {
+            builders[cur_hbm].y_max_tile_idx = entries[y_max_entry_idx].x / TILE_X_WIDTH;
+        }
 
         for(Entry& e : entries_here) {
             assert(e.x < this->width);
@@ -675,9 +686,12 @@ ComputeUnitData Matrix::get_compute_unit_data() {
 
 Builder::Builder() {
     first_entry_in_tile = true;
+    x_tile = 0;
     y_pos = 0;
     y_max = 0;
-    y_max_seen = 0;
+    y_max_tile_idx = 0;
+    y_max_added = false;
+    accumulator_zero = true;
 }
 
 bool Builder::has_bank_conflict(uint64_t *y, uint64_t len, uint64_t new_y) {
@@ -732,17 +746,17 @@ void Builder::add(Entry entry, bool last_in_x, bool last_in_y) {
 
 	// the accelerator deduces the y-increment at a last_in_y by tracking the largest y value
 	// => y_max must appear at least once in a y-section
-    y_max_seen = std::max(y_max_seen, entry.y);
-    assert(y_max_seen <= y_max);
-	if (y_max_seen < y_max && last_in_x && last_in_y) {
+	if (!y_max_added && y_max_tile_idx == x_tile && last_in_x) {
 		//std::cout << y_max << "   " << y_max_seen << std::endl;
 		// we must add an additional entry at the very end to inform the accelerator about the y-span of the y-section
-		
+        // => we chose this specific x-tile, because requires the fewest dummy entries to bridge the gap
+
 		// push back the actual new entry
 		entries.push_back(BuilderEntry{ x: entry.x, y: entry.y, val: entry.val, last_in_x: false, last_in_y: false });
     	y_pos = entry.y;
+        y_max_added = true;
 		// add the dummy entry at y_max
-		add(Entry{ x: 0, y: y_max, val: 0.0}, true, true);
+		add(Entry{ x: 0, y: y_max, val: 0.0}, true, last_in_y);
 	} else {
 		// push back the actual new entry
 		entries.push_back(BuilderEntry{ x: entry.x, y: entry.y, val: entry.val, last_in_x: last_in_x , last_in_y: last_in_y });
@@ -756,6 +770,8 @@ void Builder::add(Entry entry, bool last_in_x, bool last_in_y) {
     if (last_in_x || last_in_y) {
         first_entry_in_tile = true;
         y_pos = 0;
+        y_max_added = false;
+        x_tile = last_in_y ? 0 : x_tile + 1;
     } else {
     	y_pos = entry.y;
     }
@@ -849,6 +865,20 @@ void Builder::build_block() {
         use_float6 = false;
     }
 
+    // reduce count
+    if (count == 6 && !use_float6) {
+        count = 5; // Float5 can only send 5 floats.
+    }
+
+    // track accumulator
+    for (uint64_t i = 0; i < count; i++) {
+        if (dy[i] != 0) {
+            accumulator_zero = true;
+        } else if (val[i] != 0.0) {
+            accumulator_zero = false;
+        }
+    }
+
     // append new block
     if (use_float6) {
         MatrixDataBlock block;
@@ -881,7 +911,7 @@ void Builder::build_block() {
             y_delta1 : dy[1],
             y_delta2 : dy[2],
             y_delta3 : dy[3],
-            y_delta4 : last_in_x ? 1u : dy[4], // flush the accumulator on last x
+            y_delta4 : last_in_x && !accumulator_zero ? 1u : dy[4], // flush the accumulator on last x
             last_in_x : last_in_x ? 1u : 0u,
             last_in_y : last_in_y ? 1u : 0u,
             x_index_4: x[4],
@@ -891,6 +921,9 @@ void Builder::build_block() {
             x_index_0: x[0],
             mode     : 0b1111,
         };
+        if (last_in_x) {
+            accumulator_zero = true;
+        }
         blocks.push_back(block);
         for (uint64_t i = 0; i < count; i++) {
         	conflict_entries.push_back(BuilderEntry{ x: entries[i].x, y: entries[i].y, val: entries[i].val, last_in_x: entries[i].last_in_x, last_in_y: entries[i].last_in_y, block_idx: blocks.size() });
