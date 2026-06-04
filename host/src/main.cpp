@@ -5,6 +5,7 @@
 #include <random>
 #include <format>
 #include <cmath>
+#include <chrono>
 
 #define HBM_ARG(N) (HBM_BASE + HBM_STRIDE * N), (N >= COMPUTE_UNITS ? 0 : data.hbm_buffers[N].size())
 
@@ -99,6 +100,7 @@ int main(int argc, char **argv) {
         }
         std::vector<float> y_vec(m.height, 0.0);
 
+        auto tapasco_start = std::chrono::steady_clock::now();
         auto device_x_vec = tapasco::makeInOnly(tapasco::makeWrappedPointer(extended_x_vec.data(), extended_x_vec.size() * sizeof(float)));
         auto device_y_vec = tapasco::makeOutOnly(tapasco::makeWrappedPointer(y_vec.data(), y_vec.size() * sizeof(float)));
 
@@ -116,10 +118,19 @@ int main(int argc, char **argv) {
             HBM_ARG(24), HBM_ARG(25), HBM_ARG(26), HBM_ARG(27), HBM_ARG(28), HBM_ARG(29), HBM_ARG(30), HBM_ARG(31)
         );
         job();
+        auto tapasco_end = std::chrono::steady_clock::now();
+        auto tapasco_duration = std::chrono::duration_cast<std::chrono::microseconds>(tapasco_end - tapasco_start);
         std::cout << "Cycles: " << cycles << std::endl;
 
-        // check result integrity
+        // reference CPU implementation
+        auto cpu_start = std::chrono::steady_clock::now();
         std::vector<float> reference = m.mul(x_vec);
+        auto cpu_end = std::chrono::steady_clock::now();
+        auto cpu_duration = std::chrono::duration_cast<std::chrono::microseconds>(cpu_end - cpu_start);
+
+        std::cout << "SUSpMV: " << tapasco_duration << ", CPU: " << cpu_duration << std::endl;
+
+        // check result integrity
         uint64_t errors = 0;
         for (uint64_t i = 0; i < m.height; i++) {
             if (!are_equalish(y_vec[i], reference[i])) {
