@@ -16,8 +16,76 @@ set_property IS_SOFT FALSE [get_pblocks pblock_suspmv_slr2]
 
 # Special pblock to keep the x/y reader/writer together
 create_pblock keep_x_y_left_side_of_slr0
-resize_pblock keep_x_y_left_side_of_slr0 -add {CLOCKREGION_X3Y2:CLOCKREGION_X3Y3}
-set_property IS_SOFT FALSE [get_pblocks pblock_suspmv_slr2]
+resize_pblock [get_pblocks keep_x_y_left_side_of_slr0] -add {CLOCKREGION_X3Y2:CLOCKREGION_X3Y3}
+set_property IS_SOFT FALSE [get_pblocks keep_x_y_left_side_of_slr0]
+
+
+create_pblock slr0_left
+resize_pblock [get_pblocks slr0_left] -add {CLOCKREGION_X0Y0:CLOCKREGION_X3Y3}
+set_property IS_SOFT FALSE [get_pblocks slr0_left]
+add_cells_to_pblock [get_pblocks slr0_left] [get_cells suspmv_slr0/left_half]
+
+create_pblock slr0_right
+resize_pblock [get_pblocks slr0_right] -add {CLOCKREGION_X4Y0:CLOCKREGION_X7Y3}
+set_property IS_SOFT FALSE [get_pblocks slr0_right]
+add_cells_to_pblock [get_pblocks slr0_right] [get_cells suspmv_slr0/right_half]
+
+create_pblock slr1_left
+resize_pblock [get_pblocks slr1_left] -add {CLOCKREGION_X0Y4:CLOCKREGION_X3Y7}
+set_property IS_SOFT FALSE [get_pblocks slr1_left]
+add_cells_to_pblock [get_pblocks slr1_left] [get_cells suspmv_slr1/left_half]
+
+create_pblock slr1_right
+resize_pblock [get_pblocks slr1_right] -add {CLOCKREGION_X4Y4:CLOCKREGION_X7Y7}
+set_property IS_SOFT FALSE [get_pblocks slr1_right]
+add_cells_to_pblock [get_pblocks slr1_right] [get_cells suspmv_slr1/right_half]
+
+create_pblock slr2_left
+resize_pblock [get_pblocks slr2_left] -add {CLOCKREGION_X0Y8:CLOCKREGION_X3Y11}
+set_property IS_SOFT FALSE [get_pblocks slr2_left]
+add_cells_to_pblock [get_pblocks slr2_left] [get_cells suspmv_slr2/left_half]
+
+create_pblock slr2_right
+resize_pblock [get_pblocks slr2_right] -add {CLOCKREGION_X4Y8:CLOCKREGION_X7Y11}
+set_property IS_SOFT FALSE [get_pblocks slr2_right]
+add_cells_to_pblock [get_pblocks slr2_right] [get_cells suspmv_slr2/right_half]
+
+# create_pblock slr0_bottom_left
+# resize_pblock [get_pblocks slr0_bottom_left] -add {CLOCKREGION_X0Y0:CLOCKREGION_X3Y1}
+# add_cells_to_pblock [get_pblocks slr0_bottom_left] [get_cells -quiet [list \
+#     suspmv_slr0/left_half/unit \
+#     suspmv_slr0/left_half/unit_2 \
+#     suspmv_slr0/left_half/unit_3 \
+# ]]
+# create_pblock slr0_top_left
+# resize_pblock [get_pblocks slr0_top_left] -add {CLOCKREGION_X0Y2:CLOCKREGION_X3Y3}
+# add_cells_to_pblock [get_pblocks slr0_top_left] [get_cells -quiet [list \
+#     suspmv_slr0/right_half/unit \
+#     suspmv_slr0/right_half/unit_2 \
+#     suspmv_slr0/right_half/unit_3 \
+# ]]
+# Unneeded because PCIE takes up a lot of space on SLR0
+# create_pblock slr0_bottom_right
+# resize_pblock [get_pblocks slr0_bottom_right] -add {CLOCKREGION_X4Y0:CLOCKREGION_X7Y1}
+# create_pblock slr0_top_right
+# resize_pblock [get_pblocks slr0_top_right] -add {CLOCKREGION_X4Y2:CLOCKREGION_X7Y3}
+
+# create_pblock slr1_bottom_left
+# resize_pblock [get_pblocks slr1_bottom_left] -add {CLOCKREGION_X0Y4:CLOCKREGION_X3Y5}
+# create_pblock slr1_top_left
+# resize_pblock [get_pblocks slr1_top_left] -add {CLOCKREGION_X0Y6:CLOCKREGION_X3Y7}
+# create_pblock slr1_bottom_right
+# resize_pblock [get_pblocks slr1_bottom_right] -add {CLOCKREGION_X4Y4:CLOCKREGION_X7Y5}
+# create_pblock slr1_top_right
+# resize_pblock [get_pblocks slr1_top_right] -add {CLOCKREGION_X4Y6:CLOCKREGION_X7Y7}
+# create_pblock slr2_bottom_left
+# resize_pblock [get_pblocks slr2_bottom_left] -add {CLOCKREGION_X0Y8:CLOCKREGION_X3Y9}
+# create_pblock slr2_top_left
+# resize_pblock [get_pblocks slr2_top_left] -add {CLOCKREGION_X0Y10:CLOCKREGION_X3Y11}
+# create_pblock slr2_bottom_right
+# resize_pblock [get_pblocks slr2_bottom_right] -add {CLOCKREGION_X4Y8:CLOCKREGION_X7Y9}
+# create_pblock slr2_top_right
+# resize_pblock [get_pblocks slr2_top_right] -add {CLOCKREGION_X4Y10:CLOCKREGION_X7Y11}
 
 # XY Vector memory on SLR1 in the center
 # create_pblock pblock_xy_vector

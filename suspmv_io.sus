@@ -345,7 +345,7 @@ module LineBusMerge#(int SIZE) {
     }
 }
 
-module SUSpMV_SLR#(int NUM_UNITS, int HBM_MAY_PUSH_LATENCY) {
+module SUSpMV_Half_SLR#(int NUM_UNITS, int HBM_MAY_PUSH_LATENCY) {
     domain hbm_data
     output bool[NUM_UNITS] may_pushes'-HBM_MAY_PUSH_LATENCY
     input bool[NUM_UNITS] hbm_valids'0
@@ -391,28 +391,111 @@ module SUSpMV_SLR#(int NUM_UNITS, int HBM_MAY_PUSH_LATENCY) {
         }
 
         // X data
+        action_pipeline#(DEPTH: 4) x_data_local_pipe
+        Tuple2 pack_x_data_local_pipe
+
         when is_pushing_x_data {
-            unit.write_x_values(x_data, last_x_data)
+            x_data_local_pipe.din(pack_x_data_local_pipe.pack(x_data, last_x_data))
         }
+        when x_data_local_pipe.dout : bool[] packed {
+            float[16] x_data_in, bool last_x_data_in = pack_x_data_local_pipe.unpack(packed)
+            unit.write_x_values(x_data_in, last_x_data_in)
+        }
+
         x_releases[I] = unit.release_x_buffer
 
         // Y data
-        reg reg reg reg reg unit.may_y_valid = may_y_valid
+        data_pipeline#(DEPTH: 4) may_y_valid_pipe
+        unit.may_y_valid = may_y_valid_pipe.dout
+        may_y_valid_pipe.din = may_y_valid
         when unit.y_valid : float[16] output_y_values, int#(FROM: 0, TO: 17) num_y_valid, bool is_last_y {
-            y_return_channel.valids[I] = true
-            y_return_channel.y_values[I] = output_y_values
-            y_return_channel.num_y_values[I] = num_y_valid
-            y_return_channel.is_last_y[I] = is_last_y
+            reg y_return_channel.valids[I] = true
+            reg y_return_channel.y_values[I] = output_y_values
+            reg y_return_channel.num_y_values[I] = num_y_valid
+            reg y_return_channel.is_last_y[I] = is_last_y
         } else {
-            y_return_channel.valids[I] = false
+            reg y_return_channel.valids[I] = false
         }
         when start_y_bursts[I] {
             unit.start_y_burst()
         }
 
-        when is_rst {
+        data_pipeline#(DEPTH: 4) is_rst_pipe
+        is_rst_pipe.din = is_rst
+        when is_rst_pipe.dout {
             unit.rst()
         }
+    }
+}
+
+
+module SUSpMV_SLR#(int LEFT_UNITS, int RIGHT_UNITS, int HBM_MAY_PUSH_LATENCY) {
+    gen int NUM_UNITS = LEFT_UNITS + RIGHT_UNITS
+
+    SUSpMV_Half_SLR#(NUM_UNITS: LEFT_UNITS, HBM_MAY_PUSH_LATENCY) left_half
+    SUSpMV_Half_SLR#(NUM_UNITS: RIGHT_UNITS, HBM_MAY_PUSH_LATENCY) right_half
+
+    domain hbm_data
+    output bool[NUM_UNITS] may_pushes'-HBM_MAY_PUSH_LATENCY
+    may_pushes[:LEFT_UNITS] = left_half.may_pushes
+    may_pushes[LEFT_UNITS:] = right_half.may_pushes
+    input bool[NUM_UNITS] hbm_valids'0
+    left_half.hbm_valids = hbm_valids[:LEFT_UNITS]
+    right_half.hbm_valids = hbm_valids[LEFT_UNITS:]
+    input bool[256][NUM_UNITS] hbm_datas'0
+    left_half.hbm_datas = hbm_datas[:LEFT_UNITS]
+    right_half.hbm_datas = hbm_datas[LEFT_UNITS:]
+
+    domain x_data_dom
+    Tuple2 pack_x_value_cross
+    action_pipeline#(DEPTH: 8) x_value_cross
+    action push_x_data'0 : float[16] x_data_in'0, bool last_x_data_in'0 {
+        x_value_cross.din(pack_x_value_cross.pack(x_data_in, last_x_data_in))
+        left_half.push_x_data(x_data_in, last_x_data_in)
+    }
+    when x_value_cross.dout : bool[] packed {
+        float[16] x_data_in, bool last_x_data_in = pack_x_value_cross.unpack(packed)
+        right_half.push_x_data(x_data_in, last_x_data_in)
+    }
+    
+    domain x_data_releases
+    output bool[NUM_UNITS] x_releases
+    x_releases[:LEFT_UNITS] = left_half.x_releases
+    x_releases[LEFT_UNITS:] = right_half.x_releases
+
+    domain y_data_out
+    input bool may_y_valid
+    data_pipeline#(DEPTH: 8) may_y_valid_cross
+    may_y_valid_cross.din = may_y_valid
+    left_half.may_y_valid = may_y_valid
+    right_half.may_y_valid = may_y_valid_cross.dout
+    trigger y_valid: float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out
+    when left_half.y_valid : float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out {
+        y_valid(y_values_out, num_y_values_out, is_last_y_out)
+    }
+    Tuple3 pack_y_value_cross
+    action_pipeline#(DEPTH: 8) y_value_cross
+    when right_half.y_valid : float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out {
+        y_value_cross.din(pack_y_value_cross.pack(y_values_out, num_y_values_out, is_last_y_out))
+    }
+    when y_value_cross.dout : bool[] packed {
+        float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out = pack_y_value_cross.unpack(packed)
+        y_valid(y_values_out, num_y_values_out, is_last_y_out)
+    }
+
+    domain y_starts
+    input bool[NUM_UNITS] start_y_bursts
+    left_half.start_y_bursts = start_y_bursts[:LEFT_UNITS]
+    right_half.start_y_bursts = start_y_bursts[LEFT_UNITS:]
+
+    domain reset
+    action_pipeline#(DEPTH: 8) rst_pipeline
+    action rst {
+        left_half.rst()
+        rst_pipeline.din([])
+    }
+    when rst_pipeline.dout : bool[0] _out_data {
+        right_half.rst()
     }
 }
 
@@ -430,9 +513,16 @@ module SUSpMV_Full {
     gen int DDR_AXI_WRITE_WIDTH = 512
     gen int HBM_AXI_WIDTH = 256
 
-    gen int UNITS_SLR0 = 7
-    gen int UNITS_SLR1 = 12
-    gen int UNITS_SLR2 = 13
+    gen int UNITS_SLR0_LEFT = 6
+    gen int UNITS_SLR0_RIGHT = 2
+    gen int UNITS_SLR1_LEFT = 7
+    gen int UNITS_SLR1_RIGHT = 5
+    gen int UNITS_SLR2_LEFT = 7
+    gen int UNITS_SLR2_RIGHT = 5
+
+    gen int UNITS_SLR0 = UNITS_SLR0_LEFT + UNITS_SLR0_RIGHT
+    gen int UNITS_SLR1 = UNITS_SLR1_LEFT + UNITS_SLR1_RIGHT
+    gen int UNITS_SLR2 = UNITS_SLR2_LEFT + UNITS_SLR2_RIGHT
 
     //gen int NUM_HBMS = UNITS_SLR0 + UNITS_SLR1 + UNITS_SLR2
     gen int NUM_UNITS = UNITS_SLR0 + UNITS_SLR1 + UNITS_SLR2
@@ -535,9 +625,9 @@ module SUSpMV_Full {
     // ========= //
     //  Kernels  //
     // ========= //
-    SUSpMV_SLR#(NUM_UNITS: UNITS_SLR0) suspmv_slr0
-    SUSpMV_SLR#(NUM_UNITS: UNITS_SLR1) suspmv_slr1
-    SUSpMV_SLR#(NUM_UNITS: UNITS_SLR2) suspmv_slr2
+    SUSpMV_SLR#(LEFT_UNITS: UNITS_SLR0_LEFT, RIGHT_UNITS: UNITS_SLR0_RIGHT) suspmv_slr0
+    SUSpMV_SLR#(LEFT_UNITS: UNITS_SLR1_LEFT, RIGHT_UNITS: UNITS_SLR1_RIGHT) suspmv_slr1
+    SUSpMV_SLR#(LEFT_UNITS: UNITS_SLR2_LEFT, RIGHT_UNITS: UNITS_SLR2_RIGHT) suspmv_slr2
 
     // =========== //
     //  Addresses  //
@@ -577,14 +667,47 @@ module SUSpMV_Full {
         y_result_writer.submit_y_vector_addr(y_vector_addr, num_y_repetitions)
     }
 
+    // Now shuffle the HBM indices, so the HBM lines go straight up instead of criss-cross
+    gen int[NUM_UNITS] HBM_IDX_PER_UNIT = [
+        // SLR0 LEFT
+        0,3,6,9,12,15,
+        // SLR0 RIGHT
+        20,21,
+
+        // SLR1 LEFT
+        1,4,7,10,13,16,18,
+        // SLR1 RIGHT
+        22,24,26,28,30,
+
+        // SLR2 LEFT
+        2,5,8,11,14,17,19,
+        // SLR2 RIGHT
+        23,25,27,29,31
+    ]
     // SUS TODO: Local Actions (https://github.com/pc2/sus-compiler/issues/198)
     int[NUM_HBMS] matrix_data_start_addrs
     int[NUM_HBMS] matrix_data_element_counts
     bool set_matrix_data
 
-    bool[256][NUM_HBMS] hbm_weight_datas
-    bool[NUM_HBMS] hbm_weight_valids
-    bool[NUM_HBMS] hbm_may_pushes
+    bool[256][NUM_HBMS] hbm_weight_datas_hbm
+    bool[NUM_HBMS] hbm_weight_valids_hbm
+    bool[NUM_HBMS] hbm_may_pushes_hbm
+
+    bool[NUM_UNITS] x_page_releases_hbm
+    bool[NUM_UNITS] y_unit_may_starts_hbm
+    
+    bool[256][NUM_UNITS] hbm_weight_datas_unit
+    bool[NUM_UNITS] hbm_weight_valids_unit
+    bool[NUM_UNITS] hbm_may_pushes_unit
+
+    for int UNIT_I in 0..NUM_UNITS {
+        gen int HBM_I = HBM_IDX_PER_UNIT[UNIT_I]
+        x_vector_reader.x_page_releases[UNIT_I] = x_page_releases_hbm[HBM_I]
+        y_unit_may_starts_hbm[HBM_I] = y_result_writer.unit_may_starts[UNIT_I]
+        hbm_may_pushes_hbm[HBM_I] = hbm_may_pushes_unit[UNIT_I]
+        hbm_weight_datas_unit[UNIT_I] = hbm_weight_datas_hbm[HBM_I]
+        hbm_weight_valids_unit[UNIT_I] = hbm_weight_valids_hbm[HBM_I]
+    }
 
     when pipe_ctrl_to_hbms.dout : bool[] packed_hbm_settings {
         matrix_data_start_addrs, matrix_data_element_counts = pack_hbm_settings.unpack(packed_hbm_settings)
@@ -600,18 +723,18 @@ module SUSpMV_Full {
     // Shared data for SLRs
     Tuple2 pack_x_vector_info_slr1
     Tuple2 pack_x_vector_info_slr2
-    action_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_x_vector_info_slr0_to_slr1
-    action_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_x_vector_info_slr1_to_slr2
-    data_pipeline#(DEPTH: 6) pipe_x_page_releases_slr0_to_slr0
-    data_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_x_page_releases_slr1_to_slr0
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_x_page_releases_slr2_to_slr0
+    action_pipeline_cross_slr#(FROM_DEPTH: 8, TO_DEPTH: 8) pipe_x_vector_info_slr0_to_slr1
+    action_pipeline_cross_slr#(FROM_DEPTH: 8, TO_DEPTH: 8) pipe_x_vector_info_slr1_to_slr2
+    data_pipeline#(DEPTH: 8) pipe_x_page_releases_slr0_to_slr0
+    data_pipeline_cross_slr#(FROM_DEPTH: 8, TO_DEPTH: 8) pipe_x_page_releases_slr1_to_slr0
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 8, MIDDLE_DEPTH: 8, TO_DEPTH: 8) pipe_x_page_releases_slr2_to_slr0
 
     pipe_x_page_releases_slr0_to_slr0.din = suspmv_slr0.x_releases
     pipe_x_page_releases_slr1_to_slr0.din = suspmv_slr1.x_releases
     pipe_x_page_releases_slr2_to_slr0.din = suspmv_slr2.x_releases
-    x_vector_reader.x_page_releases[0:UNITS_SLR0] = pipe_x_page_releases_slr0_to_slr0.dout
-    x_vector_reader.x_page_releases[UNITS_SLR0+:UNITS_SLR1] = pipe_x_page_releases_slr1_to_slr0.dout
-    x_vector_reader.x_page_releases[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2] = pipe_x_page_releases_slr2_to_slr0.dout
+    x_page_releases_hbm[0:UNITS_SLR0] = pipe_x_page_releases_slr0_to_slr0.dout
+    x_page_releases_hbm[UNITS_SLR0+:UNITS_SLR1] = pipe_x_page_releases_slr1_to_slr0.dout
+    x_page_releases_hbm[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2] = pipe_x_page_releases_slr2_to_slr0.dout
 
     when x_vector_reader.x_valid : float[16] x_values, bool x_last {
         pipe_x_vector_info_slr0_to_slr1.din(pack_x_vector_info_slr1.pack(x_values, x_last))
@@ -629,17 +752,17 @@ module SUSpMV_Full {
     }
 
     data_pipeline#(DEPTH: 6) pipe_start_y_bursts_slr0_to_slr0
-    data_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_start_y_bursts_slr0_to_slr1
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_start_y_bursts_slr0_to_slr2
+    data_pipeline_cross_slr#(FROM_DEPTH: 6, TO_DEPTH: 6) pipe_start_y_bursts_slr0_to_slr1
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 6, MIDDLE_DEPTH: 8, TO_DEPTH: 6) pipe_start_y_bursts_slr0_to_slr2
     data_pipeline#(DEPTH: 6) pipe_may_y_valid_slr0_to_slr0
-    data_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 4) pipe_may_y_valid_slr0_to_slr1
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_may_y_valid_slr0_to_slr2
+    data_pipeline_cross_slr#(FROM_DEPTH: 6, TO_DEPTH: 6) pipe_may_y_valid_slr0_to_slr1
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 6, MIDDLE_DEPTH: 8, TO_DEPTH: 6) pipe_may_y_valid_slr0_to_slr2
 
-    pipe_start_y_bursts_slr0_to_slr0.din = y_result_writer.unit_may_starts[0:UNITS_SLR0]
+    pipe_start_y_bursts_slr0_to_slr0.din = y_unit_may_starts_hbm[0:UNITS_SLR0]
     suspmv_slr0.start_y_bursts = pipe_start_y_bursts_slr0_to_slr0.dout
-    pipe_start_y_bursts_slr0_to_slr1.din = y_result_writer.unit_may_starts[UNITS_SLR0+:UNITS_SLR1]
+    pipe_start_y_bursts_slr0_to_slr1.din = y_unit_may_starts_hbm[UNITS_SLR0+:UNITS_SLR1]
     suspmv_slr1.start_y_bursts = pipe_start_y_bursts_slr0_to_slr1.dout
-    pipe_start_y_bursts_slr0_to_slr2.din = y_result_writer.unit_may_starts[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2]
+    pipe_start_y_bursts_slr0_to_slr2.din = y_unit_may_starts_hbm[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2]
     suspmv_slr2.start_y_bursts = pipe_start_y_bursts_slr0_to_slr2.dout
 
     pipe_may_y_valid_slr0_to_slr0.din = y_result_writer.may_write
@@ -677,28 +800,28 @@ module SUSpMV_Full {
     // Pipe HBM Weights up //
     // =================== //
     
-    data_pipeline#(DEPTH: 2) pipe_hbm_may_push_slr0_to_slr0
+    data_pipeline#(DEPTH: 6) pipe_hbm_may_push_slr0_to_slr0
     pipe_hbm_may_push_slr0_to_slr0.din = suspmv_slr0.may_pushes
-    data_pipeline#(DEPTH: 2) pipe_hbm_weights_slr0_to_slr0
-    hbm_may_pushes[0:UNITS_SLR0] = pipe_hbm_may_push_slr0_to_slr0.dout
+    data_pipeline#(DEPTH: 6) pipe_hbm_weights_slr0_to_slr0
+    hbm_may_pushes_unit[0:UNITS_SLR0] = pipe_hbm_may_push_slr0_to_slr0.dout
     Tuple2 pack_hbm_weights_slr0
-    pipe_hbm_weights_slr0_to_slr0.din = pack_hbm_weights_slr0.pack(hbm_weight_valids[0:UNITS_SLR0], hbm_weight_datas[0:UNITS_SLR0])
+    pipe_hbm_weights_slr0_to_slr0.din = pack_hbm_weights_slr0.pack(hbm_weight_valids_unit[0:UNITS_SLR0], hbm_weight_datas_unit[0:UNITS_SLR0])
     suspmv_slr0.hbm_valids, suspmv_slr0.hbm_datas = pack_hbm_weights_slr0.unpack(pipe_hbm_weights_slr0_to_slr0.dout)
 
-    data_pipeline_cross_slr#(FROM_DEPTH: 2, TO_DEPTH: 6) pipe_hbm_may_push_slr1_to_slr0
+    data_pipeline_cross_slr#(FROM_DEPTH: 4, TO_DEPTH: 6) pipe_hbm_may_push_slr1_to_slr0
     pipe_hbm_may_push_slr1_to_slr0.din = suspmv_slr1.may_pushes
-    data_pipeline_cross_slr#(FROM_DEPTH: 6, TO_DEPTH: 2) pipe_hbm_weights_slr0_to_slr1
-    hbm_may_pushes[UNITS_SLR0+:UNITS_SLR1] = pipe_hbm_may_push_slr1_to_slr0.dout
+    data_pipeline_cross_slr#(FROM_DEPTH: 6, TO_DEPTH: 4) pipe_hbm_weights_slr0_to_slr1
+    hbm_may_pushes_unit[UNITS_SLR0+:UNITS_SLR1] = pipe_hbm_may_push_slr1_to_slr0.dout
     Tuple2 pack_hbm_weights_slr1
-    pipe_hbm_weights_slr0_to_slr1.din = pack_hbm_weights_slr1.pack(hbm_weight_valids[UNITS_SLR0+:UNITS_SLR1], hbm_weight_datas[UNITS_SLR0+:UNITS_SLR1])
+    pipe_hbm_weights_slr0_to_slr1.din = pack_hbm_weights_slr1.pack(hbm_weight_valids_unit[UNITS_SLR0+:UNITS_SLR1], hbm_weight_datas_unit[UNITS_SLR0+:UNITS_SLR1])
     suspmv_slr1.hbm_valids, suspmv_slr1.hbm_datas = pack_hbm_weights_slr1.unpack(pipe_hbm_weights_slr0_to_slr1.dout)
 
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 2, MIDDLE_DEPTH: 8, TO_DEPTH: 6) pipe_hbm_may_push_slr2_to_slr0
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 4, MIDDLE_DEPTH: 8, TO_DEPTH: 6) pipe_hbm_may_push_slr2_to_slr0
     pipe_hbm_may_push_slr2_to_slr0.din = suspmv_slr2.may_pushes
-    data_pipeline_cross_slr_twice#(FROM_DEPTH: 6, MIDDLE_DEPTH: 8, TO_DEPTH: 2) pipe_hbm_weights_slr0_to_slr2
-    hbm_may_pushes[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2] = pipe_hbm_may_push_slr2_to_slr0.dout
+    data_pipeline_cross_slr_twice#(FROM_DEPTH: 6, MIDDLE_DEPTH: 8, TO_DEPTH: 4) pipe_hbm_weights_slr0_to_slr2
+    hbm_may_pushes_unit[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2] = pipe_hbm_may_push_slr2_to_slr0.dout
     Tuple2 pack_hbm_weights_slr2
-    pipe_hbm_weights_slr0_to_slr2.din = pack_hbm_weights_slr2.pack(hbm_weight_valids[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2], hbm_weight_datas[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2])
+    pipe_hbm_weights_slr0_to_slr2.din = pack_hbm_weights_slr2.pack(hbm_weight_valids_unit[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2], hbm_weight_datas_unit[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2])
     suspmv_slr2.hbm_valids, suspmv_slr2.hbm_datas = pack_hbm_weights_slr2.unpack(pipe_hbm_weights_slr0_to_slr2.dout)
 
     // ====== //
@@ -786,12 +909,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm00_reader.request_new_read(matrix_data_start_addrs[00], matrix_data_element_counts[00], [])
     }
-    hbm00_reader.ready_for_lots_of_data = hbm_may_pushes[00]
+    hbm00_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[00]
     when hbm00_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[00] = true
-        hbm_weight_datas[00] = elements[0]
+        hbm_weight_valids_hbm[00] = true
+        hbm_weight_datas_hbm[00] = elements[0]
     } else {
-        hbm_weight_valids[00] = false
+        hbm_weight_valids_hbm[00] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm00_reader.rst()
@@ -849,12 +972,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm01_reader.request_new_read(matrix_data_start_addrs[01], matrix_data_element_counts[01], [])
     }
-    hbm01_reader.ready_for_lots_of_data = hbm_may_pushes[01]
+    hbm01_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[01]
     when hbm01_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[01] = true
-        hbm_weight_datas[01] = elements[0]
+        hbm_weight_valids_hbm[01] = true
+        hbm_weight_datas_hbm[01] = elements[0]
     } else {
-        hbm_weight_valids[01] = false
+        hbm_weight_valids_hbm[01] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm01_reader.rst()
@@ -912,12 +1035,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm02_reader.request_new_read(matrix_data_start_addrs[02], matrix_data_element_counts[02], [])
     }
-    hbm02_reader.ready_for_lots_of_data = hbm_may_pushes[02]
+    hbm02_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[02]
     when hbm02_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[02] = true
-        hbm_weight_datas[02] = elements[0]
+        hbm_weight_valids_hbm[02] = true
+        hbm_weight_datas_hbm[02] = elements[0]
     } else {
-        hbm_weight_valids[02] = false
+        hbm_weight_valids_hbm[02] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm02_reader.rst()
@@ -975,12 +1098,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm03_reader.request_new_read(matrix_data_start_addrs[03], matrix_data_element_counts[03], [])
     }
-    hbm03_reader.ready_for_lots_of_data = hbm_may_pushes[03]
+    hbm03_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[03]
     when hbm03_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[03] = true
-        hbm_weight_datas[03] = elements[0]
+        hbm_weight_valids_hbm[03] = true
+        hbm_weight_datas_hbm[03] = elements[0]
     } else {
-        hbm_weight_valids[03] = false
+        hbm_weight_valids_hbm[03] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm03_reader.rst()
@@ -1038,12 +1161,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm04_reader.request_new_read(matrix_data_start_addrs[04], matrix_data_element_counts[04], [])
     }
-    hbm04_reader.ready_for_lots_of_data = hbm_may_pushes[04]
+    hbm04_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[04]
     when hbm04_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[04] = true
-        hbm_weight_datas[04] = elements[0]
+        hbm_weight_valids_hbm[04] = true
+        hbm_weight_datas_hbm[04] = elements[0]
     } else {
-        hbm_weight_valids[04] = false
+        hbm_weight_valids_hbm[04] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm04_reader.rst()
@@ -1101,12 +1224,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm05_reader.request_new_read(matrix_data_start_addrs[05], matrix_data_element_counts[05], [])
     }
-    hbm05_reader.ready_for_lots_of_data = hbm_may_pushes[05]
+    hbm05_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[05]
     when hbm05_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[05] = true
-        hbm_weight_datas[05] = elements[0]
+        hbm_weight_valids_hbm[05] = true
+        hbm_weight_datas_hbm[05] = elements[0]
     } else {
-        hbm_weight_valids[05] = false
+        hbm_weight_valids_hbm[05] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm05_reader.rst()
@@ -1164,12 +1287,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm06_reader.request_new_read(matrix_data_start_addrs[06], matrix_data_element_counts[06], [])
     }
-    hbm06_reader.ready_for_lots_of_data = hbm_may_pushes[06]
+    hbm06_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[06]
     when hbm06_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[06] = true
-        hbm_weight_datas[06] = elements[0]
+        hbm_weight_valids_hbm[06] = true
+        hbm_weight_datas_hbm[06] = elements[0]
     } else {
-        hbm_weight_valids[06] = false
+        hbm_weight_valids_hbm[06] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm06_reader.rst()
@@ -1227,12 +1350,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm07_reader.request_new_read(matrix_data_start_addrs[07], matrix_data_element_counts[07], [])
     }
-    hbm07_reader.ready_for_lots_of_data = hbm_may_pushes[07]
+    hbm07_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[07]
     when hbm07_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[07] = true
-        hbm_weight_datas[07] = elements[0]
+        hbm_weight_valids_hbm[07] = true
+        hbm_weight_datas_hbm[07] = elements[0]
     } else {
-        hbm_weight_valids[07] = false
+        hbm_weight_valids_hbm[07] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm07_reader.rst()
@@ -1290,12 +1413,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm08_reader.request_new_read(matrix_data_start_addrs[08], matrix_data_element_counts[08], [])
     }
-    hbm08_reader.ready_for_lots_of_data = hbm_may_pushes[08]
+    hbm08_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[08]
     when hbm08_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[08] = true
-        hbm_weight_datas[08] = elements[0]
+        hbm_weight_valids_hbm[08] = true
+        hbm_weight_datas_hbm[08] = elements[0]
     } else {
-        hbm_weight_valids[08] = false
+        hbm_weight_valids_hbm[08] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm08_reader.rst()
@@ -1353,12 +1476,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm09_reader.request_new_read(matrix_data_start_addrs[09], matrix_data_element_counts[09], [])
     }
-    hbm09_reader.ready_for_lots_of_data = hbm_may_pushes[09]
+    hbm09_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[09]
     when hbm09_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[09] = true
-        hbm_weight_datas[09] = elements[0]
+        hbm_weight_valids_hbm[09] = true
+        hbm_weight_datas_hbm[09] = elements[0]
     } else {
-        hbm_weight_valids[09] = false
+        hbm_weight_valids_hbm[09] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm09_reader.rst()
@@ -1416,12 +1539,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm10_reader.request_new_read(matrix_data_start_addrs[10], matrix_data_element_counts[10], [])
     }
-    hbm10_reader.ready_for_lots_of_data = hbm_may_pushes[10]
+    hbm10_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[10]
     when hbm10_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[10] = true
-        hbm_weight_datas[10] = elements[0]
+        hbm_weight_valids_hbm[10] = true
+        hbm_weight_datas_hbm[10] = elements[0]
     } else {
-        hbm_weight_valids[10] = false
+        hbm_weight_valids_hbm[10] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm10_reader.rst()
@@ -1479,12 +1602,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm11_reader.request_new_read(matrix_data_start_addrs[11], matrix_data_element_counts[11], [])
     }
-    hbm11_reader.ready_for_lots_of_data = hbm_may_pushes[11]
+    hbm11_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[11]
     when hbm11_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[11] = true
-        hbm_weight_datas[11] = elements[0]
+        hbm_weight_valids_hbm[11] = true
+        hbm_weight_datas_hbm[11] = elements[0]
     } else {
-        hbm_weight_valids[11] = false
+        hbm_weight_valids_hbm[11] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm11_reader.rst()
@@ -1542,12 +1665,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm12_reader.request_new_read(matrix_data_start_addrs[12], matrix_data_element_counts[12], [])
     }
-    hbm12_reader.ready_for_lots_of_data = hbm_may_pushes[12]
+    hbm12_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[12]
     when hbm12_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[12] = true
-        hbm_weight_datas[12] = elements[0]
+        hbm_weight_valids_hbm[12] = true
+        hbm_weight_datas_hbm[12] = elements[0]
     } else {
-        hbm_weight_valids[12] = false
+        hbm_weight_valids_hbm[12] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm12_reader.rst()
@@ -1605,12 +1728,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm13_reader.request_new_read(matrix_data_start_addrs[13], matrix_data_element_counts[13], [])
     }
-    hbm13_reader.ready_for_lots_of_data = hbm_may_pushes[13]
+    hbm13_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[13]
     when hbm13_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[13] = true
-        hbm_weight_datas[13] = elements[0]
+        hbm_weight_valids_hbm[13] = true
+        hbm_weight_datas_hbm[13] = elements[0]
     } else {
-        hbm_weight_valids[13] = false
+        hbm_weight_valids_hbm[13] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm13_reader.rst()
@@ -1668,12 +1791,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm14_reader.request_new_read(matrix_data_start_addrs[14], matrix_data_element_counts[14], [])
     }
-    hbm14_reader.ready_for_lots_of_data = hbm_may_pushes[14]
+    hbm14_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[14]
     when hbm14_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[14] = true
-        hbm_weight_datas[14] = elements[0]
+        hbm_weight_valids_hbm[14] = true
+        hbm_weight_datas_hbm[14] = elements[0]
     } else {
-        hbm_weight_valids[14] = false
+        hbm_weight_valids_hbm[14] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm14_reader.rst()
@@ -1731,12 +1854,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm15_reader.request_new_read(matrix_data_start_addrs[15], matrix_data_element_counts[15], [])
     }
-    hbm15_reader.ready_for_lots_of_data = hbm_may_pushes[15]
+    hbm15_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[15]
     when hbm15_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[15] = true
-        hbm_weight_datas[15] = elements[0]
+        hbm_weight_valids_hbm[15] = true
+        hbm_weight_datas_hbm[15] = elements[0]
     } else {
-        hbm_weight_valids[15] = false
+        hbm_weight_valids_hbm[15] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm15_reader.rst()
@@ -1794,12 +1917,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm16_reader.request_new_read(matrix_data_start_addrs[16], matrix_data_element_counts[16], [])
     }
-    hbm16_reader.ready_for_lots_of_data = hbm_may_pushes[16]
+    hbm16_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[16]
     when hbm16_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[16] = true
-        hbm_weight_datas[16] = elements[0]
+        hbm_weight_valids_hbm[16] = true
+        hbm_weight_datas_hbm[16] = elements[0]
     } else {
-        hbm_weight_valids[16] = false
+        hbm_weight_valids_hbm[16] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm16_reader.rst()
@@ -1857,12 +1980,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm17_reader.request_new_read(matrix_data_start_addrs[17], matrix_data_element_counts[17], [])
     }
-    hbm17_reader.ready_for_lots_of_data = hbm_may_pushes[17]
+    hbm17_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[17]
     when hbm17_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[17] = true
-        hbm_weight_datas[17] = elements[0]
+        hbm_weight_valids_hbm[17] = true
+        hbm_weight_datas_hbm[17] = elements[0]
     } else {
-        hbm_weight_valids[17] = false
+        hbm_weight_valids_hbm[17] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm17_reader.rst()
@@ -1920,12 +2043,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm18_reader.request_new_read(matrix_data_start_addrs[18], matrix_data_element_counts[18], [])
     }
-    hbm18_reader.ready_for_lots_of_data = hbm_may_pushes[18]
+    hbm18_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[18]
     when hbm18_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[18] = true
-        hbm_weight_datas[18] = elements[0]
+        hbm_weight_valids_hbm[18] = true
+        hbm_weight_datas_hbm[18] = elements[0]
     } else {
-        hbm_weight_valids[18] = false
+        hbm_weight_valids_hbm[18] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm18_reader.rst()
@@ -1983,12 +2106,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm19_reader.request_new_read(matrix_data_start_addrs[19], matrix_data_element_counts[19], [])
     }
-    hbm19_reader.ready_for_lots_of_data = hbm_may_pushes[19]
+    hbm19_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[19]
     when hbm19_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[19] = true
-        hbm_weight_datas[19] = elements[0]
+        hbm_weight_valids_hbm[19] = true
+        hbm_weight_datas_hbm[19] = elements[0]
     } else {
-        hbm_weight_valids[19] = false
+        hbm_weight_valids_hbm[19] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm19_reader.rst()
@@ -2046,12 +2169,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm20_reader.request_new_read(matrix_data_start_addrs[20], matrix_data_element_counts[20], [])
     }
-    hbm20_reader.ready_for_lots_of_data = hbm_may_pushes[20]
+    hbm20_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[20]
     when hbm20_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[20] = true
-        hbm_weight_datas[20] = elements[0]
+        hbm_weight_valids_hbm[20] = true
+        hbm_weight_datas_hbm[20] = elements[0]
     } else {
-        hbm_weight_valids[20] = false
+        hbm_weight_valids_hbm[20] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm20_reader.rst()
@@ -2109,12 +2232,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm21_reader.request_new_read(matrix_data_start_addrs[21], matrix_data_element_counts[21], [])
     }
-    hbm21_reader.ready_for_lots_of_data = hbm_may_pushes[21]
+    hbm21_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[21]
     when hbm21_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[21] = true
-        hbm_weight_datas[21] = elements[0]
+        hbm_weight_valids_hbm[21] = true
+        hbm_weight_datas_hbm[21] = elements[0]
     } else {
-        hbm_weight_valids[21] = false
+        hbm_weight_valids_hbm[21] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm21_reader.rst()
@@ -2172,12 +2295,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm22_reader.request_new_read(matrix_data_start_addrs[22], matrix_data_element_counts[22], [])
     }
-    hbm22_reader.ready_for_lots_of_data = hbm_may_pushes[22]
+    hbm22_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[22]
     when hbm22_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[22] = true
-        hbm_weight_datas[22] = elements[0]
+        hbm_weight_valids_hbm[22] = true
+        hbm_weight_datas_hbm[22] = elements[0]
     } else {
-        hbm_weight_valids[22] = false
+        hbm_weight_valids_hbm[22] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm22_reader.rst()
@@ -2235,12 +2358,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm23_reader.request_new_read(matrix_data_start_addrs[23], matrix_data_element_counts[23], [])
     }
-    hbm23_reader.ready_for_lots_of_data = hbm_may_pushes[23]
+    hbm23_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[23]
     when hbm23_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[23] = true
-        hbm_weight_datas[23] = elements[0]
+        hbm_weight_valids_hbm[23] = true
+        hbm_weight_datas_hbm[23] = elements[0]
     } else {
-        hbm_weight_valids[23] = false
+        hbm_weight_valids_hbm[23] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm23_reader.rst()
@@ -2298,12 +2421,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm24_reader.request_new_read(matrix_data_start_addrs[24], matrix_data_element_counts[24], [])
     }
-    hbm24_reader.ready_for_lots_of_data = hbm_may_pushes[24]
+    hbm24_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[24]
     when hbm24_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[24] = true
-        hbm_weight_datas[24] = elements[0]
+        hbm_weight_valids_hbm[24] = true
+        hbm_weight_datas_hbm[24] = elements[0]
     } else {
-        hbm_weight_valids[24] = false
+        hbm_weight_valids_hbm[24] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm24_reader.rst()
@@ -2361,12 +2484,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm25_reader.request_new_read(matrix_data_start_addrs[25], matrix_data_element_counts[25], [])
     }
-    hbm25_reader.ready_for_lots_of_data = hbm_may_pushes[25]
+    hbm25_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[25]
     when hbm25_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[25] = true
-        hbm_weight_datas[25] = elements[0]
+        hbm_weight_valids_hbm[25] = true
+        hbm_weight_datas_hbm[25] = elements[0]
     } else {
-        hbm_weight_valids[25] = false
+        hbm_weight_valids_hbm[25] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm25_reader.rst()
@@ -2424,12 +2547,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm26_reader.request_new_read(matrix_data_start_addrs[26], matrix_data_element_counts[26], [])
     }
-    hbm26_reader.ready_for_lots_of_data = hbm_may_pushes[26]
+    hbm26_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[26]
     when hbm26_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[26] = true
-        hbm_weight_datas[26] = elements[0]
+        hbm_weight_valids_hbm[26] = true
+        hbm_weight_datas_hbm[26] = elements[0]
     } else {
-        hbm_weight_valids[26] = false
+        hbm_weight_valids_hbm[26] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm26_reader.rst()
@@ -2487,12 +2610,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm27_reader.request_new_read(matrix_data_start_addrs[27], matrix_data_element_counts[27], [])
     }
-    hbm27_reader.ready_for_lots_of_data = hbm_may_pushes[27]
+    hbm27_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[27]
     when hbm27_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[27] = true
-        hbm_weight_datas[27] = elements[0]
+        hbm_weight_valids_hbm[27] = true
+        hbm_weight_datas_hbm[27] = elements[0]
     } else {
-        hbm_weight_valids[27] = false
+        hbm_weight_valids_hbm[27] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm27_reader.rst()
@@ -2550,12 +2673,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm28_reader.request_new_read(matrix_data_start_addrs[28], matrix_data_element_counts[28], [])
     }
-    hbm28_reader.ready_for_lots_of_data = hbm_may_pushes[28]
+    hbm28_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[28]
     when hbm28_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[28] = true
-        hbm_weight_datas[28] = elements[0]
+        hbm_weight_valids_hbm[28] = true
+        hbm_weight_datas_hbm[28] = elements[0]
     } else {
-        hbm_weight_valids[28] = false
+        hbm_weight_valids_hbm[28] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm28_reader.rst()
@@ -2613,12 +2736,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm29_reader.request_new_read(matrix_data_start_addrs[29], matrix_data_element_counts[29], [])
     }
-    hbm29_reader.ready_for_lots_of_data = hbm_may_pushes[29]
+    hbm29_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[29]
     when hbm29_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[29] = true
-        hbm_weight_datas[29] = elements[0]
+        hbm_weight_valids_hbm[29] = true
+        hbm_weight_datas_hbm[29] = elements[0]
     } else {
-        hbm_weight_valids[29] = false
+        hbm_weight_valids_hbm[29] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm29_reader.rst()
@@ -2676,12 +2799,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm30_reader.request_new_read(matrix_data_start_addrs[30], matrix_data_element_counts[30], [])
     }
-    hbm30_reader.ready_for_lots_of_data = hbm_may_pushes[30]
+    hbm30_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[30]
     when hbm30_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[30] = true
-        hbm_weight_datas[30] = elements[0]
+        hbm_weight_valids_hbm[30] = true
+        hbm_weight_datas_hbm[30] = elements[0]
     } else {
-        hbm_weight_valids[30] = false
+        hbm_weight_valids_hbm[30] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm30_reader.rst()
@@ -2739,12 +2862,12 @@ module SUSpMV_Full {
     when set_matrix_data {
         hbm31_reader.request_new_read(matrix_data_start_addrs[31], matrix_data_element_counts[31], [])
     }
-    hbm31_reader.ready_for_lots_of_data = hbm_may_pushes[31]
+    hbm31_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[31]
     when hbm31_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[31] = true
-        hbm_weight_datas[31] = elements[0]
+        hbm_weight_valids_hbm[31] = true
+        hbm_weight_datas_hbm[31] = elements[0]
     } else {
-        hbm_weight_valids[31] = false
+        hbm_weight_valids_hbm[31] = false
     }
     when pipe_aresetn_slr0.dout {
         hbm31_reader.rst()
