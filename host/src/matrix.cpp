@@ -627,9 +627,17 @@ ComputeUnitData Matrix::get_compute_unit_data() {
         assert(from <= to);
         assert(to <= this->entries.size());
         std::span<Entry> entries_here = std::span(this->entries).subspan(from, to - from);
-        
-        builders[cur_hbm].y_max = y_froms[i+1] - y_froms[i] - 1;
-        builders[cur_hbm].y_max_seen = 0;
+
+        uint64_t y_max = y_froms[i+1]-1;
+        uint64_t y_max_entry_idx = y_sum_count[y_max];
+        builders[cur_hbm].y_max = y_max - y_froms[i];
+        if (y_max_entry_idx >= entries.size()) {
+            builders[cur_hbm].y_max_tile_idx = 0;
+        } else if (entries[y_max_entry_idx].y == y_max) {
+            builders[cur_hbm].y_max_tile_idx = tiles_per_row + 1;
+        } else {
+            builders[cur_hbm].y_max_tile_idx = entries[y_max_entry_idx].x / TILE_X_WIDTH;
+        }
 
         for(Entry& e : entries_here) {
             assert(e.x < this->width);
@@ -675,9 +683,11 @@ ComputeUnitData Matrix::get_compute_unit_data() {
 
 Builder::Builder() {
     first_entry_in_tile = true;
+    x_tile = 0;
     y_pos = 0;
     y_max = 0;
-    y_max_seen = 0;
+    y_max_tile_idx = 0;
+    y_max_added = false;
 }
 
 bool Builder::has_bank_conflict(uint64_t *y, uint64_t len, uint64_t new_y) {
@@ -732,17 +742,17 @@ void Builder::add(Entry entry, bool last_in_x, bool last_in_y) {
 
 	// the accelerator deduces the y-increment at a last_in_y by tracking the largest y value
 	// => y_max must appear at least once in a y-section
-    y_max_seen = std::max(y_max_seen, entry.y);
-    assert(y_max_seen <= y_max);
-	if (y_max_seen < y_max && last_in_x && last_in_y) {
+	if (!y_max_added && y_max_tile_idx == x_tile && last_in_x) {
 		//std::cout << y_max << "   " << y_max_seen << std::endl;
 		// we must add an additional entry at the very end to inform the accelerator about the y-span of the y-section
-		
+        // => we chose this specific x-tile, because requires the fewest dummy entries to bridge the gap
+
 		// push back the actual new entry
 		entries.push_back(BuilderEntry{ x: entry.x, y: entry.y, val: entry.val, last_in_x: false, last_in_y: false });
     	y_pos = entry.y;
+        y_max_added = true;
 		// add the dummy entry at y_max
-		add(Entry{ x: 0, y: y_max, val: 0.0}, true, true);
+		add(Entry{ x: 0, y: y_max, val: 0.0}, true, last_in_y);
 	} else {
 		// push back the actual new entry
 		entries.push_back(BuilderEntry{ x: entry.x, y: entry.y, val: entry.val, last_in_x: last_in_x , last_in_y: last_in_y });
@@ -756,6 +766,8 @@ void Builder::add(Entry entry, bool last_in_x, bool last_in_y) {
     if (last_in_x || last_in_y) {
         first_entry_in_tile = true;
         y_pos = 0;
+        y_max_added = false;
+        x_tile = last_in_y ? 0 : x_tile + 1;
     } else {
     	y_pos = entry.y;
     }

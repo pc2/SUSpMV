@@ -68,12 +68,14 @@ int main(int argc, char **argv) {
     std::vector<float> x_vec = random_x_vec(m.width);
     //std::vector<float> x_vec(m.width, 1.0);
 
-    check_mul(m, data, x_vec);
-    
     if(iterations == 0) {
+        std::cout << "check mul" << std::endl;
+        check_mul(m, data, x_vec);
+        std::cout << "convert back" << std::endl;
 		Matrix m2 = data.convert();
+        std::cout << "compare" << std::endl;
 		m.compare(m2);
-
+        std::cout << "dump" << std::endl;
         dump_hex(m, data, x_vec);
         return 0;
     }
