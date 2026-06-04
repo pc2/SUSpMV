@@ -6,6 +6,8 @@
 #include <format>
 #include <cmath>
 
+#define HBM_ARG(N) (HBM_BASE + HBM_STRIDE * N), (N >= COMPUTE_UNITS ? 0 : data.hbm_buffers[N].size())
+
 int dump_hex(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec);
 
 std::vector<float> random_x_vec(size_t len) {
@@ -102,10 +104,10 @@ int main(int argc, char **argv) {
             ret_val,
             v_buffer, r_buffer,
             data.x_tiles, data.y_repeats,
-            HBM_BASE + HBM_STRIDE * 0, data.hbm_buffers[0].size(),
-            HBM_BASE + HBM_STRIDE * 1, data.hbm_buffers[1].size(),
-            HBM_BASE + HBM_STRIDE * 2, data.hbm_buffers[2].size(),
-            HBM_BASE + HBM_STRIDE * 3, data.hbm_buffers[3].size()
+            HBM_ARG( 0), HBM_ARG( 1), HBM_ARG( 2), HBM_ARG( 3), HBM_ARG( 4), HBM_ARG( 5), HBM_ARG( 6), HBM_ARG( 7),
+            HBM_ARG( 8), HBM_ARG( 9), HBM_ARG(10), HBM_ARG(11), HBM_ARG(12), HBM_ARG(13), HBM_ARG(14), HBM_ARG(15),
+            HBM_ARG(16), HBM_ARG(17), HBM_ARG(18), HBM_ARG(19), HBM_ARG(20), HBM_ARG(21), HBM_ARG(22), HBM_ARG(23),
+            HBM_ARG(24), HBM_ARG(25), HBM_ARG(26), HBM_ARG(27), HBM_ARG(28), HBM_ARG(29), HBM_ARG(30), HBM_ARG(31)
         );
         job();
         std::cout << "Cycles: " << cycles << std::endl;
