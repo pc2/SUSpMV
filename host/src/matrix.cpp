@@ -291,7 +291,9 @@ bool Matrix::compare(Matrix &m) {
     uint64_t errors = 0;
 	for (uint64_t i = 0; i < entries.size() && i < m.entries.size(); i++) {
 		if (entries[i].x != m.entries[i].x || entries[i].y != m.entries[i].y || entries[i].val != m.entries[i].val) {
-            std::cout << entries[i] << "  " << m.entries[i] << std::endl;
+            if (errors < 100) {
+                std::cout << entries[i] << "  " << m.entries[i] << std::endl;
+            }
 			equal = false;
             errors++;
 		}
@@ -655,7 +657,6 @@ ComputeUnitData Matrix::get_compute_unit_data() {
         }
 
         uint64_t blocks_after = builders[cur_hbm].blocks.size();
-
         std::cout << std::format(" (in {} blocks)", blocks_after - blocks_before) << std::endl;
     }
     for(size_t i = 0; i < COMPUTE_UNITS; i++) {
@@ -729,16 +730,6 @@ void Builder::add(Entry entry, bool last_in_x, bool last_in_y) {
     	delta_y = entry.y - y_pos;
     }
 
-	if (has_y_conflict(entry.y)) {
-		// add another dummy entry to bridge the gap from the previous entry
-		// => this additional entry has zero overhead, because we add empty blocks afterwards anyways
-		entries.push_back(BuilderEntry{ x: 0, y: entry.y, val: 0.0, last_in_x: false, last_in_y: false });
-		while (has_y_conflict(entry.y)) {
-			// add empty blocks until there is no conflict anymore
-			build_block();
-		}
-	}
-
 	// the accelerator deduces the y-increment at a last_in_y by tracking the largest y value
 	// => y_max must appear at least once in a y-section
     y_max_seen = std::max(y_max_seen, entry.y);
@@ -792,6 +783,9 @@ void Builder::build_block() {
         assert(delta_y <= 255);
 
         if (has_bank_conflict(y, i, entries[i].y)) {
+            break;
+        }
+        if (has_y_conflict(entries[i].y)) {
             break;
         }
 
