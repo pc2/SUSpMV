@@ -738,7 +738,7 @@ void Builder::add(Entry entry, bool last_in_x, bool last_in_y) {
     y_max_seen = std::max(y_max_seen, entry.y);
     assert(y_max_seen <= y_max);
 	if (y_max_seen < y_max && last_in_x && last_in_y) {
-		std::cout << y_max << "   " << y_max_seen << std::endl;
+		//std::cout << y_max << "   " << y_max_seen << std::endl;
 		// we must add an additional entry at the very end to inform the accelerator about the y-span of the y-section
 		
 		// push back the actual new entry
