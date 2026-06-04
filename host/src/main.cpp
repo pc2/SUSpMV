@@ -89,12 +89,14 @@ int main(int argc, char **argv) {
         tapasco.copy_to(hbm_data_ptr, hbm_addr, hbm_data_size);
     }
 
+    uint64_t extended_xvec_size = ((x_vec.size() + 4095) / 4096) * 4096;
+    x_vec.reserve(extended_xvec_size);
     for (uint64_t iter = 0; iter < iterations; iter++) {
         // generate & upload test vector
-        std::vector<float> result(m.height);
+        std::vector<float> y_vec(m.height);
 
-        auto v_buffer = tapasco::makeInOnly(tapasco::makeWrappedPointer(x_vec.data(), x_vec.size() * sizeof(float)));
-        auto r_buffer = tapasco::makeOutOnly(tapasco::makeWrappedPointer(result.data(), result.size() * sizeof(float)));
+        auto device_x_vec = tapasco::makeInOnly(tapasco::makeWrappedPointer(x_vec.data(), extended_xvec_size * sizeof(float)));
+        auto device_y_vec = tapasco::makeOutOnly(tapasco::makeWrappedPointer(y_vec.data(), y_vec.size() * sizeof(float)));
 
         // launch SUSpMV
         uint64_t cycles = -1;
@@ -102,7 +104,7 @@ int main(int argc, char **argv) {
         auto job = tapasco.launch(
             SUSPMV_PE_ID,
             ret_val,
-            v_buffer, r_buffer,
+            device_x_vec, device_y_vec,
             data.x_tiles, data.y_repeats,
             HBM_ARG( 0), HBM_ARG( 1), HBM_ARG( 2), HBM_ARG( 3), HBM_ARG( 4), HBM_ARG( 5), HBM_ARG( 6), HBM_ARG( 7),
             HBM_ARG( 8), HBM_ARG( 9), HBM_ARG(10), HBM_ARG(11), HBM_ARG(12), HBM_ARG(13), HBM_ARG(14), HBM_ARG(15),
@@ -116,8 +118,8 @@ int main(int argc, char **argv) {
         std::vector<float> reference = m.mul(x_vec);
         uint64_t errors = 0;
         for (uint64_t i = 0; i < m.height; i++) {
-            if (!are_equalish(result[i], reference[i])) {
-                std::cout << result[i] << " " <<  reference[i] << std::endl;
+            if (!are_equalish(y_vec[i], reference[i])) {
+                std::cout << y_vec[i] << " " <<  reference[i] << std::endl;
                 errors += 1;
             }
         }
