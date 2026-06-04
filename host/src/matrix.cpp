@@ -688,6 +688,7 @@ Builder::Builder() {
     y_max = 0;
     y_max_tile_idx = 0;
     y_max_added = false;
+    accumulator_zero = true;
 }
 
 bool Builder::has_bank_conflict(uint64_t *y, uint64_t len, uint64_t new_y) {
@@ -861,6 +862,20 @@ void Builder::build_block() {
         use_float6 = false;
     }
 
+    // reduce count
+    if (count == 6 && !use_float6) {
+        count = 5; // Float5 can only send 5 floats.
+    }
+
+    // track accumulator
+    for (uint64_t i = 0; i < count; i++) {
+        if (dy[i] != 0) {
+            accumulator_zero = true;
+        } else if (val[i] != 0.0) {
+            accumulator_zero = false;
+        }
+    }
+
     // append new block
     if (use_float6) {
         MatrixDataBlock block;
@@ -893,7 +908,7 @@ void Builder::build_block() {
             y_delta1 : dy[1],
             y_delta2 : dy[2],
             y_delta3 : dy[3],
-            y_delta4 : last_in_x ? 1u : dy[4], // flush the accumulator on last x
+            y_delta4 : last_in_x && !accumulator_zero ? 1u : dy[4], // flush the accumulator on last x
             last_in_x : last_in_x ? 1u : 0u,
             last_in_y : last_in_y ? 1u : 0u,
             x_index_4: x[4],
@@ -903,6 +918,9 @@ void Builder::build_block() {
             x_index_0: x[0],
             mode     : 0b1111,
         };
+        if (last_in_x) {
+            accumulator_zero = true;
+        }
         blocks.push_back(block);
         for (uint64_t i = 0; i < count; i++) {
         	conflict_entries.push_back(BuilderEntry{ x: entries[i].x, y: entries[i].y, val: entries[i].val, last_in_x: entries[i].last_in_x, last_in_y: entries[i].last_in_y, block_idx: blocks.size() });

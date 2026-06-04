@@ -63,6 +63,7 @@ struct Builder {
     std::vector<BuilderEntry> conflict_entries;
     bool first_entry_in_tile;
     bool y_max_added;
+    bool accumulator_zero;
     uint64_t x_tile;
     uint64_t y_pos;
     uint64_t y_max;
