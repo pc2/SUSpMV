@@ -251,6 +251,7 @@ Matrix Matrix::load(std::string path) {
         if (value == 0.0) {
             continue;
         }
+        //if (252417 <= row && row <= 273418) {} else {continue;}
         
         m.entries.push_back(Entry{x: col, y: row, val: value});
         // Expand symmetry
@@ -287,14 +288,16 @@ bool Matrix::compare(Matrix &m) {
 		std::cout << entries.size() << "  " << m.entries.size() << std::endl;
 		equal = false;
 	}
+    uint64_t errors = 0;
 	for (uint64_t i = 0; i < entries.size() && i < m.entries.size(); i++) {
 		if (entries[i].x != m.entries[i].x || entries[i].y != m.entries[i].y || entries[i].val != m.entries[i].val) {
             std::cout << entries[i] << "  " << m.entries[i] << std::endl;
 			equal = false;
+            errors++;
 		}
 	}
 	if (!equal) {	
-        std::cout << "matrices differ!" << std::endl;
+        std::cout << "matrices differ (errors: " << errors << "/" << entries.size() << ")!" << std::endl;
 	}
 	return equal;
 }
@@ -548,7 +551,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
     uint64_t repeats = 0;
     uint64_t base_y = 0;
     uint64_t initial_height = std::min(MAX_TILE_Y_HEIGHT, height-(COMPUTE_UNITS-1));
-    y_froms.insert(y_froms.end(), 33, 0);
+    y_froms.insert(y_froms.end(), COMPUTE_UNITS+1, 0);
     while (base_y < height) {
         //std::cout << "reapeat = " << repeats+1 << "  " << initial_height << std::endl;
         uint64_t y_end = std::min(base_y + initial_height, height - (COMPUTE_UNITS-1));
@@ -568,7 +571,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
                 //std::cout << " c["<<c<<"].y = " << y_start << "  " << y_end << "  " << max_cost << std::endl;
                 break;
             }
-            while (max_cost > base_cost * equality_threshold_max && y_end > y_start) {
+            while (max_cost > base_cost * equality_threshold_max && y_end > y_start+1) {
                 // TODO: use binary search
                 // too many entries in this tile causes imbalance
                 // => reduce this tiles size
@@ -597,7 +600,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
             base_y = y_end;
             initial_height = std::min(MAX_TILE_Y_HEIGHT, (height-base_y)-(COMPUTE_UNITS-1));
             repeats++;
-            y_froms.insert(y_froms.end(), 32, 0);
+            y_froms.insert(y_froms.end(), COMPUTE_UNITS, 0);
         }
     }
     for (uint64_t i = 0; i < y_froms.size(); i++) {
@@ -616,7 +619,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
         size_t from = y_split_points[i];
         size_t to = y_split_points[i+1];
 
-        std::cout << std::format("Placing Y {}..{} (entries {}..{}) in compute unit {}", y_froms[i], y_froms[i+1], from, to, cur_hbm);
+        std::cout << std::format("Placing Y {}(+{}) (entries {}..{}) in compute unit {}", y_froms[i], y_froms[i+1]-y_froms[i], from, to, cur_hbm);
         uint64_t blocks_before = builders[cur_hbm].blocks.size();
 
         assert(from <= to);
