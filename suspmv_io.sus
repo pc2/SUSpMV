@@ -216,10 +216,9 @@ module XDataLoader#(int NUM_KERNELS) {
     }
 }*/
 
-module YVectorWriter#(int NUM_KERNELS) {
+module YVectorWriter#(int NUM_KERNELS, int MAY_PUSH_LATENCY) {
     gen int DDR_AXI_WRITE_WIDTH = 512
     gen int MEM_ADDR_WIDTH = 64
-    gen int MAY_PUSH_LATENCY = 200
     // ADDR_ALIGN of 4, because we want to get the float-size multiplexer
     axi_burst_writer#(ADDR_WIDTH: MEM_ADDR_WIDTH, ADDR_ALIGN: 4, ADDR_MAY_PUSH_LATENCY: 0, MAY_PUSH_LATENCY) writer
 
