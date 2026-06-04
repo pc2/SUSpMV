@@ -65,10 +65,9 @@ int main(int argc, char **argv) {
     ComputeUnitData data = m.get_compute_unit_data();
     std::cout << "ComputeUnitData done" << std::endl;
 
-    std::vector<float> x_vec = random_x_vec(m.width);
-    //std::vector<float> x_vec(m.width, 1.0);
-
     if(iterations == 0) {
+        std::vector<float> x_vec = random_x_vec(m.width);
+        //std::vector<float> x_vec(m.width, 1.0);
         std::cout << "check mul" << std::endl;
         check_mul(m, data, x_vec);
         std::cout << "convert back" << std::endl;
@@ -91,13 +90,16 @@ int main(int argc, char **argv) {
         tapasco.copy_to(hbm_data_ptr, hbm_addr, hbm_data_size);
     }
 
-    uint64_t extended_xvec_size = ((x_vec.size() + 4095) / 4096) * 4096;
-    x_vec.reserve(extended_xvec_size);
     for (uint64_t iter = 0; iter < iterations; iter++) {
         // generate & upload test vector
-        std::vector<float> y_vec(m.height);
+        std::vector<float> x_vec = random_x_vec(m.width);
+        std::vector<float> extended_x_vec(((x_vec.size() + 4095) / 4096) * 4096, 0.0);
+        for (uint64_t i = 0; i < m.width; i++) {
+            extended_x_vec[i] = x_vec[i];
+        }
+        std::vector<float> y_vec(m.height, 0.0);
 
-        auto device_x_vec = tapasco::makeInOnly(tapasco::makeWrappedPointer(x_vec.data(), extended_xvec_size * sizeof(float)));
+        auto device_x_vec = tapasco::makeInOnly(tapasco::makeWrappedPointer(extended_x_vec.data(), extended_x_vec.size() * sizeof(float)));
         auto device_y_vec = tapasco::makeOutOnly(tapasco::makeWrappedPointer(y_vec.data(), y_vec.size() * sizeof(float)));
 
         // launch SUSpMV
