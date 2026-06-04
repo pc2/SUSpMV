@@ -536,7 +536,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
 	std::vector<uint64_t> y_sum_count(height+1, 0);
 	y_sum_count[0] = 0;
 	for (uint64_t y = 0, e = 0; y < height; y++) {
-		while (y >= entries[e].y && e < entries.size()) {
+		while (e < entries.size() && y >= entries[e].y) {
 			e++;
 		}
 		y_sum_count[y+1] = e;
