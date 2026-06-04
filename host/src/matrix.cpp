@@ -596,7 +596,6 @@ ComputeUnitData Matrix::get_compute_unit_data() {
             //std::cout << " c["<<c<<"].y = " << y_start << "  " << y_end << "  " << max_cost << std::endl;
         }
         if (retry_with_smaller_initial_height) {
-            // TODO: use binary search
             initial_height_max = initial_height-1;
         } else if (initial_height_max != initial_height_min) {
             initial_height_min = initial_height;
