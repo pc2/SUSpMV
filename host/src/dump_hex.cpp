@@ -7,11 +7,8 @@
 
 template<typename T, size_t ROW_BITS>
 void store(std::string path, const std::vector<T>& data) {
-    std::cout << "Data element size is " << sizeof(T) << std::endl;
     const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(data.data());
     size_t data_len = data.size() * sizeof(T);
-
-    std::cout << "Writing Hex Data to " << path << std::endl;
 
     std::ofstream out(path);
 
@@ -39,8 +36,6 @@ void store(std::string path, const std::vector<T>& data) {
 }
 
 void store_matrix_size(std::string path, Matrix& m, ComputeUnitData& data) {
-    std::cout << "Writing Matrix Size Information to " << path << std::endl;
-
     std::ofstream out(path);
 
     out << "`define X_VEC_LEN " << m.width << std::endl;
@@ -53,9 +48,6 @@ void store_matrix_size(std::string path, Matrix& m, ComputeUnitData& data) {
         uint64_t hbm_addr = HBM_BASE + HBM_STRIDE * i;
         out << std::format("`define HBM{:02}_ADDR {}", i, hbm_addr) << std::endl;
         out << std::format("`define HBM{:02}_LEN {}", i, data.hbm_buffers[i].size()) << std::endl;
-
-        // cue to store the compute unit data in files
-        store<MatrixDataBlock, 256>(std::format("hbm{:02}.mem", i), data.hbm_buffers[i]);
     }
 
     out.close();
@@ -68,7 +60,11 @@ int dump_hex(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec) {
     store<float, 512>("x_vec.mem", x_vec);
     store<float, 512>("expected.mem", expected_result);
 
+    // Store the matrix
     store_matrix_size("matrix_params.vh", m, data);
+    for(size_t i = 0; i < COMPUTE_UNITS; i++) {
+        store<MatrixDataBlock, 256>(std::format("hbm{:02}.mem", i), data.hbm_buffers[i]);
+    }
 
     return 0;
 }
