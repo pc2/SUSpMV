@@ -8,7 +8,7 @@ const size_t NUM_Y_BANKS = 16;
 
 // accelerator config
 const uint64_t COMPUTE_UNITS = 32;
-const uint64_t MAX_TILE_Y_HEIGHT = 2048 * NUM_Y_BANKS;
+const uint64_t MAX_TILE_Y_HEIGHT = 4096 * NUM_Y_BANKS;
 
 // memory layout
 const uint64_t HBM_BASE   = 0x400000000;

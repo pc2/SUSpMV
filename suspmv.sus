@@ -2,16 +2,16 @@
 module MultiAccumulate {
     gen int PARALLELISM = 6
 
-    fp64_reduce_sum accumulator
+    fp32_reduce_sum accumulator
 
     domain default
-    action valid_set : double[PARALLELISM] values, bool[PARALLELISM] is_lasts -> double[PARALLELISM] partial_sums {
-        split double[PARALLELISM] adder_left_inputs
-        split double[PARALLELISM] adder_outputs
+    action valid_set : float[PARALLELISM] values, bool[PARALLELISM] is_lasts -> float[PARALLELISM] partial_sums {
+        split float[PARALLELISM] adder_left_inputs
+        split float[PARALLELISM] adder_outputs
 
         for int I in 0..6 {
             when is_lasts[I] {
-                adder_left_inputs[I] = 0.0d
+                adder_left_inputs[I] = 0.0
             } else {
                 adder_left_inputs[I] = adder_outputs[I]
             }
@@ -19,10 +19,10 @@ module MultiAccumulate {
 
         adder_outputs[0] = values[0]
         for int I in 1..6 {
-            adder_outputs[I] = fp64_add(adder_left_inputs[I-1], values[I])
+            adder_outputs[I] = fp32_add(adder_left_inputs[I-1], values[I])
         }
 
-        double[PARALLELISM] accumulator_input_selector
+        float[PARALLELISM] accumulator_input_selector
         for int I in 0..6 {
             accumulator_input_selector[I] = adder_outputs[I]
         }
@@ -31,7 +31,7 @@ module MultiAccumulate {
         find_first_bit.find(is_lasts)
         when find_first_bit.is_nonzero : int index {
             accumulator.accumulate(accumulator_input_selector[index])
-            double accululated_partial_sum = accumulator.last(adder_left_inputs[PARALLELISM-1])
+            float accululated_partial_sum = accumulator.last(adder_left_inputs[PARALLELISM-1])
 
             for int I in 0..PARALLELISM {
                 when index == I {
@@ -53,7 +53,7 @@ module MultiAccumulate {
 
 module YIndexManager {
     gen int PARALELLISM = 6
-    gen int Y_TO = 2048 * 16
+    gen int Y_TO = 4096 * 16
     gen int Y_DELTA_TO = 256
 
     state int#(FROM: 0, TO: Y_TO) cur_y_base
@@ -245,14 +245,14 @@ module JoiningFIFO#(T, int NUM_FIFOS, int DEPTH, int MAY_PUSH_LATENCY) {
 }
 
 /// Collects and sums up y values. 
-/// reset must be held for 4096 cycles to fully reset the Y vector memory
+/// reset must be held for 8192 cycles to fully reset the Y vector memory
 module YCollector {
     gen int NUM_Y_BUFFERS = 2
-    //DoubleBuffer#(T: type double, DEPTH: 2048, NUM_BUFFERS: 2) buf
+    //DoubleBuffer#(T: type float, DEPTH: 4096, NUM_BUFFERS: 2) buf
     gen int PARALELLISM = 6
     gen int NUM_BUCKETS = 16
-    // The 16 banks are arranged as double buffers. 
-    gen int HALF_RAM_DEPTH = 2048
+    // The 16 banks are arranged as float buffers. 
+    gen int HALF_RAM_DEPTH = 4096
     gen int NUM_Y_INDICES = HALF_RAM_DEPTH * NUM_BUCKETS
     gen int Y_DELTA = 256
     YIndexManager y_index_manager
@@ -261,8 +261,8 @@ module YCollector {
     state int#(FROM: 0, TO: NUM_Y_BUFFERS) current_back_buffer
 
     bool[NUM_BUCKETS] bucket_write = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
-    double[NUM_BUCKETS] bucket_read_value
-    double[NUM_BUCKETS] bucket_write_value
+    float[NUM_BUCKETS] bucket_read_value
+    float[NUM_BUCKETS] bucket_write_value
     int[NUM_BUCKETS] bucket_write_index
     int[NUM_BUCKETS] bucket_mux_from
 
@@ -274,7 +274,7 @@ module YCollector {
 
     domain default
     action push_partial_sums'0 :
-        double[PARALELLISM] partial_sums'7,
+        float[PARALELLISM] partial_sums'7,
         int#(FROM: 0, TO: Y_DELTA)[PARALELLISM] y_deltas'0,
         bool end_of_x_block'0,
         bool end_of_y_block'0 {
@@ -303,12 +303,12 @@ module YCollector {
             }
         }
 
-        double[PARALELLISM] per_bucket_old_values
-        double[PARALELLISM] new_partial_sums
+        float[PARALELLISM] per_bucket_old_values
+        float[PARALELLISM] new_partial_sums
         for int CHANNEL in 0..PARALELLISM {
             reg per_bucket_old_values[CHANNEL] = bucket_read_value[target_buckets[CHANNEL]]
             when valids[CHANNEL] {
-                reg new_partial_sums[CHANNEL] = fp64_add(per_bucket_old_values[CHANNEL], partial_sums[CHANNEL])
+                reg new_partial_sums[CHANNEL] = fp32_add(per_bucket_old_values[CHANNEL], partial_sums[CHANNEL])
             }
         }
         for int BUCKET_I in 0..NUM_BUCKETS {
@@ -358,18 +358,18 @@ module YCollector {
     JoiningFIFO#(DEPTH: 32, NUM_FIFOS: NUM_BUCKETS) output_fifo
     output_fifo.pushes = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
     for int BUCKET in 0..NUM_BUCKETS {
-        RAM#(T: type double, DEPTH: HALF_RAM_DEPTH * NUM_Y_BUFFERS) bucket_ram
+        RAM#(T: type float, DEPTH: HALF_RAM_DEPTH * NUM_Y_BUFFERS) bucket_ram
         when is_long_rst {
-            bucket_ram.write(reset_rotator, 0.0d)
+            bucket_ram.write(reset_rotator, 0.0)
         } else when bucket_write[BUCKET] {
             reg int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer, bucket_write_index[BUCKET])
             bucket_read_value[BUCKET] = bucket_ram.read(front_index)
             bucket_ram.write(front_index, bucket_write_value[BUCKET])
         } else when num_ys_left_per_bucket[BUCKET] != 0 & output_fifo.may_pushes[BUCKET] {
             reg int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer, cur_output_y_per_bucket[BUCKET])
-            reg double read_value = bucket_ram.read(back_index)
-            bucket_ram.write(back_index, 0.0d)
-            reg output_fifo.datas[BUCKET] = fp64_to_fp32(read_value)
+            reg float read_value = bucket_ram.read(back_index)
+            bucket_ram.write(back_index, 0.0)
+            reg output_fifo.datas[BUCKET] = read_value
             reg output_fifo.pushes[BUCKET] = true
             cur_output_y_per_bucket[BUCKET] = cur_output_y_per_bucket[BUCKET] + 1 mod HALF_RAM_DEPTH
             num_ys_left_per_bucket[BUCKET] = num_ys_left_per_bucket[BUCKET] - 1 mod HALF_RAM_DEPTH
@@ -632,9 +632,9 @@ module SpMVUnit#(int MAY_PUSH_LATENCY) {
     XVectorMemory x_vector_memory
     MultiAccumulate accumulate
     YCollector collector
-    // The reset lengthener is needed because YCollector needs at least 4096 cycles to fully initialize its memory to 0.0
+    // The reset lengthener is needed because YCollector needs at least 8192 cycles to fully initialize its memory to 0.0
     // It's here because we can't assume that the BSP will hold the reset for long enough
-    ResetLengthener#(MIN_RESET_CYCLES: 4096) reset_lengthener
+    ResetLengthener#(MIN_RESET_CYCLES: 8192) reset_lengthener
     FWFT#(DEPTH: 512, T: type bool[256]) packed_data_fifo
 
     domain main
@@ -667,17 +667,12 @@ module SpMVUnit#(int MAY_PUSH_LATENCY) {
 
             float[6] terms = x_vector_memory.multiply_bys(weights, x_indices, end_of_x)
 
-            double[6] high_precision_terms
-            for int I in 0..6 {
-                high_precision_terms[I] = fp32_to_fp64(terms[I])
-            }
-
             bool[6] is_lasts
             for int I in 0..6 {
                 is_lasts[I] = y_deltas[I] != 0
             }
 
-            double[6] partial_sums = accumulate.valid_set(high_precision_terms, is_lasts)
+            float[6] partial_sums = accumulate.valid_set(terms, is_lasts)
 
             collector.push_partial_sums(partial_sums, y_deltas, end_of_x, end_of_y)
         }
