@@ -62,12 +62,12 @@ module SpMVUnit_tb;
     );
     
     localparam NUM_X_CHUNKS = `X_TILES * 64;
-    localparam NUM_HBM_ELEMS = `HBM00_LEN;
+    localparam NUM_HBM_ELEMS = `HBM01_LEN;
     
     // HBM00
-    localparam int Y_BLOCK_START[`Y_REPEATS] = '{0, 1103};
+    //localparam int Y_BLOCK_START[`Y_REPEATS] = '{0, 1103};
 	// HBM01
-    //localparam int Y_BLOCK_START[`Y_REPEATS] = '{36, 1104};
+    localparam int Y_BLOCK_START[`Y_REPEATS] = '{36, 1104};
 	logic[255:0] hbm_mem[NUM_HBM_ELEMS];
 	logic[511:0] x_vec_values_mem[NUM_X_CHUNKS];
 	logic[511:0] expected_buffer[(`Y_VEC_LEN + 15) / 16];
@@ -78,7 +78,7 @@ module SpMVUnit_tb;
 	int cur_y_buffer_idx;
 
 	initial begin
-		$readmemh("hbm00.mem", hbm_mem);
+		$readmemh("hbm01.mem", hbm_mem);
 		$readmemh("x_vec.mem", x_vec_values_mem);
 		$readmemh("expected.mem", expected_buffer);
 		for(int i = 0; i < `Y_VEC_LEN; i++) begin
