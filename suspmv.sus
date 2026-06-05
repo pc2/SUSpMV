@@ -53,7 +53,7 @@ module MultiAccumulate {
 
 module YIndexManager {
     gen int PARALELLISM = 6
-    gen int Y_TO = 4096 * 16
+    gen int Y_TO = 2048 * 16
     gen int Y_DELTA_TO = 256
 
     state int#(FROM: 0, TO: Y_TO) cur_y_base
@@ -245,14 +245,14 @@ module JoiningFIFO#(T, int NUM_FIFOS, int DEPTH, int MAY_PUSH_LATENCY) {
 }
 
 /// Collects and sums up y values. 
-/// reset must be held for 8192 cycles to fully reset the Y vector memory
+/// reset must be held for 4096 cycles to fully reset the Y vector memory
 module YCollector {
     gen int NUM_Y_BUFFERS = 2
     //DoubleBuffer#(T: type float, DEPTH: 4096, NUM_BUFFERS: 2) buf
     gen int PARALELLISM = 6
     gen int NUM_BUCKETS = 16
     // The 16 banks are arranged as float buffers. 
-    gen int HALF_RAM_DEPTH = 4096
+    gen int HALF_RAM_DEPTH = 2048
     gen int NUM_Y_INDICES = HALF_RAM_DEPTH * NUM_BUCKETS
     gen int Y_DELTA = 256
     YIndexManager y_index_manager
@@ -632,9 +632,9 @@ module SpMVUnit#(int MAY_PUSH_LATENCY) {
     XVectorMemory x_vector_memory
     MultiAccumulate accumulate
     YCollector collector
-    // The reset lengthener is needed because YCollector needs at least 8192 cycles to fully initialize its memory to 0.0
+    // The reset lengthener is needed because YCollector needs at least 4096 cycles to fully initialize its memory to 0.0
     // It's here because we can't assume that the BSP will hold the reset for long enough
-    ResetLengthener#(MIN_RESET_CYCLES: 8192) reset_lengthener
+    ResetLengthener#(MIN_RESET_CYCLES: 4096) reset_lengthener
     FWFT#(DEPTH: 512, T: type bool[256]) packed_data_fifo
 
     domain main
