@@ -209,6 +209,7 @@ Matrix Matrix::load(std::string path) {
         entries: std::vector<Entry>()
     };
     m.entries.reserve(nnz);
+
     std::cout << "Matrix(w: " << cols << ", h: " << rows << ", nz: " << nnz << ")" << std::endl;
 
     // ------------------------------------------------------------
@@ -251,7 +252,6 @@ Matrix Matrix::load(std::string path) {
         if (value == 0.0) {
             continue;
         }
-        //if (252417 <= row && row <= 273418) {} else {continue;}
         
         m.entries.push_back(Entry{x: col, y: row, val: value});
         // Expand symmetry
@@ -477,8 +477,10 @@ Matrix ComputeUnitData::convert() {
                 	if (elem.float5.weights[i] != 0.0) {
 	                    m.entries.push_back(Entry{ x:  cur_x + x_indices[i], y: cur_y + y_start, val: elem.float5.weights[i] });
                     }
-                    y_max = std::max(y_max, cur_y);
-                    cur_y += dys[i];
+                    if (dys[i]) {
+                        y_max = std::max(y_max, cur_y);
+                        cur_y += dys[i];
+                    }
                 }
 
                 if(elem.float5.last_in_x) {
@@ -517,8 +519,8 @@ Matrix ComputeUnitData::convert() {
                 	if (elem.float6.weights[i] != 0.0) {
 	                    m.entries.push_back(Entry{ x:  cur_x + x_indices[i], y: cur_y + y_start, val: elem.float6.weights[i] });
                     }
-                    y_max = std::max(y_max, cur_y);
                     if(lasts[i]) {
+                        y_max = std::max(y_max, cur_y);
                         cur_y += 1;
                     }
                 }
@@ -917,7 +919,7 @@ void Builder::build_block() {
             y_delta1 : dy[1],
             y_delta2 : dy[2],
             y_delta3 : dy[3],
-            y_delta4 : last_in_x && !accumulator_zero ? 1u : dy[4], // flush the accumulator on last x
+            y_delta4 : last_in_x && (!accumulator_zero || y_max_tile_idx == x_tile) ? 1u : dy[4], // flush the accumulator on last x
             last_in_x : last_in_x ? 1u : 0u,
             last_in_y : last_in_y ? 1u : 0u,
             x_index_4: x[4],
@@ -927,7 +929,7 @@ void Builder::build_block() {
             x_index_0: x[0],
             mode     : 0b1111,
         };
-        if (last_in_x) {
+        if (block.float5.y_delta4 != 0) {
             accumulator_zero = true;
         }
         blocks.push_back(block);
