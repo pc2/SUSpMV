@@ -35,7 +35,7 @@ module SpMVUnit_tb;
     logic rst;
 
     // DUT
-    SpMVUnit dut(
+    SpMVUnit_MAY_PUSH_LATENCY_229 dut(
         .clk(clk),
 		// matrix data domain
         .may_push(may_push),

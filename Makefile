@@ -128,8 +128,11 @@ VCK5000/reset:
 testMultiAccumulate: U280/sus_codegen.sv
 	cd tests/MultiAccumulate && vivado -mode batch -source sim.tcl
 
-testSpMVUnit: U280/sus_codegen.sv
-	cd tests/SpMVUnit && vivado -mode batch -source sim.tcl
+testSpMVUnit_random: U280/sus_codegen.sv
+	cd tests/SpMVUnit_random && vivado -mode batch -source sim.tcl
+
+testSpMVUnit_known: U280/sus_codegen.sv
+	cd tests/SpMVUnit_known && vivado -mode batch -source sim.tcl
 
 testIO: U280/sus_codegen.sv tests/IO/matrix_params.vh
 	cd tests/IO && vivado -mode batch -source sim.tcl

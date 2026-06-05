@@ -6,6 +6,9 @@ create_project -force proj /tmp/proj -part xcu280-fsvh2892-2L-e
 
 add_files -fileset sources_1 ../../U280/sus_codegen.sv
 add_files -fileset sim_1 testbench.sv
+add_files -fileset sim_1 {../IO/x_vec.mem ../IO/expected.mem}
+add_files -fileset sim_1 [glob -type f ../IO/hbm*.mem]
+add_files -fileset sim_1 ../IO/matrix_params.vh
 
 import_ip [glob -type f ../../sus-float/UltraScalePlus/xci_files/*.xci]
 upgrade_ip [get_ips]
@@ -18,6 +21,8 @@ set_property top SpMVUnit_tb [get_filesets sim_1]
 # set_property top proj [get_filesets sim_1]
 # set_property top_lib xil_defaultlib [get_filesets sim_1]
 
-# start_gui
+set_property xsim.simulate.runtime 100us [get_filesets sim_1]
+
+start_gui
 launch_simulation
 run all
