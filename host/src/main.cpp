@@ -42,7 +42,7 @@ void check_mul(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec) {
     for(size_t i = 0; i < y_vec_m.size(); i++) {
         if(!are_equalish(y_vec_m[i], y_vec_data[i])) {
             any_error = true;
-	        std::cout << std::format("Y: {}, Mat.mul: {}\tData.mul: {}", i, y_vec_m[i], y_vec_data[i]) << std::endl;
+            std::cout << i << ": " << y_vec_m[i] << " " <<  y_vec_data[i] << std::endl;
         }
     }
     if(any_error) {
@@ -94,6 +94,7 @@ int main(int argc, char **argv) {
     for (uint64_t iter = 0; iter < iterations; iter++) {
         // generate & upload test vector
         std::vector<float> x_vec = random_x_vec(m.width);
+        //std::vector<float> x_vec(m.width, 1.0);
         std::vector<float> extended_x_vec(((x_vec.size() + 4095) / 4096) * 4096, 0.0);
         for (uint64_t i = 0; i < m.width; i++) {
             extended_x_vec[i] = x_vec[i];
@@ -134,7 +135,7 @@ int main(int argc, char **argv) {
         uint64_t errors = 0;
         for (uint64_t i = 0; i < m.height; i++) {
             if (!are_equalish(y_vec[i], reference[i])) {
-                std::cout << y_vec[i] << " " <<  reference[i] << std::endl;
+                std::cout << i << ": " << y_vec[i] << " " <<  reference[i] << std::endl;
                 errors += 1;
             }
         }

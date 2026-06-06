@@ -61,6 +61,7 @@ struct Builder {
     std::vector<MatrixDataBlock> blocks;
     std::vector<BuilderEntry> entries;
     std::vector<BuilderEntry> conflict_entries;
+    uint64_t unit;
     bool first_entry_in_tile;
     bool y_max_added;
     bool accumulator_zero;

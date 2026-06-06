@@ -210,8 +210,6 @@ Matrix Matrix::load(std::string path) {
     };
     m.entries.reserve(nnz);
 
-    std::cout << "Matrix(w: " << cols << ", h: " << rows << ", nz: " << nnz << ")" << std::endl;
-
     // ------------------------------------------------------------
     // Read entries
     // ------------------------------------------------------------
@@ -249,10 +247,10 @@ Matrix Matrix::load(std::string path) {
         col -= 1;
         row -= 1;
 
-        if (value == 0.0) {
+        if (value == 0.0 || col >= m.width || row >= m.height) {
             continue;
         }
-        
+
         m.entries.push_back(Entry{x: col, y: row, val: value});
         // Expand symmetry
         if ((symmetric || skew_symmetric) && row != col) {
@@ -279,6 +277,7 @@ Matrix Matrix::load(std::string path) {
         prev = e;
     }
 
+    std::cout << "Matrix(w: " << m.width << ", h: " << m.height << ", nz: " << m.entries.size() << ")" << std::endl;
     return m;
 }
 
@@ -628,6 +627,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
 	std::vector<Builder> builders(COMPUTE_UNITS);
     for(size_t i = 0; i < total_y_partitions; i++) {
         size_t cur_hbm = i % COMPUTE_UNITS;
+        builders[cur_hbm].unit = cur_hbm;
 
         size_t from = y_split_points[i];
         size_t to = y_split_points[i+1];
