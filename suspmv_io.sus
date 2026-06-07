@@ -694,8 +694,8 @@ module SUSpMV_Full {
     bool[NUM_HBMS] hbm_weight_valids_hbm
     bool[NUM_HBMS] hbm_may_pushes_hbm
 
-    bool[NUM_UNITS] x_page_releases_hbm
-    bool[NUM_UNITS] y_unit_may_starts_hbm
+    bool[NUM_UNITS] x_page_releases_unit
+    bool[NUM_UNITS] y_unit_may_starts_unit
     
     bool[256][NUM_UNITS] hbm_weight_datas_unit
     bool[NUM_UNITS] hbm_weight_valids_unit
@@ -703,8 +703,8 @@ module SUSpMV_Full {
 
     for int UNIT_I in 0..NUM_UNITS {
         gen int HBM_I = HBM_IDX_PER_UNIT[UNIT_I]
-        x_vector_reader.x_page_releases[UNIT_I] = x_page_releases_hbm[HBM_I]
-        y_unit_may_starts_hbm[HBM_I] = y_result_writer.unit_may_starts[UNIT_I]
+        x_vector_reader.x_page_releases[HBM_I] = x_page_releases_unit[UNIT_I]
+        y_unit_may_starts_unit[UNIT_I] = y_result_writer.unit_may_starts[HBM_I]
         hbm_may_pushes_hbm[HBM_I] = hbm_may_pushes_unit[UNIT_I]
         hbm_weight_datas_unit[UNIT_I] = hbm_weight_datas_hbm[HBM_I]
         hbm_weight_valids_unit[UNIT_I] = hbm_weight_valids_hbm[HBM_I]
@@ -733,9 +733,9 @@ module SUSpMV_Full {
     pipe_x_page_releases_slr0_to_slr0.din = suspmv_slr0.x_releases
     pipe_x_page_releases_slr1_to_slr0.din = suspmv_slr1.x_releases
     pipe_x_page_releases_slr2_to_slr0.din = suspmv_slr2.x_releases
-    x_page_releases_hbm[0:UNITS_SLR0] = pipe_x_page_releases_slr0_to_slr0.dout
-    x_page_releases_hbm[UNITS_SLR0+:UNITS_SLR1] = pipe_x_page_releases_slr1_to_slr0.dout
-    x_page_releases_hbm[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2] = pipe_x_page_releases_slr2_to_slr0.dout
+    x_page_releases_unit[0:UNITS_SLR0] = pipe_x_page_releases_slr0_to_slr0.dout
+    x_page_releases_unit[UNITS_SLR0+:UNITS_SLR1] = pipe_x_page_releases_slr1_to_slr0.dout
+    x_page_releases_unit[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2] = pipe_x_page_releases_slr2_to_slr0.dout
 
     when x_vector_reader.x_valid : float[16] x_values, bool x_last {
         pipe_x_vector_info_slr0_to_slr1.din(pack_x_vector_info_slr1.pack(x_values, x_last))
@@ -759,11 +759,11 @@ module SUSpMV_Full {
     data_pipeline_cross_slr#(FROM_DEPTH: 6, TO_DEPTH: 6) pipe_may_y_valid_slr0_to_slr1
     data_pipeline_cross_slr_twice#(FROM_DEPTH: 6, MIDDLE_DEPTH: 8, TO_DEPTH: 6) pipe_may_y_valid_slr0_to_slr2
 
-    pipe_start_y_bursts_slr0_to_slr0.din = y_unit_may_starts_hbm[0:UNITS_SLR0]
+    pipe_start_y_bursts_slr0_to_slr0.din = y_unit_may_starts_unit[0:UNITS_SLR0]
     suspmv_slr0.start_y_bursts = pipe_start_y_bursts_slr0_to_slr0.dout
-    pipe_start_y_bursts_slr0_to_slr1.din = y_unit_may_starts_hbm[UNITS_SLR0+:UNITS_SLR1]
+    pipe_start_y_bursts_slr0_to_slr1.din = y_unit_may_starts_unit[UNITS_SLR0+:UNITS_SLR1]
     suspmv_slr1.start_y_bursts = pipe_start_y_bursts_slr0_to_slr1.dout
-    pipe_start_y_bursts_slr0_to_slr2.din = y_unit_may_starts_hbm[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2]
+    pipe_start_y_bursts_slr0_to_slr2.din = y_unit_may_starts_unit[UNITS_SLR0+UNITS_SLR1+:UNITS_SLR2]
     suspmv_slr2.start_y_bursts = pipe_start_y_bursts_slr0_to_slr2.dout
 
     pipe_may_y_valid_slr0_to_slr0.din = y_result_writer.may_write

@@ -159,9 +159,11 @@ host/test/arc130/arc130.mtx:
 	pip install ssgetpy;\
 	ssgetpy --format MM --data-type real --outdir test/;\
 
-# host/test/arc130/arc130.mtx
-# host/test/1138_bus/1138_bus.mtx
-tests/IO/test_data: host/suspmv
-#	cd tests/IO/ && ../../host/suspmv ../../host/test/bcsstk16/bcsstk16.mtx 0
-#	cd tests/IO/ && ../../host/suspmv ../../host/test/1138_bus/1138_bus.mtx 0
+tests/IO/test_data_arc130: #host/suspmv
 	cd tests/IO/ && ../../host/suspmv ../../host/test/arc130/arc130.mtx 0
+
+tests/IO/test_data_1138_bus: #host/suspmv
+	cd tests/IO/ && ../../host/suspmv ../../host/test/1138_bus/1138_bus.mtx 0
+
+tests/IO/test_data_bcsstk16: #host/suspmv
+	cd tests/IO/ && ../../host/suspmv ../../host/test/bcsstk16/bcsstk16.mtx 0
