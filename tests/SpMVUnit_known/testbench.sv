@@ -175,7 +175,7 @@ module SpMVUnit_tb;
 	    wait(!rst);
 	    repeat(10) @(posedge clk);
         
-        #50000 // Wait a long time, to make sure the kernel has to stop once due to undelivered y values first. 
+        // #50000 // Wait a long time, to make sure the kernel has to stop once due to undelivered y values first. 
         
         @(posedge clk);
         start_y_burst <= 1;

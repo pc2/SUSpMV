@@ -4849,7 +4849,7 @@ simple_axi_mem #(
 
 	initial begin
 		aresetn <= 0;
-		repeat(10) @(posedge aclk);
+		repeat(30) @(posedge aclk);
 
 		aresetn <= 1;
 	end
@@ -4902,7 +4902,7 @@ simple_axi_mem #(
 		$readmemh("expected.mem", expected_buffer);
 
 		wait(aresetn);
-		repeat(4100) @(posedge aclk);
+		// repeat(4100) @(posedge aclk);
 
 		// X vector reg
 		axi_lite_write(12'h020, `X_VEC_START_ADDR);
