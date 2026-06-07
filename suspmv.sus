@@ -657,7 +657,7 @@ module SpMVUnit#(int MAY_PUSH_LATENCY) {
         // This way, we can already get HBM data into the FIFO, and load X vector data, but only start reading from the FIFO once the Y collector memory is cleared
         when num_x_bufs_in_use.may_acquire & num_y_bufs_in_use.may_acquire & !reset_lengthener.rst_out {
             packed_data_fifo.pop()
-            float[6] weights, int[6] x_indices, int[6] y_deltas, bool end_of_x, bool end_of_y = DecompressCommand(packed_matrix_data)
+            reg float[6] weights, reg int[6] x_indices, reg int[6] y_deltas, bool end_of_x, bool end_of_y = DecompressCommand(packed_matrix_data)
 
             when end_of_x {
                 num_x_bufs_in_use.acquire()
