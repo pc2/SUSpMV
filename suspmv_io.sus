@@ -500,6 +500,21 @@ module SUSpMV_SLR#(int LEFT_UNITS, int RIGHT_UNITS, int HBM_MAY_PUSH_LATENCY) {
     }
 }
 
+module CycleCounter#(int TO) {
+    state int#(FROM: 0, TO) cur_cycle
+
+    action start {
+        cur_cycle = 0
+    } else {
+        cur_cycle = cur_cycle + 1 mod TO
+    }
+
+    action finish : -> int num_cycles {
+        // Add some pipeline stages, to allow the retimer to move pipeline stages into the adder. 
+        reg reg reg num_cycles = cur_cycle
+    }
+}
+
 module SUSpMV_Full {
     clock aclk
     input bool aresetn
@@ -640,7 +655,8 @@ module SUSpMV_Full {
     
     Tuple2 pack_hbm_settings
     action_pipeline#(DEPTH: 6) pipe_ctrl_to_hbms
-    
+    CycleCounter#(TO: 1 << 64) cycle_counter
+
     when ctrl.start {
         int x_vector_addr = BitsToUInt(ctrl.input_regs[0])
         int y_vector_addr = BitsToUInt(ctrl.input_regs[1])
@@ -657,6 +673,8 @@ module SUSpMV_Full {
         }
 
         pipe_ctrl_to_hbms.din(pack_hbm_settings.pack(matrix_data_start_addrs, matrix_data_element_counts))
+
+        cycle_counter.start()
     }
     when pipe_ctrl_to_ddr.dout : bool[] packed_ddr1_settings {
         int x_vector_addr,
@@ -718,7 +736,8 @@ module SUSpMV_Full {
     }
     
     when y_result_writer.write_has_been_committed {
-        ctrl.finish(64'b0)
+        int num_cycles = cycle_counter.finish()
+        ctrl.finish(UIntToBits(num_cycles))
     }
 
     // Shared data for SLRs

@@ -26,4 +26,4 @@ set_property xsim.simulate.runtime 100us [get_filesets sim_1]
 
 start_gui
 launch_simulation
-run all
+# run all
