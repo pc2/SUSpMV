@@ -408,7 +408,7 @@ module YCollector {
     }
 
     domain reset
-    action rst {
+    action rst'0 {
         current_front_buffer = 0
         current_back_buffer = 0
         highest_y = 0
@@ -682,8 +682,10 @@ module SpMVUnit#(int MAY_PUSH_LATENCY) {
 
     domain x_vector_loading
     action write_x_values'0: float[16] x_values'0, bool is_last_write'0 {
-        x_vector_memory.write(x_values, is_last_write)
-        when is_last_write {
+        reg float[16] x_values_pipe = x_values
+        reg bool is_last_write_pipe = is_last_write
+        x_vector_memory.write(x_values_pipe, is_last_write_pipe)
+        when is_last_write_pipe {
             num_x_bufs_in_use.release()
         }
     }
@@ -703,8 +705,9 @@ module SpMVUnit#(int MAY_PUSH_LATENCY) {
     /// something that is quite important for the SLR crossing we'll be doing
     domain y_valid_channel
     input bool may_y_valid'0
-    collector.may_y_valid = may_y_valid & has_y_burst_token
-    trigger y_valid'0 : float[16] output_y_values, int#(FROM: 0, TO: 17) num_y_valid'0, bool is_last_y'0
+    reg bool may_y_valid_pipe = may_y_valid
+    collector.may_y_valid = may_y_valid_pipe & has_y_burst_token
+    trigger y_valid'1 : float[16] output_y_values'3, int#(FROM: 0, TO: 17) num_y_valid'1, bool is_last_y'1
     when collector.y_valid : float[16] output_y_values, int#(FROM: 0, TO: 17) num_y_valid, bool is_last_y {
         y_valid(output_y_values, num_y_valid, is_last_y)
         when is_last_y {

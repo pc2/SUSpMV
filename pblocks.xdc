@@ -86,71 +86,70 @@ set_property PARENT slr0_left [get_pblocks keep_x_y_left_side_of_slr0]
 resize_pblock [get_pblocks keep_x_y_left_side_of_slr0] -add {CLOCKREGION_X3Y2:CLOCKREGION_X3Y3}
 set_property IS_SOFT FALSE [get_pblocks keep_x_y_left_side_of_slr0]
 
+# ================= #
+# Bottom right unit #
+# ================= #
 
-# create_pblock slr0_bottom_left
-# resize_pblock [get_pblocks slr0_bottom_left] -add {CLOCKREGION_X0Y0:CLOCKREGION_X3Y1}
-# add_cells_to_pblock [get_pblocks slr0_bottom_left] [get_cells -quiet [list \
-#     suspmv_slr0/left_half/unit \
-#     suspmv_slr0/left_half/unit_2 \
-#     suspmv_slr0/left_half/unit_3 \
-# ]]
-# create_pblock slr0_top_left
-# resize_pblock [get_pblocks slr0_top_left] -add {CLOCKREGION_X0Y2:CLOCKREGION_X3Y3}
-# add_cells_to_pblock [get_pblocks slr0_top_left] [get_cells -quiet [list \
-#     suspmv_slr0/right_half/unit \
-#     suspmv_slr0/right_half/unit_2 \
-#     suspmv_slr0/right_half/unit_3 \
-# ]]
-# Unneeded because PCIE takes up a lot of space on SLR0
-# create_pblock slr0_bottom_right
-# resize_pblock [get_pblocks slr0_bottom_right] -add {CLOCKREGION_X4Y0:CLOCKREGION_X7Y1}
-# create_pblock slr0_top_right
-# resize_pblock [get_pblocks slr0_top_right] -add {CLOCKREGION_X4Y2:CLOCKREGION_X7Y3}
+# As opposed to the others, we create this pblock much smaller, since it only has to contain one unit
+create_pblock slr0_right_single_unit
+set_property PARENT slr0_right [get_pblocks slr0_right_single_unit]
+resize_pblock [get_pblocks slr0_right_single_unit] -add {CLOCKREGION_X5Y2:CLOCKREGION_X7Y3}
+set_property IS_SOFT TRUE [get_pblocks slr0_right_single_unit]
+add_cells_to_pblock [get_pblocks slr0_right_single_unit] [get_cells suspmv_slr0/right_half/unit]
 
-# create_pblock slr1_bottom_left
-# resize_pblock [get_pblocks slr1_bottom_left] -add {CLOCKREGION_X0Y4:CLOCKREGION_X3Y5}
-# create_pblock slr1_top_left
-# resize_pblock [get_pblocks slr1_top_left] -add {CLOCKREGION_X0Y6:CLOCKREGION_X3Y7}
-# create_pblock slr1_bottom_right
-# resize_pblock [get_pblocks slr1_bottom_right] -add {CLOCKREGION_X4Y4:CLOCKREGION_X7Y5}
-# create_pblock slr1_top_right
-# resize_pblock [get_pblocks slr1_top_right] -add {CLOCKREGION_X4Y6:CLOCKREGION_X7Y7}
-# create_pblock slr2_bottom_left
-# resize_pblock [get_pblocks slr2_bottom_left] -add {CLOCKREGION_X0Y8:CLOCKREGION_X3Y9}
-# create_pblock slr2_top_left
-# resize_pblock [get_pblocks slr2_top_left] -add {CLOCKREGION_X0Y10:CLOCKREGION_X3Y11}
-# create_pblock slr2_bottom_right
-# resize_pblock [get_pblocks slr2_bottom_right] -add {CLOCKREGION_X4Y8:CLOCKREGION_X7Y9}
-# create_pblock slr2_top_right
-# resize_pblock [get_pblocks slr2_top_right] -add {CLOCKREGION_X4Y10:CLOCKREGION_X7Y11}
+# ============ #
+# HBMs Readers #
+# ============ #
 
-# XY Vector memory on SLR1 in the center
-# create_pblock pblock_xy_vector
-# set_property PARENT [get_pblocks pblock_suspmv_slr1] [get_pblocks pblock_xy_vector]
-# add_cells_to_pblock [get_pblocks pblock_xy_vector] [get_cells -quiet [list x_vector_reader y_result_writer]]
-# resize_pblock [get_pblocks pblock_xy_vector] -add {CLOCKREGION_X4Y4:CLOCKREGION_X5Y7}
+create_pblock hbm_left
+set_property PARENT slr0_left [get_pblocks hbm_left]
+resize_pblock [get_pblocks hbm_left] -add {CLOCKREGION_X0Y0:CLOCKREGION_X3Y0}
+set_property IS_SOFT TRUE [get_pblocks hbm_left]
+add_cells_to_pblock [get_pblocks hbm_left] [get_cells -quiet [list \
+    hbm00_reader \
+    hbm01_reader \
+    hbm02_reader \
+    hbm03_reader \
+    hbm04_reader \
+    hbm05_reader \
+    hbm06_reader \
+    hbm07_reader \
+    hbm08_reader \
+    hbm09_reader \
+    hbm10_reader \
+    hbm11_reader \
+    hbm12_reader \
+    hbm13_reader \
+    hbm14_reader \
+    hbm15_reader \
+]]
 
-# CTRL goes in the center of SLR0, so it's close to all HBMs
-# create_pblock pblock_ctrl
-# set_property PARENT [get_pblocks pblock_suspmv_slr0] [get_pblocks pblock_ctrl]
-# add_cells_to_pblock [get_pblocks pblock_ctrl] [get_cells ctrl]
-# resize_pblock [get_pblocks pblock_ctrl] -add {CLOCKREGION_X4Y1:CLOCKREGION_X4Y1}
-
-
-# HBM Banks stay at the Bottom of SLR0
-# create_pblock pblock_hbm00_03
-# resize_pblock pblock_hbm00_03 -add {CLOCKREGION_X0Y0:CLOCKREGION_X0Y0}
-# add_cells_to_pblock [get_pblocks pblock_hbm00_03] [get_cells [list hbm00_reader hbm01_reader]]
-
+create_pblock hbm_right
+set_property PARENT slr0_right [get_pblocks hbm_right]
+resize_pblock [get_pblocks hbm_right] -add {CLOCKREGION_X4Y0:CLOCKREGION_X7Y0}
+set_property IS_SOFT TRUE [get_pblocks hbm_right]
+add_cells_to_pblock [get_pblocks hbm_right] [get_cells -quiet [list \
+    hbm16_reader \
+    hbm17_reader \
+    hbm18_reader \
+    hbm19_reader \
+    hbm20_reader \
+    hbm21_reader \
+    hbm22_reader \
+    hbm23_reader \
+    hbm24_reader \
+    hbm25_reader \
+    hbm26_reader \
+    hbm27_reader \
+    hbm28_reader \
+    hbm29_reader \
+    hbm30_reader \
+    hbm31_reader \
+]]
 
 # ==================== #
 # Long-range Pipelines #
 # ==================== #
-
-# Long lines crossing SLRs. 
-# Covered by (* user_sll_reg = 1 *)?
-# set_property USER_SLL_REG 1 [get_cells */suspmv_din_laguna_reg]
-# set_property USER_SLL_REG 1 [get_cells */suspmv_dout_laguna_reg]
 
 # SLR0 local connections
 add_cells_to_pblock [get_pblocks keep_x_y_left_side_of_slr0] [get_cells ctrl]
@@ -187,15 +186,3 @@ add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells pipe_*_slr0_to_s
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr2] [get_cells pipe_*_slr2_to_slr0/from_slr]
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells pipe_*_slr2_to_slr0/middle_slr]
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_*_slr2_to_slr0/to_slr]
-
-
-# Add cluster constraints, to keep separate modules separate as much as possible
-# set_property USER_CLUSTER ctrl_cluster [get_cells ctrl]
-# set_property USER_CLUSTER x_vector_reader_cluster [get_cells x_vector_reader]
-# set_property USER_CLUSTER y_result_writer_cluster [get_cells y_result_writer]
-# set_property USER_CLUSTER slr0_unit1_cluster [get_cells suspmv_slr0/unit]
-# set_property USER_CLUSTER slr0_unit2_cluster [get_cells suspmv_slr0/unit_2]
-# set_property USER_CLUSTER slr1_unit1_cluster [get_cells suspmv_slr1/unit]
-# set_property USER_CLUSTER slr1_unit2_cluster [get_cells suspmv_slr1/unit_2]
-# set_property USER_CLUSTER slr2_unit1_cluster [get_cells suspmv_slr2/unit]
-# set_property USER_CLUSTER slr2_unit2_cluster [get_cells suspmv_slr2/unit_2]
