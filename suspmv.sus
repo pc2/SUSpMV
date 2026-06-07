@@ -182,7 +182,9 @@ module ResetLengthener#(int MIN_RESET_CYCLES) {
 
     domain reset_out
     // Some pipeline regs so our new reset signal can reach far
-    reg reg reg reg reg output bool rst_out = reset_countdown != 0    
+    data_pipeline#(DEPTH: 5) rst_fanout
+    rst_fanout.din = reset_countdown != 0
+    output bool rst_out = rst_fanout.dout
 }
 
 module JoiningFIFO#(T, int NUM_FIFOS, int DEPTH, int MAY_PUSH_LATENCY) {
@@ -363,7 +365,7 @@ module YCollector {
             bucket_ram.write(reset_rotator, 0.0)
         } else when bucket_write[BUCKET] {
             reg int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer, bucket_write_index[BUCKET])
-            bucket_read_value[BUCKET] = bucket_ram.read(front_index)
+            reg bucket_read_value[BUCKET] = bucket_ram.read(front_index)
             bucket_ram.write(front_index, bucket_write_value[BUCKET])
         } else when num_ys_left_per_bucket[BUCKET] != 0 & output_fifo.may_pushes[BUCKET] {
             reg int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer, cur_output_y_per_bucket[BUCKET])

@@ -105,13 +105,15 @@ module XDataLoader#(int NUM_KERNELS) {
                         when cur_y_repeats_remaining == 1 {
                             is_active = false
                         } else {
-                            num_y_repeats_remaining.set_slow(cur_y_repeats_remaining - 1 mod 1 << 32)
+                            reg int next_y_repeats_remaining = cur_y_repeats_remaining - 1 mod 1 << 32
+                            num_y_repeats_remaining.set_slow(next_y_repeats_remaining)
                         }
                         cur_page_addr.set_slow(start_addr)
                         num_x_pages_remaining.set_slow(num_x_pages)
                     } else {
                         cur_page_addr.set_slow(cur_addr + NUM_PAGE_TRANSFERS * TRANSFER_SIZE_BYTES mod 1 << 64)
-                        num_x_pages_remaining.set_slow(cur_x_remaining - 1 mod 1 << 32)
+                        reg int next_x_remaining = cur_x_remaining - 1 mod 1 << 32
+                        num_x_pages_remaining.set_slow(next_x_remaining)
                     }
                 }
             }
