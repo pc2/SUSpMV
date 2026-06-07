@@ -5081,7 +5081,13 @@ simple_axi_mem #(
 
 		// Wait for the accelerator to finish
 		wait(intr);
-		
+
+		begin 
+			automatic logic[63:0] cycles_taken;
+			axi_lite_read(12'h010, cycles_taken);
+			$display("Cycles taken: %d", cycles_taken);
+		end
+
 		for(int i = 0; i < `Y_VEC_LEN; i++) begin
 			automatic shortreal found_y_value = $bitstoshortreal(ddr_mem.mem[i / 16 + `Y_VEC_START_ADDR / 64][(i % 16) * 32 +: 32]);
 			automatic shortreal expected_y_value = $bitstoshortreal(expected_buffer[i / 16][(i % 16) * 32 +: 32]);
