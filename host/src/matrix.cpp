@@ -12,6 +12,7 @@
 #include <format>
 #include <cstring>
 #include <cassert>
+#include <random>
 
 static_assert(sizeof(MatrixDataBlock) == 256 / 8);
 
@@ -279,6 +280,56 @@ Matrix Matrix::load(std::string path) {
 
     std::cout << "Matrix(w: " << m.width << ", h: " << m.height << ", nz: " << m.entries.size() << ")" << std::endl;
     return m;
+}
+
+void Matrix::shuffle() {
+    std::vector<uint64_t> shuffle_row(height, 0);
+    std::vector<uint64_t> shuffle_col(width, 0);
+    std::vector<uint64_t> indices_row(height, 0);
+    std::vector<uint64_t> indices_col(width, 0);
+    for (uint64_t i = 0; i < width; i++) {
+        indices_col[i] = i;
+    }
+    for (uint64_t i = 0; i < height; i++) {
+        indices_row[i] = i;
+    }
+
+    std::random_device rd;  // Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+    std::uniform_real_distribution<double> dis(0, height + width);
+
+    for (uint64_t i = 0; i < width; i++) {
+        uint64_t idx = ((uint64_t)dis(gen)) % indices_col.size();
+        shuffle_col[i] = indices_col[idx];
+        if (!indices_col.empty()) {
+            indices_col[idx] = indices_col[indices_col.size()-1];
+            indices_col.pop_back();
+        }
+    }
+    assert(indices_col.empty());
+
+    for (uint64_t i = 0; i < height; i++) {
+        uint64_t idx = ((uint64_t)dis(gen)) % indices_row.size();
+        shuffle_row[i] = indices_row[idx];
+        if (!indices_row.empty()) {
+            indices_row[idx] = indices_row[indices_row.size()-1];
+            indices_row.pop_back();
+        }
+    }
+    assert(indices_row.empty());
+
+    for (auto &entry : entries) {
+        entry.x = shuffle_col[entry.x];
+        entry.y = shuffle_row[entry.y];
+    }
+
+    std::sort(entries.begin(), entries.end(), [](const Entry &a, const Entry &b) {
+        if (a.y == b.y) {
+            return a.x < b.x;
+        } else {
+            return a.y < b.y;
+        }
+    });
 }
 
 bool Matrix::compare(Matrix &m) {

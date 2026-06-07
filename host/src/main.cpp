@@ -7,7 +7,7 @@
 #include <cmath>
 #include <chrono>
 
-#define HBM_ARG(N) (HBM_BASE + HBM_STRIDE * N), (N >= COMPUTE_UNITS ? 0 : data.hbm_buffers[N].size())
+#define HBM_ARG(N) (HBM_STRIDE * N), (N >= COMPUTE_UNITS ? 0 : data.hbm_buffers[N].size())
 
 int dump_hex(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec);
 
@@ -62,6 +62,8 @@ int main(int argc, char **argv) {
     // load matrix from file
     std::cout << "Loading " << path << std::endl;
     Matrix m = Matrix::load(path);
+    std::cout << "Shuffle" << std::endl;
+    m.shuffle();
     std::cout << "Constructing ComputeUnitData..." << std::endl;
     ComputeUnitData data = m.get_compute_unit_data();
     std::cout << "ComputeUnitData done" << std::endl;
@@ -76,7 +78,7 @@ int main(int argc, char **argv) {
         std::cout << "compare" << std::endl;
 		m.compare(m2);
         std::cout << "dump" << std::endl;
-        dump_hex(m, data, x_vec);
+        //dump_hex(m, data, x_vec);
         return 0;
     }
 
