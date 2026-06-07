@@ -61,6 +61,7 @@ struct Builder {
     std::vector<MatrixDataBlock> blocks;
     std::vector<BuilderEntry> entries;
     std::vector<BuilderEntry> conflict_entries;
+    uint64_t unit;
     bool first_entry_in_tile;
     bool y_max_added;
     bool accumulator_zero;
@@ -102,6 +103,7 @@ struct Matrix {
     std::vector<Entry> entries;
 
     static Matrix load(std::string path);
+    void shuffle();
     std::vector<float> mul(std::vector<float>& v);
     bool compare(Matrix &m);
     ComputeUnitData get_compute_unit_data();
