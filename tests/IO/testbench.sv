@@ -4818,32 +4818,32 @@ simple_axi_mem #(
 		// ------------------------------------------------------------
 		// Wait for AR handshake
 		// ------------------------------------------------------------
-
-		while (!s_axi_control_arready)
-			@(posedge aclk);
-
-		s_axi_control_arvalid <= 1'b0;
-
-		// ------------------------------------------------------------
-		// Wait for read data
-		// ------------------------------------------------------------
-
-		while (!s_axi_control_rvalid)
-			@(posedge aclk);
-
-		data = s_axi_control_rdata;
-
-		if (s_axi_control_rresp != 2'b00) begin
-			$display("[%0t] AXI-Lite READ ERROR: addr=%h resp=%b",
-					$time,
-					addr,
-					s_axi_control_rresp);
-		end
-
 		@(posedge aclk);
+		
+		fork
+			begin
+				while (!s_axi_control_arready)
+					@(posedge aclk);
 
-		s_axi_control_rready <= 1'b0;
+				s_axi_control_arvalid <= 1'b0;
+			end
+			begin
+				while (!s_axi_control_rvalid)
+					@(posedge aclk);
 
+				data = s_axi_control_rdata;
+
+				if (s_axi_control_rresp != 2'b00) begin
+					$display("[%0t] AXI-Lite READ ERROR: addr=%h resp=%b",
+						$time,
+						addr,
+						s_axi_control_rresp
+					);
+				end
+
+				s_axi_control_rready <= 1'b0;
+			end
+		join
 	end
 	endtask
 
