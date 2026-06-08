@@ -282,7 +282,7 @@ Matrix Matrix::load(std::string path) {
     return m;
 }
 
-void Matrix::shuffle() {
+void Matrix::shuffle_random() {
     std::vector<uint64_t> shuffle_row(height, 0);
     std::vector<uint64_t> shuffle_col(width, 0);
     std::vector<uint64_t> indices_row(height, 0);
@@ -330,6 +330,233 @@ void Matrix::shuffle() {
             return a.y < b.y;
         }
     });
+}
+
+void Matrix::shuffle() {
+    Shuffler s;
+    s.init(this);
+    s.shuffle();
+    std::sort(entries.begin(), entries.end(), [](const Entry &a, const Entry &b) {
+        if (a.y == b.y) {
+            return a.x < b.x;
+        } else {
+            return a.y < b.y;
+        }
+    });
+}
+
+void Shuffler::init(Matrix *mat) {
+	m = mat;
+    uint64_t target_seg_width = 4096;
+    uint64_t target_seg_height = std::min((m->height + COMPUTE_UNITS-1) / COMPUTE_UNITS, (uint64_t) 32768);
+    hm_width = (m->width + target_seg_width-1) / target_seg_width;
+    hm_height = (m->height + target_seg_height-1) / target_seg_height;
+    seg_width = m->width / (float) hm_width;
+    seg_height = m->height / (float) hm_height;
+
+    m->y_froms.clear();
+	for (uint64_t i = 0; i < hm_height; i++) {
+        m->y_froms.push_back(i * seg_height);
+	}
+    m->y_froms.push_back(m->height);
+
+	shuffle_col  = std::vector<uint64_t>(m->width, (uint64_t) 0);
+	ishuffle_col = std::vector<uint64_t>(m->width, (uint64_t) 0);
+	shuffle_row  = std::vector<uint64_t>(m->height, (uint64_t) 0);
+	ishuffle_row = std::vector<uint64_t>(m->height, (uint64_t) 0);
+	for (uint64_t i = 0; i < m->width; i++) {
+		shuffle_col[i] = i;
+		ishuffle_col[i] = i;
+	}
+	for (uint64_t i = 0; i < m->height; i++) {
+		shuffle_row[i] = i;
+		ishuffle_row[i] = i;
+	}
+	
+	col_idx = std::vector<std::vector<uint64_t>>(m->width);
+	row_idx = std::vector<std::vector<uint64_t>>(m->height);
+
+	heatmap = std::vector<int64_t>(hm_width*hm_height, (int64_t) 0);
+    for (uint64_t i = 0; i < m->entries.size(); i++) {
+	    auto &entry = m->entries[i];
+        uint64_t sx = entry.x / seg_width;
+        uint64_t sy = entry.y / seg_height;
+        uint64_t idx = sy * hm_width + sx;
+        heatmap[idx] += 1;
+        
+        row_idx[entry.y].push_back(i);
+        col_idx[entry.x].push_back(i);
+    }
+}
+
+void Shuffler::shuffle() {
+    std::random_device rd;  // Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+    std::uniform_real_distribution<double> dis(0, m->width * m->height);
+
+	// shuffle
+    uint64_t failures = 0;
+    for (uint64_t i = 0; i < 1000000 && failures < 1000; i++) {
+        if (i % 2 == 0 || hm_width <= 1) {
+            // swap row
+            uint64_t a = ((uint64_t)dis(gen)) % m->height;
+            uint64_t b = ((uint64_t)dis(gen)) % m->height;
+            while (b / seg_height == a / seg_height) {
+                b = ((uint64_t)dis(gen)) % m->height;
+            }
+            std::vector<int64_t> delta(std::max(m->width, m->height), 0);
+            int64_t dcost = test_swap_rows(a, b, delta);
+            if (dcost < 0) {
+                swap_rows(a, b, delta);
+                failures = 0;
+            } else {
+                failures++;
+            }
+        } else if (hm_width > 1) {
+            // swap col
+            uint64_t a = ((uint64_t)dis(gen)) % m->width;
+            uint64_t b = ((uint64_t)dis(gen)) % m->width;
+            while ((uint64_t) (b / seg_width) == (uint64_t) (a / seg_width)) {
+                b = ((uint64_t)dis(gen)) % m->width;
+            }
+            std::vector<int64_t> delta(std::max(m->width, m->height), 0);
+            int64_t dcost = test_swap_cols(a, b, delta);
+            if (dcost < 0) {
+                swap_cols(a, b, delta);
+                failures = 0;
+            } else {
+                failures++;
+            }
+        }
+    }
+
+    // find inverse shuffle and verify shuffle integrity
+	std::vector<uint64_t> ishuffle_col(m->width, (uint64_t) m->width);
+	std::vector<uint64_t> ishuffle_row(m->height, (uint64_t) m->height);
+	for (uint64_t i = 0; i < m->width; i++) {
+		uint64_t idx = shuffle_col[i];
+		assert(ishuffle_col[idx] == m->width); // verify shuffle integrity (no entry assigned twice)
+		ishuffle_col[idx] = i;
+	}
+	for (uint64_t i = 0; i < m->height; i++) {
+		uint64_t idx = shuffle_row[i];
+		assert(ishuffle_row[idx] == m->height); // verify shuffle integrity (no entry assigned twice)
+		ishuffle_row[idx] = i;
+	}
+	for (uint64_t i = 0; i < m->width; i++) {
+		assert(ishuffle_col[i] < m->width); // verify shuffle integrity (no entry unassigned)
+		assert(ishuffle_col[i] == this->ishuffle_col[i]); // verify ishuffle integrity
+	}
+	for (uint64_t i = 0; i < m->height; i++) {
+		assert(ishuffle_row[i] < m->height); // verify shuffle integrity (no entry unassigned)
+		assert(ishuffle_row[i] == this->ishuffle_row[i]); // verify ishuffle integrity
+	}
+
+    // apply shuffle
+    for (auto &entry : m->entries) {
+        entry.x = ishuffle_col[entry.x];
+        entry.y = ishuffle_row[entry.y];
+    }
+    
+    // verify heatmap integrity
+    std::vector<int64_t> heatmap2(hm_width*hm_height, (int64_t) 0);
+    for (auto &entry : m->entries) {
+        uint64_t sx = entry.x / seg_width;
+        uint64_t sy = entry.y / seg_height;
+        uint64_t idx = sy * hm_width + sx;
+        heatmap2[idx] += 1;
+    }
+    for (uint64_t i = 0; i < heatmap2.size(); i++) {
+	    std::cout << heatmap[i] << " ";
+    }
+    std::cout << std::endl;
+    for (uint64_t i = 0; i < heatmap2.size(); i++) {
+	    assert(heatmap[i] == heatmap2[i]);
+    }
+}
+
+int64_t Shuffler::test_swap_rows(uint64_t a, uint64_t b, std::vector<int64_t> &delta) {
+	uint64_t ra = shuffle_row[a];
+	uint64_t rb = shuffle_row[b];
+	for (uint64_t i = 0; i < row_idx[ra].size(); i++) {
+		uint64_t idx = row_idx[ra][i];
+		Entry &entry = m->entries[idx];
+		delta[(uint64_t) (ishuffle_col[entry.x] / seg_width)] += 1;
+	}
+	for (uint64_t i = 0; i < row_idx[rb].size(); i++) {
+		uint64_t idx = row_idx[rb][i];
+		Entry &entry = m->entries[idx];
+		delta[(uint64_t) (ishuffle_col[entry.x] / seg_width)] -= 1;
+	}
+
+    int64_t cost_before = 0;
+    int64_t cost_after = 0;
+    for (uint64_t x = 0; x < hm_width; x++) {
+        uint64_t idx_a = (uint64_t) (a/seg_height) * hm_width + x;
+        uint64_t idx_b = (uint64_t) (b/seg_height) * hm_width + x;
+        cost_before += std::abs(heatmap[idx_a] - heatmap[idx_b]);
+        cost_after  += std::abs((heatmap[idx_a] - delta[x]) - (heatmap[idx_b] + delta[x]));
+    }
+    return cost_after - cost_before;
+}
+
+int64_t Shuffler::test_swap_cols(uint64_t a, uint64_t b, std::vector<int64_t> &delta) {
+	uint64_t ca = shuffle_col[a];
+	uint64_t cb = shuffle_col[b];
+	for (uint64_t i = 0; i < col_idx[ca].size(); i++) {
+		uint64_t idx = col_idx[ca][i];
+		Entry &entry = m->entries[idx];
+		delta[(uint64_t) (ishuffle_row[entry.y] / seg_height)] += 1;
+	}
+	for (uint64_t i = 0; i < col_idx[cb].size(); i++) {
+		uint64_t idx = col_idx[cb][i];
+		Entry &entry = m->entries[idx];
+		delta[(uint64_t) (ishuffle_row[entry.y] / seg_height)] -= 1;
+	}
+
+    int64_t cost_before = 0;
+    int64_t cost_after = 0;
+    for (uint64_t y = 0; y < hm_height; y++) {
+        uint64_t idx_a = y * hm_width + (uint64_t) (a/seg_width);
+        uint64_t idx_b = y * hm_width + (uint64_t) (b/seg_width);
+        // note: currently col-cost is handled the same as row-cost, but:
+        // - we really don't care whether different cols are equally utilized
+        // - we need all the tiles a col is part of to be equally utilized
+        // but for now this achieves more or less the same goal
+        cost_before += std::abs(heatmap[idx_a] - heatmap[idx_b]);
+        cost_after  += std::abs((heatmap[idx_a] - delta[y]) - (heatmap[idx_b] + delta[y]));
+    }
+    return cost_after - cost_before;
+}
+
+void Shuffler::swap_rows(uint64_t a, uint64_t b, std::vector<int64_t> &delta) {
+	uint64_t tmp = shuffle_row[a];
+	shuffle_row[a] = shuffle_row[b];
+	shuffle_row[b] = tmp;
+    ishuffle_row[shuffle_row[a]] = a;
+    ishuffle_row[shuffle_row[b]] = b;
+
+    for (uint64_t x = 0; x < hm_width; x++) {
+        uint64_t idx_a = (uint64_t) (a/seg_height) * hm_width + x;
+        uint64_t idx_b = (uint64_t) (b/seg_height) * hm_width + x;
+        heatmap[idx_a] -= delta[x];
+        heatmap[idx_b] += delta[x];
+    }
+}
+
+void Shuffler::swap_cols(uint64_t a, uint64_t b, std::vector<int64_t> &delta) {
+	uint64_t tmp = shuffle_col[a];
+	shuffle_col[a] = shuffle_col[b];
+	shuffle_col[b] = tmp;
+    ishuffle_col[shuffle_col[a]] = a;
+    ishuffle_col[shuffle_col[b]] = b;
+
+    for (uint64_t y = 0; y < hm_height; y++) {
+        uint64_t idx_a = y * hm_width + (uint64_t) (a/seg_width);
+        uint64_t idx_b = y * hm_width + (uint64_t) (b/seg_width);
+        heatmap[idx_a] -= delta[y];
+        heatmap[idx_b] += delta[y];
+    }
 }
 
 bool Matrix::compare(Matrix &m) {
@@ -666,11 +893,19 @@ ComputeUnitData Matrix::get_compute_unit_data() {
             y_froms.insert(y_froms.end(), COMPUTE_UNITS, 0);
         }
     }
+
+    size_t total_y_partitions = COMPUTE_UNITS*repeats;
+
+    if (!this->y_froms.empty()) {
+        // the shuffler already gave us some y_froms
+        y_froms = this->y_froms;
+        total_y_partitions = this->y_froms.size() - 1;
+        repeats = total_y_partitions / COMPUTE_UNITS;
+    }
     for (uint64_t i = 0; i < y_froms.size(); i++) {
         y_split_points.push_back(y_sum_count[y_froms[i]]);
     }
 
-    size_t total_y_partitions = COMPUTE_UNITS*repeats;
     // Temporary memory to split a single rows block into its constituent tiles.
     std::vector<std::vector<Entry>> current_x_tile_split(tiles_per_row);
     // The final memory buffers, these should be uploaded to the FPGA.

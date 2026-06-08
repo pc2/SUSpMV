@@ -1,7 +1,7 @@
 import subprocess
 import os
 
-iter = 0
+iter = 5
 
 subprocess.run(f'rm -r build && mkdir build && cd build && cmake .. && make', shell=True)
 

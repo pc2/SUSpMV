@@ -101,10 +101,37 @@ struct Matrix {
     uint64_t width;
     uint64_t height;
     std::vector<Entry> entries;
+    std::vector<size_t> y_froms;
 
     static Matrix load(std::string path);
+    void shuffle_random();
     void shuffle();
     std::vector<float> mul(std::vector<float>& v);
     bool compare(Matrix &m);
     ComputeUnitData get_compute_unit_data();
+};
+
+struct Shuffler {
+	Matrix *m;
+    float seg_width;
+    float seg_height;
+    uint64_t hm_width;
+    uint64_t hm_height;
+    std::vector<int64_t> heatmap;
+    std::vector<std::vector<uint64_t>> col_idx;
+    std::vector<std::vector<uint64_t>> row_idx;
+    std::vector<uint64_t> shuffle_row;
+    std::vector<uint64_t> shuffle_col;
+    std::vector<uint64_t> ishuffle_row;
+    std::vector<uint64_t> ishuffle_col;
+
+    void init(Matrix *mat);
+    void shuffle();
+
+    int64_t test_swap_rows(uint64_t a, uint64_t b, std::vector<int64_t> &delta);
+    int64_t test_swap_cols(uint64_t a, uint64_t b, std::vector<int64_t> &delta);
+
+    void swap_rows(uint64_t a, uint64_t b, std::vector<int64_t> &delta);
+    void swap_cols(uint64_t a, uint64_t b, std::vector<int64_t> &delta);
+
 };
