@@ -101,6 +101,7 @@ struct Matrix {
     uint64_t width;
     uint64_t height;
     std::vector<Entry> entries;
+    std::vector<size_t> y_froms;
 
     static Matrix load(std::string path);
     void shuffle_random();
@@ -112,8 +113,8 @@ struct Matrix {
 
 struct Shuffler {
 	Matrix *m;
-    uint64_t seg_width;
-    uint64_t seg_height;
+    float seg_width;
+    float seg_height;
     uint64_t hm_width;
     uint64_t hm_height;
     std::vector<int64_t> heatmap;
@@ -121,6 +122,8 @@ struct Shuffler {
     std::vector<std::vector<uint64_t>> row_idx;
     std::vector<uint64_t> shuffle_row;
     std::vector<uint64_t> shuffle_col;
+    std::vector<uint64_t> ishuffle_row;
+    std::vector<uint64_t> ishuffle_col;
 
     void init(Matrix *mat);
     void shuffle();
