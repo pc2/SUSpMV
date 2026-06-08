@@ -44,7 +44,7 @@ create_pblock slr0_left
 set_property PARENT pblock_suspmv_slr0 [get_pblocks slr0_left]
 resize_pblock [get_pblocks slr0_left] -add {CLOCKREGION_X0Y0:CLOCKREGION_X3Y3}
 set_property IS_SOFT FALSE [get_pblocks slr0_left]
-add_cells_to_pblock [get_pblocks slr0_left] [get_cells suspmv_slr0/left_half]
+# add_cells_to_pblock [get_pblocks slr0_left] [get_cells suspmv_slr0/left_half]
 
 create_pblock slr0_right
 set_property PARENT pblock_suspmv_slr0 [get_pblocks slr0_right]
@@ -56,25 +56,25 @@ create_pblock slr1_left
 set_property PARENT pblock_suspmv_slr1 [get_pblocks slr1_left]
 resize_pblock [get_pblocks slr1_left] -add {CLOCKREGION_X0Y4:CLOCKREGION_X3Y7}
 set_property IS_SOFT FALSE [get_pblocks slr1_left]
-add_cells_to_pblock [get_pblocks slr1_left] [get_cells suspmv_slr1/left_half]
+# add_cells_to_pblock [get_pblocks slr1_left] [get_cells suspmv_slr1/left_half]
 
 create_pblock slr1_right
 set_property PARENT pblock_suspmv_slr1 [get_pblocks slr1_right]
 resize_pblock [get_pblocks slr1_right] -add {CLOCKREGION_X4Y4:CLOCKREGION_X7Y7}
 set_property IS_SOFT FALSE [get_pblocks slr1_right]
-add_cells_to_pblock [get_pblocks slr1_right] [get_cells suspmv_slr1/right_half]
+# add_cells_to_pblock [get_pblocks slr1_right] [get_cells suspmv_slr1/right_half]
 
 create_pblock slr2_left
 set_property PARENT pblock_suspmv_slr2 [get_pblocks slr2_left]
 resize_pblock [get_pblocks slr2_left] -add {CLOCKREGION_X0Y8:CLOCKREGION_X3Y11}
 set_property IS_SOFT FALSE [get_pblocks slr2_left]
-add_cells_to_pblock [get_pblocks slr2_left] [get_cells suspmv_slr2/left_half]
+# add_cells_to_pblock [get_pblocks slr2_left] [get_cells suspmv_slr2/left_half]
 
 create_pblock slr2_right
 set_property PARENT pblock_suspmv_slr2 [get_pblocks slr2_right]
 resize_pblock [get_pblocks slr2_right] -add {CLOCKREGION_X4Y8:CLOCKREGION_X7Y11}
 set_property IS_SOFT FALSE [get_pblocks slr2_right]
-add_cells_to_pblock [get_pblocks slr2_right] [get_cells suspmv_slr2/right_half]
+# add_cells_to_pblock [get_pblocks slr2_right] [get_cells suspmv_slr2/right_half]
 
 # ================= #
 # Ctrl & X/Y Vector #
@@ -94,16 +94,187 @@ resize_pblock [get_pblocks ctrl_pblock] -add {CLOCKREGION_X3Y1:CLOCKREGION_X3Y1}
 set_property IS_SOFT TRUE [get_pblocks ctrl_pblock]
 add_cells_to_pblock [get_pblocks ctrl_pblock] [get_cells ctrl]
 
-# ================= #
-# Bottom right unit #
-# ================= #
+# ======================= #
+# Individual Unit PBlocks #
+# ======================= #
 
+# 4 divisions left SLR0
+create_pblock slr0_left_0_pblock
+resize_pblock [get_pblocks slr0_left_0_pblock] -add {CLOCKREGION_X0Y0:CLOCKREGION_X1Y0}
+set_property PARENT slr0_left [get_pblocks slr0_left_0_pblock]
+add_cells_to_pblock [get_pblocks slr0_left_0_pblock] [get_cells suspmv_slr0/left_half/unit]
+
+create_pblock slr0_left_1_pblock
+resize_pblock [get_pblocks slr0_left_1_pblock] -add {CLOCKREGION_X0Y1:CLOCKREGION_X1Y1}
+set_property PARENT slr0_left [get_pblocks slr0_left_1_pblock]
+add_cells_to_pblock [get_pblocks slr0_left_1_pblock] [get_cells suspmv_slr0/left_half/unit_3]
+
+create_pblock slr0_left_2_pblock
+resize_pblock [get_pblocks slr0_left_2_pblock] -add {CLOCKREGION_X0Y2:CLOCKREGION_X1Y2}
+set_property PARENT slr0_left [get_pblocks slr0_left_2_pblock]
+add_cells_to_pblock [get_pblocks slr0_left_2_pblock] [get_cells suspmv_slr0/left_half/unit_5]
+
+create_pblock slr0_left_3_pblock
+resize_pblock [get_pblocks slr0_left_3_pblock] -add {CLOCKREGION_X0Y3:CLOCKREGION_X1Y3}
+set_property PARENT slr0_left [get_pblocks slr0_left_3_pblock]
+add_cells_to_pblock [get_pblocks slr0_left_3_pblock] [get_cells suspmv_slr0/left_half/unit_6]
+
+# 3 divisions left SLR0
+create_pblock slr0_left_4_pblock
+resize_pblock [get_pblocks slr0_left_4_pblock] -add {CLOCKREGION_X2Y0:CLOCKREGION_X2Y0 URAM288_X1Y0:URAM288_X1Y15}
+set_property PARENT slr0_left [get_pblocks slr0_left_4_pblock]
+add_cells_to_pblock [get_pblocks slr0_left_4_pblock] [get_cells suspmv_slr0/left_half/unit_2]
+
+create_pblock slr0_left_5_pblock
+resize_pblock [get_pblocks slr0_left_5_pblock] -add {CLOCKREGION_X2Y1:CLOCKREGION_X2Y2 URAM288_X1Y16:URAM288_X1Y47}
+set_property PARENT slr0_left [get_pblocks slr0_left_5_pblock]
+add_cells_to_pblock [get_pblocks slr0_left_5_pblock] [get_cells suspmv_slr0/left_half/unit_4]
+
+create_pblock slr0_left_6_pblock
+resize_pblock [get_pblocks slr0_left_6_pblock] -add {CLOCKREGION_X2Y3:CLOCKREGION_X2Y3 URAM288_X1Y48:URAM288_X1Y63}
+set_property PARENT slr0_left [get_pblocks slr0_left_6_pblock]
+add_cells_to_pblock [get_pblocks slr0_left_6_pblock] [get_cells suspmv_slr0/left_half/unit_7]
+
+
+# 4 divisions left SLR1
+create_pblock slr1_left_0_pblock
+resize_pblock [get_pblocks slr1_left_0_pblock] -add {CLOCKREGION_X0Y4:CLOCKREGION_X1Y4}
+set_property PARENT slr1_left [get_pblocks slr1_left_0_pblock]
+add_cells_to_pblock [get_pblocks slr1_left_0_pblock] [get_cells suspmv_slr1/left_half/unit]
+
+create_pblock slr1_left_1_pblock
+resize_pblock [get_pblocks slr1_left_1_pblock] -add {CLOCKREGION_X0Y5:CLOCKREGION_X1Y5}
+set_property PARENT slr1_left [get_pblocks slr1_left_1_pblock]
+add_cells_to_pblock [get_pblocks slr1_left_1_pblock] [get_cells suspmv_slr1/left_half/unit_3]
+
+create_pblock slr1_left_2_pblock
+resize_pblock [get_pblocks slr1_left_2_pblock] -add {CLOCKREGION_X0Y6:CLOCKREGION_X1Y6}
+set_property PARENT slr1_left [get_pblocks slr1_left_2_pblock]
+add_cells_to_pblock [get_pblocks slr1_left_2_pblock] [get_cells suspmv_slr1/left_half/unit_5]
+
+create_pblock slr1_left_3_pblock
+resize_pblock [get_pblocks slr1_left_3_pblock] -add {CLOCKREGION_X0Y7:CLOCKREGION_X1Y7}
+set_property PARENT slr1_left [get_pblocks slr1_left_3_pblock]
+add_cells_to_pblock [get_pblocks slr1_left_3_pblock] [get_cells suspmv_slr1/left_half/unit_6]
+
+# 3 divisions left SLR1
+create_pblock slr1_left_4_pblock
+resize_pblock [get_pblocks slr1_left_4_pblock] -add {CLOCKREGION_X2Y4:CLOCKREGION_X3Y4}
+set_property PARENT slr1_left [get_pblocks slr1_left_4_pblock]
+add_cells_to_pblock [get_pblocks slr1_left_4_pblock] [get_cells suspmv_slr1/left_half/unit_2]
+
+create_pblock slr1_left_5_pblock
+resize_pblock [get_pblocks slr1_left_5_pblock] -add {CLOCKREGION_X2Y5:CLOCKREGION_X3Y6}
+set_property PARENT slr1_left [get_pblocks slr1_left_5_pblock]
+add_cells_to_pblock [get_pblocks slr1_left_5_pblock] [get_cells suspmv_slr1/left_half/unit_4]
+
+create_pblock slr1_left_6_pblock
+resize_pblock [get_pblocks slr1_left_6_pblock] -add {CLOCKREGION_X2Y7:CLOCKREGION_X3Y7}
+set_property PARENT slr1_left [get_pblocks slr1_left_6_pblock]
+add_cells_to_pblock [get_pblocks slr1_left_6_pblock] [get_cells suspmv_slr1/left_half/unit_7]
+
+
+# 4 divisions left SLR2
+create_pblock slr2_left_0_pblock
+resize_pblock [get_pblocks slr2_left_0_pblock] -add {CLOCKREGION_X0Y8:CLOCKREGION_X1Y8}
+set_property PARENT slr2_left [get_pblocks slr2_left_0_pblock]
+add_cells_to_pblock [get_pblocks slr2_left_0_pblock] [get_cells suspmv_slr2/left_half/unit]
+
+create_pblock slr2_left_1_pblock
+resize_pblock [get_pblocks slr2_left_1_pblock] -add {CLOCKREGION_X0Y9:CLOCKREGION_X1Y9}
+set_property PARENT slr2_left [get_pblocks slr2_left_1_pblock]
+add_cells_to_pblock [get_pblocks slr2_left_1_pblock] [get_cells suspmv_slr2/left_half/unit_3]
+
+create_pblock slr2_left_2_pblock
+resize_pblock [get_pblocks slr2_left_2_pblock] -add {CLOCKREGION_X0Y10:CLOCKREGION_X1Y10}
+set_property PARENT slr2_left [get_pblocks slr2_left_2_pblock]
+add_cells_to_pblock [get_pblocks slr2_left_2_pblock] [get_cells suspmv_slr2/left_half/unit_5]
+
+create_pblock slr2_left_3_pblock
+resize_pblock [get_pblocks slr2_left_3_pblock] -add {CLOCKREGION_X0Y11:CLOCKREGION_X1Y11}
+set_property PARENT slr2_left [get_pblocks slr2_left_3_pblock]
+add_cells_to_pblock [get_pblocks slr2_left_3_pblock] [get_cells suspmv_slr2/left_half/unit_6]
+
+# 3 divisions left SLR2
+create_pblock slr2_left_4_pblock
+resize_pblock [get_pblocks slr2_left_4_pblock] -add {CLOCKREGION_X2Y8:CLOCKREGION_X3Y8}
+set_property PARENT slr2_left [get_pblocks slr2_left_4_pblock]
+add_cells_to_pblock [get_pblocks slr2_left_4_pblock] [get_cells suspmv_slr2/left_half/unit_2]
+
+create_pblock slr2_left_5_pblock
+resize_pblock [get_pblocks slr2_left_5_pblock] -add {CLOCKREGION_X2Y9:CLOCKREGION_X3Y10}
+set_property PARENT slr2_left [get_pblocks slr2_left_5_pblock]
+add_cells_to_pblock [get_pblocks slr2_left_5_pblock] [get_cells suspmv_slr2/left_half/unit_4]
+
+create_pblock slr2_left_6_pblock
+resize_pblock [get_pblocks slr2_left_6_pblock] -add {CLOCKREGION_X2Y11:CLOCKREGION_X3Y11}
+set_property PARENT slr2_left [get_pblocks slr2_left_6_pblock]
+add_cells_to_pblock [get_pblocks slr2_left_6_pblock] [get_cells suspmv_slr2/left_half/unit_7]
+
+
+# 1 division right SLR0
 # As opposed to the others, we create this pblock much smaller, since it only has to contain one unit
 create_pblock slr0_right_single_unit
 set_property PARENT slr0_right [get_pblocks slr0_right_single_unit]
-resize_pblock [get_pblocks slr0_right_single_unit] -add {CLOCKREGION_X6Y2:CLOCKREGION_X7Y3}
-set_property IS_SOFT TRUE [get_pblocks slr0_right_single_unit]
+resize_pblock [get_pblocks slr0_right_single_unit] -add {CLOCKREGION_X5Y3:CLOCKREGION_X7Y3}
 add_cells_to_pblock [get_pblocks slr0_right_single_unit] [get_cells suspmv_slr0/right_half]
+
+
+# 4 divisions right SLR1
+create_pblock slr1_right_0_pblock
+resize_pblock [get_pblocks slr1_right_0_pblock] -add {CLOCKREGION_X5Y4:CLOCKREGION_X7Y4}
+set_property PARENT slr1_right [get_pblocks slr1_right_0_pblock]
+add_cells_to_pblock [get_pblocks slr1_right_0_pblock] [get_cells suspmv_slr1/right_half/unit]
+
+create_pblock slr1_right_1_pblock
+resize_pblock [get_pblocks slr1_right_1_pblock] -add {CLOCKREGION_X5Y5:CLOCKREGION_X7Y5}
+set_property PARENT slr1_right [get_pblocks slr1_right_1_pblock]
+add_cells_to_pblock [get_pblocks slr1_right_1_pblock] [get_cells suspmv_slr1/right_half/unit_2]
+
+create_pblock slr1_right_2_pblock
+resize_pblock [get_pblocks slr1_right_2_pblock] -add {CLOCKREGION_X5Y6:CLOCKREGION_X7Y6}
+set_property PARENT slr1_right [get_pblocks slr1_right_2_pblock]
+add_cells_to_pblock [get_pblocks slr1_right_2_pblock] [get_cells suspmv_slr1/right_half/unit_3]
+
+create_pblock slr1_right_3_pblock
+resize_pblock [get_pblocks slr1_right_3_pblock] -add {CLOCKREGION_X5Y7:CLOCKREGION_X7Y7}
+set_property PARENT slr1_right [get_pblocks slr1_right_3_pblock]
+add_cells_to_pblock [get_pblocks slr1_right_3_pblock] [get_cells suspmv_slr1/right_half/unit_5]
+
+# 1 division right SLR1
+create_pblock slr1_right_4_pblock
+resize_pblock [get_pblocks slr1_right_4_pblock] -add {CLOCKREGION_X4Y6:CLOCKREGION_X4Y7}
+set_property PARENT slr1_right [get_pblocks slr1_right_4_pblock]
+add_cells_to_pblock [get_pblocks slr1_right_4_pblock] [get_cells suspmv_slr1/right_half/unit_4]
+
+
+# 4 divisions right SLR2
+create_pblock slr2_right_0_pblock
+resize_pblock [get_pblocks slr2_right_0_pblock] -add {CLOCKREGION_X5Y8:CLOCKREGION_X7Y8}
+set_property PARENT slr2_right [get_pblocks slr2_right_0_pblock]
+add_cells_to_pblock [get_pblocks slr2_right_0_pblock] [get_cells suspmv_slr2/right_half/unit]
+
+create_pblock slr2_right_1_pblock
+resize_pblock [get_pblocks slr2_right_1_pblock] -add {CLOCKREGION_X5Y9:CLOCKREGION_X7Y9}
+set_property PARENT slr2_right [get_pblocks slr2_right_1_pblock]
+add_cells_to_pblock [get_pblocks slr2_right_1_pblock] [get_cells suspmv_slr2/right_half/unit_2]
+
+create_pblock slr2_right_2_pblock
+resize_pblock [get_pblocks slr2_right_2_pblock] -add {CLOCKREGION_X5Y10:CLOCKREGION_X7Y10}
+set_property PARENT slr2_right [get_pblocks slr2_right_2_pblock]
+add_cells_to_pblock [get_pblocks slr2_right_2_pblock] [get_cells suspmv_slr2/right_half/unit_3]
+
+create_pblock slr2_right_3_pblock
+resize_pblock [get_pblocks slr2_right_3_pblock] -add {CLOCKREGION_X5Y11:CLOCKREGION_X7Y11}
+set_property PARENT slr2_right [get_pblocks slr2_right_3_pblock]
+add_cells_to_pblock [get_pblocks slr2_right_3_pblock] [get_cells suspmv_slr2/right_half/unit_5]
+
+# 1 division right SLR2
+create_pblock slr2_right_4_pblock
+resize_pblock [get_pblocks slr2_right_4_pblock] -add {CLOCKREGION_X4Y8:CLOCKREGION_X4Y11}
+set_property PARENT slr2_right [get_pblocks slr2_right_4_pblock]
+add_cells_to_pblock [get_pblocks slr2_right_4_pblock] [get_cells suspmv_slr2/right_half/unit_4]
+
 
 # ============ #
 # HBMs Readers #

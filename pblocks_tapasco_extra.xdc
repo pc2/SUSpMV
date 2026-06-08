@@ -1,4 +1,6 @@
 
+### UNUSED - tapasco didn't seem to actually include this file, so I removed it again. 
+
 # HBM controlling memory interface seems to cross the SLR0 boundary in an unfortunate manner. We constrain it to stay on the right side of SLR0
 add_cells_to_pblock system_i_arch_target_ip_00_000_internal_target_ip_00_000_inst_slr0_right [get_cells [list system_i/host/out_ic]]
 

@@ -199,11 +199,11 @@ module JoiningFIFO#(T, int NUM_FIFOS, int DEPTH, int MAY_PUSH_LATENCY) {
     input T[NUM_FIFOS] datas'0
 
     bool[NUM_FIFOS] internal_may_pushes
-    may_pushes = LatencyOffset #(OFFSET: -MAY_PUSH_LATENCY-1)(internal_may_pushes)
+    may_pushes = LatencyOffset #(OFFSET: -MAY_PUSH_LATENCY-2)(internal_may_pushes)
 
     for int I in 0..NUM_FIFOS {
 	    int space_remaining = (read_addr mod DEPTH) - (write_addrs[I] mod DEPTH) - 1 mod DEPTH
-        reg internal_may_pushes[I] = space_remaining > MAY_PUSH_LATENCY + 1
+        reg reg internal_may_pushes[I] = space_remaining > MAY_PUSH_LATENCY + 1
 
         when pushes[I] {
             memory[I][write_addrs[I] mod DEPTH] = ToBits(datas[I])

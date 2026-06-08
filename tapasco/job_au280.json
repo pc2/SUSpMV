@@ -23,13 +23,6 @@
         "Properties" : {
           "enabled" : "true"
         }
-      },
-      {
-        "Feature" : "pblocks_tapasco_extra",
-        "Properties" : {
-          "enabled" : "true",
-          "path": "/pc2/users/l/lennartv/SUSpMV/pblocks_tapasco_extra.xdc"
-        }
       }
     ]
 }]
