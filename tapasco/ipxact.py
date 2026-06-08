@@ -20,7 +20,7 @@ class Core:
         self.top_module_file = top_module_file
         self.name = name
         self.vendor = "sus"
-        self.library = 'suspvm'
+        self.library = 'suspmv'
         self.version = '1.0'
         self.files = []
         self.verilog_dir = verilog_dir

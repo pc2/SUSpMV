@@ -78,39 +78,45 @@ namespace eval suspmv {
         set aclk [get_bd_pins design_clk]
         set aresetn [get_bd_pins design_interconnect_aresetn]
         save_bd_design
-
-        # connect PEs
-        for {set i 0} {$i < $total_ports} {incr i} {
-            set master [lindex $hbmports $i]
+        
+        # protocol conversion (AXI4->AXI3)
+        for {set i 0} {$i < 32} {incr i} {
             set hbm_index [format %02s $i]
-    
-            # create interconnect for protocol conversion (AXI4->AXI3)
-            if { $i == $pe_ports } {
-                # port is used by DMA engine only
-                set converter [tapasco::ip::create_axi_ic converter_ic_${i} 1 1]
-                set dma_slave [get_bd_intf_pins $converter/S00_AXI]
-                set dma_slave_clk [get_bd_pins $converter/S00_ACLK]
-                set dma_slave_rst [get_bd_pins $converter/S00_ARESETN]
-                connect_bd_net $aclk [get_bd_pins $converter/ACLK] [get_bd_pins $converter/M00_ACLK] [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
-                connect_bd_net $aresetn [get_bd_pins $converter/ARESETN] [get_bd_pins $converter/M00_ARESETN] [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
-                connect_bd_intf_net [get_bd_intf_pins $converter/M00_AXI] [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
-            } else {
-                if { $i == 31 } {
-                    # port is used by PE and DMA engine
-                    set converter [tapasco::ip::create_axi_ic converter_ic_${i} 2 1]
-                    set dma_slave [get_bd_intf_pins $converter/S01_AXI]
-                    set dma_slave_clk [get_bd_pins $converter/S01_ACLK]
-                    set dma_slave_rst [get_bd_pins $converter/S01_ARESETN]
-                } else {
-                    set converter [tapasco::ip::create_axi_ic converter_ic_${i} 1 1]
-                }
-                connect_bd_net $aclk [get_bd_pins $converter/S00_ACLK] [get_bd_pins $converter/ACLK] [get_bd_pins $converter/M00_ACLK] [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
-                connect_bd_net $aresetn [get_bd_pins $converter/S00_ARESETN] [get_bd_pins $converter/ARESETN] [get_bd_pins $converter/M00_ARESETN] [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
-                connect_bd_intf_net $master [get_bd_intf_pins $converter/S00_AXI]
-                connect_bd_intf_net [get_bd_intf_pins $converter/M00_AXI] [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
-            }
+
+			set converter [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_protocol_converter:2.1 converter_${i}]
+			set_property -dict [list CONFIG.SI_PROTOCOL.VALUE_SRC USER CONFIG.MI_PROTOCOL.VALUE_SRC USER] $converter
+			set_property -dict [list \
+				CONFIG.MI_PROTOCOL {AXI3} \
+				CONFIG.TRANSLATION_MODE {2} \
+			] $converter
+            connect_bd_net $aclk [get_bd_pins $converter/aclk] [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
+            connect_bd_net $aresetn [get_bd_pins $converter/aresetn] [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
+            connect_bd_intf_net [get_bd_intf_pins $converter/M_AXI] [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
         }
-        save_bd_design
+
+        # connect PE hmb00-30
+        for {set i 0} {$i < 31} {incr i} {
+            set master [lindex $hbmports $i]
+            connect_bd_intf_net $master [get_bd_intf_pins converter_${i}/S_AXI]
+        }
+        
+        # connect PE hmb31 and dma
+        set master [lindex $hbmports 31]
+		set axiarmerge [create_bd_cell -type ip -vlnv sus:suspmv:axi_rw_merge:1.0 axi_ar_merge]
+		set_property CONFIG.ADDR_WIDTH {35} $axiarmerge
+        connect_bd_net $aclk [get_bd_pins $axiarmerge/aclk]
+        connect_bd_net $aresetn [get_bd_pins $axiarmerge/aresetn]
+        connect_bd_intf_net $master [get_bd_intf_pins $axiarmerge/saxi_r]
+        connect_bd_intf_net [get_bd_intf_pins $axiarmerge/maxi] [get_bd_intf_pins converter_31/S_AXI]
+        
+        set converter [tapasco::ip::create_axi_ic converter_ic_31 1 1]
+        set dma_slave [get_bd_intf_pins $converter/S00_AXI]
+        set dma_slave_clk [get_bd_pins $converter/S00_ACLK]
+        set dma_slave_rst [get_bd_pins $converter/S00_ARESETN]
+		connect_bd_net $aclk [get_bd_pins $converter/ACLK] [get_bd_pins $converter/M00_ACLK]
+		connect_bd_net $aresetn [get_bd_pins $converter/ARESETN] [get_bd_pins $converter/M00_ARESETN]
+		connect_bd_intf_net [get_bd_intf_pins $converter/M00_AXI] [get_bd_intf_pins $axiarmerge/saxi_w]
+        save_bd_design        
 
         ####################
         # connect DMA engine
@@ -248,6 +254,22 @@ namespace eval suspmv {
     }
 
     proc aftermath {} {
+	    current_bd_instance
+        ########
+        # slow clock for PE saxi ctrl
+        create_bd_cell -type ip -vlnv xilinx.com:ip:axi_clock_converter:2.1 arch/axi_clock_converter_0
+		delete_bd_objs [get_bd_intf_nets arch/S_ARCH_1]
+		connect_bd_intf_net -boundary_type upper [get_bd_intf_pins arch/target_ip_00_000/s_axi_control] [get_bd_intf_pins arch/axi_clock_converter_0/M_AXI]
+		connect_bd_intf_net [get_bd_intf_pins arch/S_ARCH] [get_bd_intf_pins arch/axi_clock_converter_0/S_AXI]
+		connect_bd_net [get_bd_pins arch/host_clk] [get_bd_pins arch/axi_clock_converter_0/s_axi_aclk]
+		connect_bd_net [get_bd_pins arch/host_interconnect_aresetn] [get_bd_pins arch/axi_clock_converter_0/s_axi_aresetn]
+		connect_bd_net [get_bd_pins arch/design_clk] [get_bd_pins arch/axi_clock_converter_0/m_axi_aclk]
+		connect_bd_net [get_bd_pins arch/design_peripheral_aresetn] [get_bd_pins arch/axi_clock_converter_0/m_axi_aresetn]
+		disconnect_bd_net /clocks_and_resets_design_clk [get_bd_pins regslice_host_arch/aclk]
+		disconnect_bd_net /clocks_and_resets_design_interconnect_aresetn [get_bd_pins regslice_host_arch/aresetn]
+		connect_bd_net [get_bd_pins regslice_host_arch/aclk] [get_bd_pins clocks_and_resets/host_clk]
+		connect_bd_net [get_bd_pins regslice_host_arch/aresetn] [get_bd_pins clocks_and_resets/host_interconnect_aresetn]
+    
         assign_bd_address
     }
 
