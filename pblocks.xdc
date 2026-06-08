@@ -50,7 +50,7 @@ create_pblock slr0_right
 set_property PARENT pblock_suspmv_slr0 [get_pblocks slr0_right]
 resize_pblock [get_pblocks slr0_right] -add {CLOCKREGION_X4Y0:CLOCKREGION_X7Y3}
 set_property IS_SOFT FALSE [get_pblocks slr0_right]
-add_cells_to_pblock [get_pblocks slr0_right] [get_cells suspmv_slr0/right_half]
+# add_cells_to_pblock [get_pblocks slr0_right] [get_cells suspmv_slr0/right_half]
 
 create_pblock slr1_left
 set_property PARENT pblock_suspmv_slr1 [get_pblocks slr1_left]
@@ -81,10 +81,18 @@ add_cells_to_pblock [get_pblocks slr2_right] [get_cells suspmv_slr2/right_half]
 # ================= #
 
 # Special pblock to keep the x/y reader/writer together
-create_pblock keep_x_y_left_side_of_slr0
-set_property PARENT slr0_left [get_pblocks keep_x_y_left_side_of_slr0]
-resize_pblock [get_pblocks keep_x_y_left_side_of_slr0] -add {CLOCKREGION_X3Y2:CLOCKREGION_X3Y3}
-set_property IS_SOFT FALSE [get_pblocks keep_x_y_left_side_of_slr0]
+create_pblock x_y_pblock
+set_property PARENT slr0_left [get_pblocks x_y_pblock]
+resize_pblock [get_pblocks x_y_pblock] -add {CLOCKREGION_X3Y2:CLOCKREGION_X3Y3}
+set_property IS_SOFT TRUE [get_pblocks x_y_pblock]
+add_cells_to_pblock [get_pblocks x_y_pblock] [get_cells x_vector_reader]
+add_cells_to_pblock [get_pblocks x_y_pblock] [get_cells y_result_writer]
+
+create_pblock ctrl_pblock
+set_property PARENT slr0_left [get_pblocks ctrl_pblock]
+resize_pblock [get_pblocks ctrl_pblock] -add {CLOCKREGION_X3Y1:CLOCKREGION_X3Y1}
+set_property IS_SOFT TRUE [get_pblocks ctrl_pblock]
+add_cells_to_pblock [get_pblocks ctrl_pblock] [get_cells ctrl]
 
 # ================= #
 # Bottom right unit #
@@ -93,9 +101,9 @@ set_property IS_SOFT FALSE [get_pblocks keep_x_y_left_side_of_slr0]
 # As opposed to the others, we create this pblock much smaller, since it only has to contain one unit
 create_pblock slr0_right_single_unit
 set_property PARENT slr0_right [get_pblocks slr0_right_single_unit]
-resize_pblock [get_pblocks slr0_right_single_unit] -add {CLOCKREGION_X5Y2:CLOCKREGION_X7Y3}
+resize_pblock [get_pblocks slr0_right_single_unit] -add {CLOCKREGION_X6Y2:CLOCKREGION_X7Y3}
 set_property IS_SOFT TRUE [get_pblocks slr0_right_single_unit]
-add_cells_to_pblock [get_pblocks slr0_right_single_unit] [get_cells suspmv_slr0/right_half/unit]
+add_cells_to_pblock [get_pblocks slr0_right_single_unit] [get_cells suspmv_slr0/right_half]
 
 # ============ #
 # HBMs Readers #
@@ -152,10 +160,6 @@ add_cells_to_pblock [get_pblocks hbm_right] [get_cells -quiet [list \
 # ==================== #
 
 # SLR0 local connections
-add_cells_to_pblock [get_pblocks keep_x_y_left_side_of_slr0] [get_cells ctrl]
-add_cells_to_pblock [get_pblocks keep_x_y_left_side_of_slr0] [get_cells x_vector_reader]
-add_cells_to_pblock [get_pblocks keep_x_y_left_side_of_slr0] [get_cells y_result_writer]
-
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_ctrl_to_hbms]
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_ctrl_to_ddr]
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_weights_*_slr0]

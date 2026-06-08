@@ -691,7 +691,7 @@ module SUSpMV_Full {
         // SLR0 LEFT
         0,3,6,9,12,15,18,
         // SLR0 RIGHT
-        21,
+        31,
 
         // SLR1 LEFT
         1,4,7,10,13,16,19,
@@ -701,7 +701,7 @@ module SUSpMV_Full {
         // SLR2 LEFT
         2,5,8,11,14,17,20,
         // SLR2 RIGHT
-        23,25,27,29,31
+        21,23,25,27,29
     ]
     // SUS TODO: Local Actions (https://github.com/pc2/sus-compiler/issues/198)
     int[NUM_HBMS] matrix_data_start_addrs

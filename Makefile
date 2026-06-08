@@ -167,3 +167,6 @@ tests/IO/test_data_1138_bus: #host/suspmv
 
 tests/IO/test_data_bcsstk16: #host/suspmv
 	cd tests/IO/ && ../../host/suspmv ../../host/test/bcsstk16/bcsstk16.mtx 0
+
+tests/IO/test_data_ASIC_680k_modified: #host/suspmv
+	cd tests/IO/ && ../../host/suspmv ../../host/test/ASIC_680k_modified/ASIC_680k_modified.mtx 0

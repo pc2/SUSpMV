@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
         std::cout << "compare" << std::endl;
 		m.compare(m2);
         std::cout << "dump" << std::endl;
-        //dump_hex(m, data, x_vec);
+        dump_hex(m, data, x_vec);
         return 0;
     }
 

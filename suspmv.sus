@@ -276,7 +276,7 @@ module YCollector {
 
     domain default
     action push_partial_sums'0 :
-        float[PARALELLISM] partial_sums'7,
+        float[PARALELLISM] partial_sums'12,
         int#(FROM: 0, TO: Y_DELTA)[PARALELLISM] y_deltas'0,
         bool end_of_x_block'0,
         bool end_of_y_block'0 {
@@ -324,13 +324,14 @@ module YCollector {
         
         // Grab the rightmost y value, using the assignment order trick. 
         int max_y_seen
+        reg bool max_y_seen_valid = |valids
         for int I in 0..PARALELLISM {
             when valids[I] {
-                max_y_seen = y_indices[I]
+                reg max_y_seen = y_indices[I]
             }
         }
         int next_highest_y
-        when |valids & max_y_seen > highest_y {
+        when max_y_seen_valid & max_y_seen > highest_y {
             next_highest_y = max_y_seen
         } else {
             next_highest_y = highest_y
@@ -361,9 +362,8 @@ module YCollector {
     output_fifo.pushes = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
     for int BUCKET in 0..NUM_BUCKETS {
         RAM#(T: type float, DEPTH: HALF_RAM_DEPTH * NUM_Y_BUFFERS) bucket_ram
-        when is_long_rst {
-            bucket_ram.write(reset_rotator, 0.0)
-        } else when bucket_write[BUCKET] {
+        
+        when bucket_write[BUCKET] {
             reg int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer, bucket_write_index[BUCKET])
             reg bucket_read_value[BUCKET] = bucket_ram.read(front_index)
             bucket_ram.write(front_index, bucket_write_value[BUCKET])
@@ -375,6 +375,12 @@ module YCollector {
             reg output_fifo.pushes[BUCKET] = true
             cur_output_y_per_bucket[BUCKET] = cur_output_y_per_bucket[BUCKET] + 1 mod HALF_RAM_DEPTH
             num_ys_left_per_bucket[BUCKET] = num_ys_left_per_bucket[BUCKET] - 1 mod HALF_RAM_DEPTH
+        }
+
+        // Separate out is_long_rst, to reduce its fanout. Only write should be overwritten, read shouldn't happen anyway. 
+        when is_long_rst {
+            reg int reset_rotator_pipe = reset_rotator
+            bucket_ram.write(reset_rotator_pipe, 0.0)
         }
     }
 
