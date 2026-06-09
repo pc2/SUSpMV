@@ -107,3 +107,18 @@ module action_pipeline_cross_slr_twice #(T, int FROM_DEPTH, int MIDDLE_DEPTH, in
         dout(FromBits(to_slr.dout[1:]))
     }
 }
+
+
+extern module LUTRAM_FWFT #(int WIDTH, int DEPTH, int MAY_PUSH_LATENCY) {
+    domain push_dom
+    output bool may_push'-MAY_PUSH_LATENCY
+    action push'0 : bool[WIDTH] push_data'0 {}
+    
+    domain pop_dom
+    trigger pop_available'0 : bool[WIDTH] pop_data'0 {
+        action pop'0 {}
+    }
+
+    domain reset
+    action rst'0 {}
+}

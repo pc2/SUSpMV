@@ -121,3 +121,50 @@ module primitive_pipeline_slr_crossing_to_slr_crossing #(
     end
     assign dout_laguna = suspmv_dout_laguna_reg;
 endmodule
+
+
+// Reimplement FWFT in SystemVerilog, to use Distributed RAM, and save on BRAMs. 
+module LUTRAM_FWFT #(
+    parameter integer WIDTH = 32,
+    parameter integer DEPTH = 64,
+    parameter integer MAY_PUSH_LATENCY = 12
+) (
+	/* clock */ input clk,
+	output /*mux_wire*/ logic may_push,
+	input wire push,
+	input wire[WIDTH-1:0] push_data,
+	output /*mux_wire*/ logic pop_available,
+	output /*mux_wire*/ logic[WIDTH-1:0] pop_data,
+	input wire pop,
+	input wire rst
+);
+
+(* ram_style = "distributed" *) logic[WIDTH-1:0] mem[0:DEPTH-1];
+/*state*/ logic[$clog2(DEPTH)-1:0] read_addr;
+/*state*/ logic[$clog2(DEPTH)-1:0] write_addr;
+always_ff @(posedge clk) begin
+    if(rst) begin
+        read_addr <= 1'd0;
+    end else if(!pop_available || pop) begin
+        if(read_addr != write_addr) begin
+            pop_data <= mem[read_addr];
+            pop_available <= 1'b1;
+            read_addr <= read_addr + 1;
+        end else begin
+            pop_available <= 1'b0;
+        end
+    end
+end
+always_ff @(posedge clk) begin // state mem
+	if(push) mem[write_addr] <= push_data;
+end
+always_ff @(posedge clk) begin // state write_addr
+	if(push) write_addr <= write_addr + 1;
+	if(rst) write_addr <= 1'd0;
+end
+/*mux_wire*/ logic[7:0] space_remaining;
+assign space_remaining = read_addr - write_addr - 1;
+always_ff @(posedge clk) begin
+	may_push <= space_remaining > MAY_PUSH_LATENCY - 2;
+end
+endmodule
