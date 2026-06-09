@@ -304,45 +304,38 @@ module YVectorWriter#(int NUM_KERNELS, int MAY_PUSH_LATENCY) {
     }
 }
 
-module LineBusMerge#(int SIZE) {
-    gen int FROM = 0
-    gen int TO = 17
-    trigger out_valid: float[16] y_values_out, int#(FROM, TO) num_y_values_out, bool is_last_y_out
+module BusMerge#(int SIZE) {
+    trigger out_valid: float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out
 
     input bool[SIZE] valids
     input float[16][SIZE] y_values
-    input int#(FROM, TO)[SIZE] num_y_values
+    input int#(FROM: 0, TO: 17)[SIZE] num_y_values
     input bool[SIZE] is_last_y
     
-    split bool[SIZE] valids_regs
-    split float[16][SIZE] y_values_line_regs
-    split int#(FROM, TO)[SIZE] num_y_values_line_regs
-    split bool[SIZE] is_last_y_line_regs
-    
-    valids_regs[0] = valids[0]
-    y_values_line_regs[0] = y_values[0]
-    num_y_values_line_regs[0] = num_y_values[0]
-    is_last_y_line_regs[0] = is_last_y[0]
-    for int I in 1..SIZE {
-        bool valids_offset = LatencyOffset#(OFFSET: I-1)(valids[I])
-        float[16] y_values_line_offset = LatencyOffset#(OFFSET: I-1)(y_values[I])
-        int#(FROM, TO) num_y_values_line_offset = LatencyOffset#(OFFSET: I-1)(num_y_values[I])
-        bool is_last_y_line_offset = LatencyOffset#(OFFSET: I-1)(is_last_y[I])
-        when valids_offset {
-            reg valids_regs[I] = true
-            reg y_values_line_regs[I] = y_values_line_offset
-            reg num_y_values_line_regs[I] = num_y_values_line_offset
-            reg is_last_y_line_regs[I] = is_last_y_line_offset
-        } else {
-            reg valids_regs[I] = valids_regs[I - 1]
-            reg y_values_line_regs[I] = y_values_line_regs[I - 1]
-            reg num_y_values_line_regs[I] = num_y_values_line_regs[I - 1]
-            reg is_last_y_line_regs[I] = is_last_y_line_regs[I - 1]
+    data_pipeline#(DEPTH: 3) valids_pipe
+    data_pipeline#(DEPTH: 3) y_values_pipe
+    data_pipeline#(DEPTH: 3) num_y_values_pipe
+    data_pipeline#(DEPTH: 3) is_last_y_pipe
+
+    valids_pipe.din = valids
+    y_values_pipe.din = y_values
+    num_y_values_pipe.din = num_y_values
+    is_last_y_pipe.din = is_last_y
+
+    int mux_from
+    reg bool any_valid = |valids_pipe.dout
+    for int I in 0..SIZE {
+        when valids_pipe.dout[I] {
+            reg mux_from = I
         }
     }
 
-    when valids_regs[SIZE-1] {
-        out_valid(y_values_line_regs[SIZE-1], num_y_values_line_regs[SIZE-1], is_last_y_line_regs[SIZE-1])
+    reg float[16] selected_y_value = y_values_pipe.dout[mux_from]
+    reg int#(FROM: 0, TO: 17) selected_num_y_value = num_y_values_pipe.dout[mux_from]
+    reg bool selected_is_last_y = is_last_y_pipe.dout[mux_from]
+
+    when any_valid {
+        out_valid(selected_y_value, selected_num_y_value, selected_is_last_y)
     }
 }
 
@@ -366,7 +359,7 @@ module SUSpMV_Half_SLR#(int NUM_UNITS, int HBM_MAY_PUSH_LATENCY) {
     output bool[NUM_UNITS] x_releases
 
     domain y_data_out
-    LineBusMerge#(SIZE: NUM_UNITS) y_return_channel
+    BusMerge#(SIZE: NUM_UNITS) y_return_channel
     input bool may_y_valid
     trigger y_valid: float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out
     when y_return_channel.out_valid : float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out {
@@ -410,12 +403,12 @@ module SUSpMV_Half_SLR#(int NUM_UNITS, int HBM_MAY_PUSH_LATENCY) {
         unit.may_y_valid = may_y_valid_pipe.dout
         may_y_valid_pipe.din = may_y_valid
         when unit.y_valid : float[16] output_y_values, int#(FROM: 0, TO: 17) num_y_valid, bool is_last_y {
-            reg y_return_channel.valids[I] = true
-            reg y_return_channel.y_values[I] = output_y_values
-            reg y_return_channel.num_y_values[I] = num_y_valid
-            reg y_return_channel.is_last_y[I] = is_last_y
+            y_return_channel.valids[I] = true
+            y_return_channel.y_values[I] = output_y_values
+            y_return_channel.num_y_values[I] = num_y_valid
+            y_return_channel.is_last_y[I] = is_last_y
         } else {
-            reg y_return_channel.valids[I] = false
+            y_return_channel.valids[I] = false
         }
         when start_y_bursts[I] {
             unit.start_y_burst()
@@ -529,12 +522,12 @@ module SUSpMV_Full {
     gen int DDR_AXI_WRITE_WIDTH = 512
     gen int HBM_AXI_WIDTH = 256
 
-    gen int UNITS_SLR0_LEFT = 7
+    gen int UNITS_SLR0_LEFT = 4
     gen int UNITS_SLR0_RIGHT = 1
-    gen int UNITS_SLR1_LEFT = 7
+    gen int UNITS_SLR1_LEFT = 8
     gen int UNITS_SLR1_RIGHT = 5
-    gen int UNITS_SLR2_LEFT = 7
-    gen int UNITS_SLR2_RIGHT = 5
+    gen int UNITS_SLR2_LEFT = 8
+    gen int UNITS_SLR2_RIGHT = 6
 
     gen int UNITS_SLR0 = UNITS_SLR0_LEFT + UNITS_SLR0_RIGHT
     gen int UNITS_SLR1 = UNITS_SLR1_LEFT + UNITS_SLR1_RIGHT
@@ -689,19 +682,19 @@ module SUSpMV_Full {
     // Now shuffle the HBM indices, so the HBM lines go straight up instead of criss-cross
     gen int[NUM_UNITS] HBM_IDX_PER_UNIT = [
         // SLR0 LEFT
-        0,3,6,9,12,15,18,
+        6,7,8,9,
         // SLR0 RIGHT
         31,
 
         // SLR1 LEFT
-        1,4,7,10,13,16,19,
+        1,3,5,11,13,15,17,19,
         // SLR1 RIGHT
-        22,24,26,28,30,
+        21,23,25,27,29,
 
         // SLR2 LEFT
-        2,5,8,11,14,17,20,
+        0,2,4,10,12,14,16,18,
         // SLR2 RIGHT
-        21,23,25,27,29
+        20,22,24,26,28,30
     ]
     // SUS TODO: Local Actions (https://github.com/pc2/sus-compiler/issues/198)
     int[NUM_HBMS] matrix_data_start_addrs

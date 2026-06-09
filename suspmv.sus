@@ -643,12 +643,19 @@ module SpMVUnit#(int MAY_PUSH_LATENCY) {
     // The reset lengthener is needed because YCollector needs at least 4096 cycles to fully initialize its memory to 0.0
     // It's here because we can't assume that the BSP will hold the reset for long enough
     ResetLengthener#(MIN_RESET_CYCLES: 4096) reset_lengthener
-    FWFT#(DEPTH: 512, T: type bool[256]) packed_data_fifo
+
+    // Intended to be LUTRAM FIFOs, to save on our very precious BRAMs
+    FIFO#(DEPTH: 256, T: type bool[256]) packed_data_fifo
+    FWFT#(DEPTH: 128, T: type bool[256]) packed_data_fifo2
 
     domain main
     output bool may_push'-MAY_PUSH_LATENCY = packed_data_fifo.may_push
     action push'0: bool[256] packed_matrix_data'0 {
         packed_data_fifo.push(packed_matrix_data)
+    }
+
+    when packed_data_fifo2.may_push & packed_data_fifo.may_pop {
+        packed_data_fifo2.push(packed_data_fifo.pop())
     }
 
     Semaphore#(MAX: MAX_X_BUFS, INITIAL_PERMITS: 0) num_x_bufs_in_use
@@ -658,11 +665,11 @@ module SpMVUnit#(int MAY_PUSH_LATENCY) {
     // Called when the last element of the x buffer has been used, to signal to the x vector producer more x elements may be sent. 
     output bool release_x_buffer = false
 
-    when packed_data_fifo.pop_available : bool[256] packed_matrix_data {
+    when packed_data_fifo2.pop_available : bool[256] packed_matrix_data {
         // We don't send any data down the pipeline as long as the reset_lengthener is still working. 
         // This way, we can already get HBM data into the FIFO, and load X vector data, but only start reading from the FIFO once the Y collector memory is cleared
         when num_x_bufs_in_use.may_acquire & num_y_bufs_in_use.may_acquire & !reset_lengthener.rst_out {
-            packed_data_fifo.pop()
+            packed_data_fifo2.pop()
             reg float[6] weights, reg int[6] x_indices, reg int[6] y_deltas, bool end_of_x, bool end_of_y = DecompressCommand(packed_matrix_data)
 
             when end_of_x {
@@ -730,6 +737,7 @@ module SpMVUnit#(int MAY_PUSH_LATENCY) {
         num_x_bufs_in_use.rst()
         num_y_bufs_in_use.rst()
         packed_data_fifo.rst()
+        packed_data_fifo2.rst()
         reset_lengthener.rst_in()
     }
 
