@@ -308,6 +308,11 @@ namespace eval suspmv {
         set_property PROCESSING_ORDER EARLY [get_files $constraints]
         save_bd_design
 		
+		
+        if {[dict exists $config clocking]} {
+	        dynamic_clock
+        }
+        
         assign_bd_address
     }
 
@@ -325,6 +330,28 @@ namespace eval suspmv {
             read_xdc $constraints_file
             set_property PROCESSING_ORDER LATE [get_files $constraints_file]
         }
+    }
+    
+    proc dynamic_clock {} {
+		set_property -dict [list \
+		  CONFIG.AXI_DRP {false} \
+		  CONFIG.OPTIMIZE_CLOCKING_STRUCTURE_EN {false} \
+		  CONFIG.PHASE_DUTY_CONFIG {false} \
+		  CONFIG.RESET_PORT {reset} \
+		  CONFIG.RESET_TYPE {ACTIVE_HIGH} \
+		  CONFIG.USE_DYN_RECONFIG {true} \
+		] [get_bd_cells memory/design_clk_wiz]
+		set_property CONFIG.NUM_MI {6} [get_bd_cells host/out_ic]
+		delete_bd_objs [get_bd_nets memory/mig_c0_init_calib_complete]
+		connect_bd_intf_net [get_bd_intf_pins host/out_ic/M05_AXI] [get_bd_intf_pins memory/design_clk_wiz/s_axi_lite]
+		
+		connect_bd_net [get_bd_pins memory/mig/c0_init_calib_complete] [get_bd_pins memory/design_clk_wiz/s_axi_aresetn]
+		connect_bd_net [get_bd_pins memory/mig/c0_ddr4_ui_clk] [get_bd_pins memory/design_clk_wiz/s_axi_aclk]
+		
+		#connect_bd_net [get_bd_pins memory/design_clk_wiz/s_axi_aclk] [get_bd_pins clocks_and_resets/host_clk]
+		#connect_bd_net [get_bd_pins memory/design_clk_wiz/s_axi_aresetn] [get_bd_pins clocks_and_resets/host_peripheral_aresetn]
+        assign_bd_address -target_address_space /host/axi_pcie3_0/M_AXI_B -offset 0x1000000 -range 64K [get_bd_addr_segs {host/axi_pcie3_0/M_AXI_B/SEG_design_clk_wiz_Reg}] -force
+        save_bd_design
     }
 
 }
