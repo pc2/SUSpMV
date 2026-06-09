@@ -102,22 +102,25 @@ namespace eval suspmv {
         
         # connect PE hmb31 and dma
         set master [lindex $hbmports 31]
-		set axiarmerge [create_bd_cell -type ip -vlnv sus:suspmv:axi_rw_merge:1.0 axi_ar_merge]
-		set_property CONFIG.ADDR_WIDTH {35} $axiarmerge
-        connect_bd_net $aclk [get_bd_pins $axiarmerge/aclk]
-        connect_bd_net $aresetn [get_bd_pins $axiarmerge/aresetn]
-        connect_bd_intf_net $master [get_bd_intf_pins $axiarmerge/saxi_r]
-        connect_bd_intf_net [get_bd_intf_pins $axiarmerge/maxi] [get_bd_intf_pins converter_31/S_AXI]
+		#set axiarmerge [create_bd_cell -type ip -vlnv sus:suspmv:axi_rw_merge:1.0 axi_ar_merge]
+		#set_property CONFIG.ADDR_WIDTH {35} $axiarmerge
+        #connect_bd_net $aclk [get_bd_pins $axiarmerge/aclk]
+        #connect_bd_net $aresetn [get_bd_pins $axiarmerge/aresetn]
+        #connect_bd_intf_net $master [get_bd_intf_pins $axiarmerge/saxi_r]
+        #connect_bd_intf_net [get_bd_intf_pins $axiarmerge/maxi] [get_bd_intf_pins converter_31/S_AXI]
         
-        set converter [tapasco::ip::create_axi_ic converter_ic_31 1 1]
+        set converter [tapasco::ip::create_axi_ic converter_ic_31 2 1]
         set dma_slave [get_bd_intf_pins $converter/S00_AXI]
         set dma_slave_clk [get_bd_pins $converter/S00_ACLK]
         set dma_slave_rst [get_bd_pins $converter/S00_ARESETN]
-		connect_bd_net $aclk [get_bd_pins $converter/ACLK] [get_bd_pins $converter/M00_ACLK]
-		connect_bd_net $aresetn [get_bd_pins $converter/ARESETN] [get_bd_pins $converter/M00_ARESETN]
-		connect_bd_intf_net [get_bd_intf_pins $converter/M00_AXI] [get_bd_intf_pins $axiarmerge/saxi_w]
-        save_bd_design        
-
+		connect_bd_net $aclk [get_bd_pins $converter/ACLK] [get_bd_pins $converter/M00_ACLK] [get_bd_pins $converter/S01_ACLK]
+		connect_bd_net $aresetn [get_bd_pins $converter/ARESETN] [get_bd_pins $converter/M00_ARESETN] [get_bd_pins $converter/S01_ARESETN]
+		#connect_bd_intf_net [get_bd_intf_pins $converter/M00_AXI] [get_bd_intf_pins $axiarmerge/saxi_w]
+        connect_bd_intf_net [get_bd_intf_pins $converter/M00_AXI] [get_bd_intf_pins converter_31/S_AXI]
+        connect_bd_intf_net $master [get_bd_intf_pins $converter/S01_AXI]
+		
+        save_bd_design
+        
         ####################
         # connect DMA engine
 
@@ -132,18 +135,28 @@ namespace eval suspmv {
         connect_bd_net [get_bd_pins mem_peripheral_aresetn] [get_bd_pins $dmaoffset/aresetn] $dma_slave_rst
         connect_bd_intf_net [get_bd_intf_pins $dmaoffset/M_AXI] $dma_slave
 
+    	######
+    	# DMA-HBM SLR Crossing
+    	set slrreg [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_register_slice:2.1 dma_hbm_slr_crossing]
+	    set_property -dict [list \
+		  CONFIG.REG_AR {10} \
+		  CONFIG.REG_AW {10} \
+		  CONFIG.REG_B {10} \
+		  CONFIG.REG_R {10} \
+		  CONFIG.REG_W {10} \
+		] [get_bd_cells $slrreg]   
+		connect_bd_intf_net [get_bd_intf_pins $slrreg/M_AXI] [get_bd_intf_pins $dmaoffset/S_AXI]
+		connect_bd_net [get_bd_pins mem_clk] [get_bd_pins $slrreg/aclk]
+		connect_bd_net [get_bd_pins mem_peripheral_aresetn] [get_bd_pins $slrreg/aresetn]
+        save_bd_design
+
         # insert dma smartconnect
-        delete_bd_objs [get_bd_intf_nets /memory/dma_m32_axi]
-        set sc [create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 /memory/smartconnect_0]
+		set migic [get_bd_cells /memory/mig_ic]
         set_property -dict [list \
-            CONFIG.HAS_ARESETN {0} \
+            CONFIG.NUM_SI {2} \
             CONFIG.NUM_MI {2} \
-            CONFIG.NUM_SI {1} \
-        ] $sc
-        connect_bd_intf_net [get_bd_intf_pins /memory/dma/m32_axi] [get_bd_intf_pins $sc/S00_AXI]
-        connect_bd_net [get_bd_pins /memory/mem_clk] [get_bd_pins $sc/aclk]
-        connect_bd_intf_net [get_bd_intf_pins $sc/M00_AXI] [get_bd_intf_pins /memory/mig_ic/S00_AXI]
-        connect_bd_intf_net [get_bd_intf_pins $sc/M01_AXI] [get_bd_intf_pins $dmaoffset/S_AXI]
+        ] $migic
+        connect_bd_intf_net [get_bd_intf_pins $migic/M01_AXI] [get_bd_intf_pins $slrreg/S_AXI]
         save_bd_design
 
         ####################
@@ -269,7 +282,32 @@ namespace eval suspmv {
 		disconnect_bd_net /clocks_and_resets_design_interconnect_aresetn [get_bd_pins regslice_host_arch/aresetn]
 		connect_bd_net [get_bd_pins regslice_host_arch/aclk] [get_bd_pins clocks_and_resets/host_clk]
 		connect_bd_net [get_bd_pins regslice_host_arch/aresetn] [get_bd_pins clocks_and_resets/host_interconnect_aresetn]
-    
+        save_bd_design
+        
+    	######
+    	# PE-DDR SLR Crossing
+    	delete_bd_objs [get_bd_cells arch/out_0]
+    	set slrreg [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_register_slice:2.1 arch/ddr_slr_crossing]
+	    set_property -dict [list \
+		  CONFIG.REG_AR {10} \
+		  CONFIG.REG_AW {10} \
+		  CONFIG.REG_B {10} \
+		  CONFIG.REG_R {10} \
+		  CONFIG.REG_W {10} \
+		] [get_bd_cells $slrreg]   
+		connect_bd_intf_net -boundary_type upper [get_bd_intf_pins arch/target_ip_00_000/maxi_ddr00] [get_bd_intf_pins $slrreg/S_AXI]
+		connect_bd_intf_net [get_bd_intf_pins arch/M_MEM_0] [get_bd_intf_pins $slrreg/M_AXI]
+		connect_bd_net [get_bd_pins arch/design_clk] [get_bd_pins $slrreg/aclk]
+		connect_bd_net [get_bd_pins arch/design_peripheral_aresetn] [get_bd_pins $slrreg/aresetn] 
+        save_bd_design
+
+        ##################
+        # additional pblock constraints  
+        set constraints "$::env(TAPASCO_HOME_TCL)/platform/AU280/plugins/suspmv.xdc"
+        read_xdc $constraints
+        set_property PROCESSING_ORDER EARLY [get_files $constraints]
+        save_bd_design
+		
         assign_bd_address
     }
 
