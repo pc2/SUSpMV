@@ -144,7 +144,8 @@ module LUTRAM_FWFT #(
 /*state*/ logic[$clog2(DEPTH)-1:0] write_addr;
 always_ff @(posedge clk) begin
     if(rst) begin
-        read_addr <= 1'd0;
+        read_addr <= 0;
+        pop_available <= 1'b0;
     end else if(!pop_available || pop) begin
         if(read_addr != write_addr) begin
             pop_data <= mem[read_addr];
@@ -160,7 +161,7 @@ always_ff @(posedge clk) begin // state mem
 end
 always_ff @(posedge clk) begin // state write_addr
 	if(push) write_addr <= write_addr + 1;
-	if(rst) write_addr <= 1'd0;
+	if(rst) write_addr <= 0;
 end
 /*mux_wire*/ logic[7:0] space_remaining;
 assign space_remaining = read_addr - write_addr - 1;
