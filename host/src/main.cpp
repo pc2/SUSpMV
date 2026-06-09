@@ -7,7 +7,7 @@
 #include <cmath>
 #include <chrono>
 
-#define HBM_ARG(N) (HBM_STRIDE * N), (N >= COMPUTE_UNITS ? 0 : data.hbm_buffers[N].size())
+#define HBM_ARG(N) (HBM_STRIDE * N), (N >= HW_COMPUTE_UNITS ? 0 : data.hbm_buffers[N].size())
 
 int dump_hex(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec);
 
@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
         std::cout << "compare" << std::endl;
 		m.compare(m2);
         std::cout << "dump" << std::endl;
-        dump_hex(m, data, x_vec);
+        //dump_hex(m, data, x_vec);
         return 0;
     }
 
@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
     tapasco::Tapasco tapasco = tapasco::Tapasco(tapasco::tlkm_access::TlkmAccessExclusive, TAPASCO_DEVICE_IDX);
 
     // upload matrix to device distributed across hbm banks
-    for (uint64_t i = 0; i < COMPUTE_UNITS; i++) {
+    for (uint64_t i = 0; i < HW_COMPUTE_UNITS; i++) {
         uint64_t hbm_addr = HBM_BASE + HBM_STRIDE * i;
         uint8_t* hbm_data_ptr = reinterpret_cast<uint8_t*>(data.hbm_buffers[i].data());
         size_t hbm_data_size = data.hbm_buffers[i].size() * sizeof(MatrixDataBlock);

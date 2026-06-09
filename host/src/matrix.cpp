@@ -599,7 +599,7 @@ std::vector<float> Matrix::mul(std::vector<float>& v) {
 std::vector<float> ComputeUnitData::mul(std::vector<float>& x_vec) {
     std::vector<float> result(this->height, 0.0);
 
-    for(size_t compute_unit = 0; compute_unit < this->hbm_buffers.size(); compute_unit++) {
+    for(size_t compute_unit = 0; compute_unit < COMPUTE_UNITS; compute_unit++) {
         float cur_x_tile[TILE_X_WIDTH];
         double cur_y_tile[MAX_TILE_Y_HEIGHT];
         uint64_t cur_x = 0;
@@ -726,7 +726,7 @@ Matrix ComputeUnitData::convert() {
         entries: std::vector<Entry>()
     };
 
-    for(size_t compute_unit = 0; compute_unit < this->hbm_buffers.size(); compute_unit++) {
+    for(size_t compute_unit = 0; compute_unit < COMPUTE_UNITS; compute_unit++) {
         uint64_t cur_x = 0;
         uint64_t cur_y = 0;
         uint64_t y_section = compute_unit;
@@ -769,7 +769,7 @@ Matrix ComputeUnitData::convert() {
                     y_max = 0;
                     cur_x = 0;
                     cur_y = 0;
-       				y_section += this->hbm_buffers.size();
+       				y_section += COMPUTE_UNITS;
                 }
             } else {
                 // It's a float6
@@ -909,8 +909,8 @@ ComputeUnitData Matrix::get_compute_unit_data() {
     // Temporary memory to split a single rows block into its constituent tiles.
     std::vector<std::vector<Entry>> current_x_tile_split(tiles_per_row);
     // The final memory buffers, these should be uploaded to the FPGA.
-    std::vector<std::vector<MatrixDataBlock>> hbm_buffers(COMPUTE_UNITS);
-	std::vector<Builder> builders(COMPUTE_UNITS);
+    std::vector<std::vector<MatrixDataBlock>> hbm_buffers(HW_COMPUTE_UNITS);
+	std::vector<Builder> builders(HW_COMPUTE_UNITS);
     for(size_t i = 0; i < total_y_partitions; i++) {
         size_t cur_hbm = i % COMPUTE_UNITS;
         builders[cur_hbm].unit = cur_hbm;
@@ -964,9 +964,20 @@ ComputeUnitData Matrix::get_compute_unit_data() {
         uint64_t blocks_after = builders[cur_hbm].blocks.size();
         std::cout << std::format(" (in {} blocks)", blocks_after - blocks_before) << std::endl;
     }
-    for(size_t i = 0; i < COMPUTE_UNITS; i++) {
+    for(size_t c = COMPUTE_UNITS; c < HW_COMPUTE_UNITS; c++) {
+        for(size_t r = 0, b = 0; r < repeats; r++) {
+            for(size_t t = 0; t < tiles_per_row; t++, b++) {
+                builders[c].build_block();
+                builders[c].blocks[b].float5.last_in_x = 1;
+                if (t == tiles_per_row-1) {
+                    builders[c].blocks[b].float5.last_in_y = 1;
+                }
+            }
+        }
+    }
+    for(size_t i = 0; i < HW_COMPUTE_UNITS; i++) {
     	hbm_buffers[i] = builders[i].blocks;
-	}
+    }
 
     return ComputeUnitData{
         hbm_buffers: hbm_buffers,

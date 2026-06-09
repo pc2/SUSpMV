@@ -40,11 +40,11 @@ void store_matrix_size(std::string path, Matrix& m, ComputeUnitData& data) {
 
     out << "`define X_VEC_LEN " << m.width << std::endl;
     out << "`define Y_VEC_LEN " << m.height << std::endl;
-    out << "`define COMPUTE_UNITS " << COMPUTE_UNITS << std::endl;
+    out << "`define COMPUTE_UNITS " << HW_COMPUTE_UNITS << std::endl;
     out << "`define X_TILES " << data.x_tiles << std::endl;
     out << "`define Y_REPEATS " << data.y_repeats << std::endl;
 
-    for(size_t i = 0; i < COMPUTE_UNITS; i++) {
+    for(size_t i = 0; i < HW_COMPUTE_UNITS; i++) {
         uint64_t hbm_addr = HBM_BASE + HBM_STRIDE * i;
         out << std::format("`define HBM{:02}_ADDR {}", i, hbm_addr) << std::endl;
         out << std::format("`define HBM{:02}_LEN {}", i, data.hbm_buffers[i].size()) << std::endl;
@@ -62,7 +62,7 @@ int dump_hex(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec) {
 
     // Store the matrix
     store_matrix_size("matrix_params.vh", m, data);
-    for(size_t i = 0; i < COMPUTE_UNITS; i++) {
+    for(size_t i = 0; i < HW_COMPUTE_UNITS; i++) {
         store<MatrixDataBlock, 256>(std::format("hbm{:02}.mem", i), data.hbm_buffers[i]);
     }
 
