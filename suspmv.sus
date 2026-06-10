@@ -270,9 +270,11 @@ module YCollector {
 
     /// With highest_y and y_ends_fifo, we find how many y values there are in this block. That way, this information doesn't need to be provided by the parent. 
     /// Since there are only 2 y buffers, that's the maximum number of y pages that can be in flight at the same time. the number of y pages in use can only be decreased after pulling from this fifo. 
+    Tuple2 pack_y_ends
     RippleFIFO#(DEPTH: NUM_Y_BUFFERS) y_ends_fifo
     bool _ = y_ends_fifo.may_push // We'll never exceed this FIFO, because max 2 y buffers can be in flight anyway. 
     state int highest_y
+    state bool saw_any_y
 
     domain default
     action push_partial_sums'0 :
@@ -336,15 +338,17 @@ module YCollector {
         } else {
             next_highest_y = highest_y
         }
-
+        bool next_saw_any_y = saw_any_y | max_y_seen_valid
         when end_of_y_block {
             current_front_buffer = current_front_buffer + 1 mod NUM_Y_BUFFERS
             // Delay y_end_value by 20 cycles, such that the last y writes have time to be committed before starting to read them again on the other side. 
             reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg reg int y_end_value = next_highest_y
-            y_ends_fifo.push(y_end_value)
+            y_ends_fifo.push(pack_y_ends.pack(y_end_value, next_saw_any_y))
             highest_y = 0
+            saw_any_y = false
         } else {
             highest_y = next_highest_y mod NUM_Y_INDICES
+            saw_any_y = next_saw_any_y
         }
     }
 
@@ -385,11 +389,16 @@ module YCollector {
     }
 
     when !currently_outputting {
-        when y_ends_fifo.pop_available : int last_y_value {
+        when y_ends_fifo.pop_available : bool[] packed {
+            int last_y_value, bool saw_any_y_value = pack_y_ends.unpack(packed)
             y_ends_fifo.pop()
 
             currently_outputting = true
-            num_ys_left_to_output = last_y_value + 1
+            when saw_any_y_value {
+                num_ys_left_to_output = last_y_value + 1
+            } else {
+                num_ys_left_to_output = 0
+            }
             for int BUCKET in 0..NUM_BUCKETS {
                 num_ys_left_per_bucket[BUCKET] = (last_y_value / NUM_BUCKETS) + 1
                 cur_output_y_per_bucket[BUCKET] = 0
@@ -418,6 +427,7 @@ module YCollector {
         current_front_buffer = 0
         current_back_buffer = 0
         highest_y = 0
+        saw_any_y = false
         currently_outputting = false
         y_index_manager.rst()
         output_fifo.rst()
