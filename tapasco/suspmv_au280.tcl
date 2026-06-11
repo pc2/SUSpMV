@@ -309,6 +309,7 @@ namespace eval suspmv {
         save_bd_design
 		
 		
+        set config [tapasco::get_feature "suspmv"]
         if {[dict exists $config clocking]} {
 	        dynamic_clock
         }
