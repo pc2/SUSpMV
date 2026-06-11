@@ -29,8 +29,8 @@ U280/%: FILES += sus-float/UltraScalePlus/fp_wrappers.sus
 v80/%: BIN_DIR ?= v80
 v80/%: PART := xcv80-lsva4737-2MHP-e-S
 #v80/%: PLATFORM := xilinx_u280_gen3x16_xdma_1_202211_1
-v80/%: FILES += sus-float/UltraScalePlus/extensions.sus
-v80/%: FILES += sus-float/UltraScalePlus/fp_wrappers.sus
+v80/%: SUS_FLOAT_LIB_PATH := sus-float/Versal
+v80/%: FILES += sus-float/Versal/fp_wrappers.sus
 
 U280/sus_codegen.sv: $(FILES)
 	mkdir -p $(BIN_DIR)
