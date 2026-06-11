@@ -7,6 +7,7 @@
         "sus-tapasco/sus/tapasco_ctrl_slave.sus",
         "suspmv.sus",
         "suspmv_io.sus",
+        "suspmv_top_u280.sus",
         "slr_crossing.sus"
     ]
 }

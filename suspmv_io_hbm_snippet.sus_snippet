@@ -50,14 +50,15 @@
     when set_matrix_data {
         hbm{HBM_IDX}_reader.request_new_read(matrix_data_start_addrs[{HBM_IDX}], matrix_data_element_counts[{HBM_IDX}], [])
     }
-    hbm{HBM_IDX}_reader.ready_for_lots_of_data = hbm_may_pushes[{HBM_IDX}]
+    hbm{HBM_IDX}_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[{HBM_IDX}]
     when hbm{HBM_IDX}_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
-        hbm_weight_valids[{HBM_IDX}] = true
-        hbm_weight_datas[{HBM_IDX}] = elements[0]
+        hbm_weight_valids_hbm[{HBM_IDX}] = true
+        hbm_weight_datas_hbm[{HBM_IDX}] = elements[0]
     } else {
-        hbm_weight_valids[{HBM_IDX}] = false
+        hbm_weight_valids_hbm[{HBM_IDX}] = false
     }
-    when pipe_aresetn_slr0.dout {
+    when hbm_rst_fanout.douts[{HBM_IDX}] {
         hbm{HBM_IDX}_reader.rst()
         hbm{HBM_IDX}_writer_tie_off.rst()
     }
+    

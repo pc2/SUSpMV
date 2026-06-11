@@ -25,6 +25,7 @@ U280/%: PLATFORM := xilinx_u280_gen3x16_xdma_1_202211_1
 U280/%: SUS_FLOAT_LIB_PATH := sus-float/UltraScalePlus
 U280/%: FILES += sus-float/UltraScalePlus/extensions.sus
 U280/%: FILES += sus-float/UltraScalePlus/fp_wrappers.sus
+U280/%: FILES += suspmv_top_u280.sus
 
 v80/%: BIN_DIR ?= v80
 v80/%: PART := xcv80-lsva4737-2MHP-e-S
