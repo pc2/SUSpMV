@@ -31,6 +31,7 @@ v80/%: PART := xcv80-lsva4737-2MHP-e-S
 #v80/%: PLATFORM := xilinx_u280_gen3x16_xdma_1_202211_1
 v80/%: SUS_FLOAT_LIB_PATH := sus-float/Versal
 v80/%: FILES += sus-float/Versal/fp_wrappers.sus
+v80/%: FILES += sus-float/Versal/extensions.sus
 
 U280/sus_codegen.sv: $(FILES)
 	mkdir -p $(BIN_DIR)
@@ -194,3 +195,9 @@ tests/IO/test_data_bcsstk16: #host/suspmv
 
 tests/IO/test_data_ASIC_680k_modified: #host/suspmv
 	cd tests/IO/ && ../../host/suspmv ../../host/test/ASIC_680k_modified/ASIC_680k_modified.mtx 0
+
+tests/IO/test_data_human_gene1: #host/suspmv
+	cd tests/IO/ && ../../host/suspmv ../../host/test/Belcastro/human_gene1/human_gene1.mtx 0
+
+tests/IO/test_data_null: #host/suspmv
+	cd tests/IO/ && ../../host/suspmv ../../host/test/null/null.mtx 0
