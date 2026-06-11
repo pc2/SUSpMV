@@ -26,6 +26,12 @@ U280/%: SUS_FLOAT_LIB_PATH := sus-float/UltraScalePlus
 U280/%: FILES += sus-float/UltraScalePlus/extensions.sus
 U280/%: FILES += sus-float/UltraScalePlus/fp_wrappers.sus
 
+v80/%: BIN_DIR ?= v80
+v80/%: PART := xcv80-lsva4737-2MHP-e-S
+#v80/%: PLATFORM := xilinx_u280_gen3x16_xdma_1_202211_1
+v80/%: FILES += sus-float/UltraScalePlus/extensions.sus
+v80/%: FILES += sus-float/UltraScalePlus/fp_wrappers.sus
+
 U280/sus_codegen.sv: $(FILES)
 	mkdir -p $(BIN_DIR)
 	sus_compiler $(FILES) -o $(BIN_DIR)/sus_codegen.sv --top SUSpMV_Full
@@ -38,7 +44,18 @@ U280/SUSpMV_Full.xo: pack_kernel.tcl pblocks.xdc U280/sus_codegen.sv slr_crossin
 	rm -rf $(BIN_DIR)/pack_prj
 	mkdir $(BIN_DIR)/pack_prj
 	cd $(BIN_DIR)/pack_prj;\
-	vivado -mode batch -source ../../pack_kernel.tcl -tclargs $(PART) ../SUSpMV_Full.xo $(SUS_FLOAT_LIB_PATH)
+	vivado -mode batch -source ../../pack_kernel.tcl -tclargs $(PART) ../SUSpMV_Full.xo $(SUS_FLOAT_LIB_PATH) ../../pblocks.xdc
+
+v80/sus_codegen.sv: $(FILES)
+	mkdir -p $(BIN_DIR)
+	sus_compiler $(FILES) -o $(BIN_DIR)/sus_codegen.sv --top SUSpMV_Full
+
+v80/SUSpMV_Full.xo: pack_kernel.tcl pblocks_v80.xdc v80/sus_codegen.sv slr_crossing.sv
+	rm -f $(BIN_DIR)/SUSpMV_Full.xo
+	rm -rf $(BIN_DIR)/pack_prj
+	mkdir $(BIN_DIR)/pack_prj
+	cd $(BIN_DIR)/pack_prj;\
+	vivado -mode batch -source ../../pack_kernel.tcl -tclargs $(PART) ../SUSpMV_Full.xo $(SUS_FLOAT_LIB_PATH) ../../pblocks_v80.xdc
 
 VCK5000/overlay_hw_emu.xclbin: vck5000_connectivity.cfg $(XOS_VCK)
 	rm -f $(BIN_DIR)/overlay_hw_emu.xclbin
@@ -109,6 +126,7 @@ VCK5000/run: _run
 clean: cleantmp
 	rm -rf VCK5000
 	rm -rf U280
+	rm -rf v80
 	rm -f main.x
 	
 cleantmp:
@@ -142,6 +160,12 @@ U280/tapasco: U280/SUSpMV_Full.xo
 	cd $(BIN_DIR)/pack_prj && zip -r ../SUSpMV_Full.zip SUSpMV_Full_ip
 	tapasco import $(BIN_DIR)/SUSpMV_Full.zip as 100 -p AU280
 	tapasco --jobsFile tapasco/job_au280.json
+
+v80/tapasco: v80/SUSpMV_Full.xo
+	rm -f $(BIN_DIR)/SUSpMV_Full.zip
+	cd $(BIN_DIR)/pack_prj && zip -r ../SUSpMV_Full.zip SUSpMV_Full_ip
+	tapasco import $(BIN_DIR)/SUSpMV_Full.zip as 100 -p v80
+	tapasco --jobsFile tapasco/job_v80.json
 
 .PHONY: U280/tapasco
 

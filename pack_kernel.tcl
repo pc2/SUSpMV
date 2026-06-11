@@ -1,6 +1,7 @@
 set PART [lindex $argv 0]
 set XO_FILE [lindex $argv 1]
 set SUS_FLOAT_LIB_PATH [lindex $argv 2]
+set PBLOCK_FILE [lindex $argv 3]
 
 # set PART xcvc1902-vsvd1760-2MP-e-S
 
@@ -18,7 +19,7 @@ add_files -norecurse \
 import_ip [glob -type f ../../$SUS_FLOAT_LIB_PATH/xci_files/*.xci]
 upgrade_ip -vlnv xilinx.com:ip:floating_point:7.1 [get_ips fp32_*_ip fp64_*_ip] -log ip_upgrade.log
 
-add_files -fileset constrs_1 -norecurse ../../pblocks.xdc
+add_files -fileset constrs_1 -norecurse ${PBLOCK_FILE}
 
 set_property top SUSpMV_Full [current_fileset]
 
