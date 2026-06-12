@@ -380,7 +380,7 @@ module SUSpMV_Cluster#(int NUM_UNITS, int HBM_MAY_PUSH_LATENCY) {
     input bool[NUM_UNITS] start_y_bursts
     
     domain reset
-    WideFanout#(SIZE: NUM_UNITS, DEPTH: 4) rst_fanout
+    WideFanout#(SIZE: NUM_UNITS, DEPTH: 8) rst_fanout
     rst_fanout.din = false
     action rst {
         rst_fanout.din = true
@@ -425,9 +425,7 @@ module SUSpMV_Cluster#(int NUM_UNITS, int HBM_MAY_PUSH_LATENCY) {
             unit.start_y_burst()
         }
 
-        data_pipeline#(DEPTH: 4) is_rst_pipe
-        is_rst_pipe.din = rst_fanout.douts[I]
-        when is_rst_pipe.dout {
+        when rst_fanout.douts[I] {
             unit.rst()
         }
     }

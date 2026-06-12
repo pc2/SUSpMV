@@ -18,12 +18,16 @@ module SUSpMV_SLR#(int LEFT_UNITS, int RIGHT_UNITS, int HBM_MAY_PUSH_LATENCY) {
 
     domain x_data_dom
     Tuple2 pack_x_value_cross
-    action_pipeline#(DEPTH: 8) x_value_cross
+    action_pipeline#(DEPTH: 4) x_value_cross_right
+    action_pipeline#(DEPTH: 4) x_value_cross_left
     action push_x_data'0 : float[16] x_data_in'0, bool last_x_data_in'0 {
-        x_value_cross.din(pack_x_value_cross.pack(x_data_in, last_x_data_in))
+        x_value_cross_right.din(pack_x_value_cross.pack(x_data_in, last_x_data_in))
         right_half.push_x_data(x_data_in, last_x_data_in)
     }
-    when x_value_cross.dout : bool[] packed {
+    when x_value_cross_right.dout : bool[] packed {
+        x_value_cross_left.din(packed)
+    }
+    when x_value_cross_left.dout : bool[] packed {
         float[16] x_data_in, bool last_x_data_in = pack_x_value_cross.unpack(packed)
         left_half.push_x_data(x_data_in, last_x_data_in)
     }
@@ -35,20 +39,26 @@ module SUSpMV_SLR#(int LEFT_UNITS, int RIGHT_UNITS, int HBM_MAY_PUSH_LATENCY) {
 
     domain y_data_out
     input bool may_y_valid
-    data_pipeline#(DEPTH: 8) may_y_valid_cross
-    may_y_valid_cross.din = may_y_valid
+    data_pipeline#(DEPTH: 4) may_y_valid_cross_right
+    data_pipeline#(DEPTH: 4) may_y_valid_cross_left
+    may_y_valid_cross_right.din = may_y_valid
+    may_y_valid_cross_left.din = may_y_valid_cross_right.dout
     right_half.may_y_valid = may_y_valid
-    left_half.may_y_valid = may_y_valid_cross.dout
+    left_half.may_y_valid = may_y_valid_cross_left.dout
     trigger y_valid: float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out
     when right_half.y_valid : float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out {
         y_valid(y_values_out, num_y_values_out, is_last_y_out)
     }
     Tuple3 pack_y_value_cross
-    action_pipeline#(DEPTH: 8) y_value_cross
+    action_pipeline#(DEPTH: 4) y_value_cross_left
+    action_pipeline#(DEPTH: 4) y_value_cross_right
     when left_half.y_valid : float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out {
-        y_value_cross.din(pack_y_value_cross.pack(y_values_out, num_y_values_out, is_last_y_out))
+        y_value_cross_left.din(pack_y_value_cross.pack(y_values_out, num_y_values_out, is_last_y_out))
     }
-    when y_value_cross.dout : bool[] packed {
+    when y_value_cross_left.dout : bool[] packed {
+        y_value_cross_right.din(packed)
+    }
+    when y_value_cross_right.dout : bool[] packed {
         float[16] y_values_out, int#(FROM: 0, TO: 17) num_y_values_out, bool is_last_y_out = pack_y_value_cross.unpack(packed)
         y_valid(y_values_out, num_y_values_out, is_last_y_out)
     }
@@ -59,12 +69,16 @@ module SUSpMV_SLR#(int LEFT_UNITS, int RIGHT_UNITS, int HBM_MAY_PUSH_LATENCY) {
     right_half.start_y_bursts = start_y_bursts[LEFT_UNITS:]
 
     domain reset
-    action_pipeline#(DEPTH: 8) rst_pipeline
+    action_pipeline#(DEPTH: 4) rst_pipeline_cross_right
+    action_pipeline#(DEPTH: 4) rst_pipeline_cross_left
     action rst {
         right_half.rst()
-        rst_pipeline.din([])
+        rst_pipeline_cross_right.din([])
     }
-    when rst_pipeline.dout : bool[0] _out_data {
+    when rst_pipeline_cross_right.dout : bool[0] _out_data {
+        rst_pipeline_cross_left.din([])
+    }
+    when rst_pipeline_cross_left.dout : bool[0] _out_data {
         left_half.rst()
     }
 }
@@ -83,10 +97,10 @@ module SUSpMV_Full {
     gen int DDR_AXI_WRITE_WIDTH = 512
     gen int HBM_AXI_WIDTH = 256
 
-    gen int UNITS_SLR0_LEFT = 6
+    gen int UNITS_SLR0_LEFT = 7
     gen int UNITS_SLR0_RIGHT = 0
     gen int UNITS_SLR1_LEFT = 8
-    gen int UNITS_SLR1_RIGHT = 4
+    gen int UNITS_SLR1_RIGHT = 3
     gen int UNITS_SLR2_LEFT = 8
     gen int UNITS_SLR2_RIGHT = 6
 
@@ -98,6 +112,24 @@ module SUSpMV_Full {
     gen int NUM_UNITS = UNITS_SLR0 + UNITS_SLR1 + UNITS_SLR2
     gen int NUM_HBMS = 32
 
+    // Now shuffle the HBM indices, so the HBM lines go straight up instead of criss-cross
+    gen int[NUM_UNITS] HBM_IDX_PER_UNIT = [
+        // SLR0 LEFT
+        8,9,10,11,12,13,14,
+        // SLR0 RIGHT
+        // none
+
+        // SLR1 LEFT
+        0,1,2,3,4,5,6,7,
+        // SLR1 RIGHT
+        23,24,25,
+
+        // SLR2 LEFT
+        15,16,17,18,19,20,21,22,
+        // SLR2 RIGHT
+        26,27,28,29,30,31
+    ]
+    
     //xrt_ctrl_slave #(NUM_INPUT_REGS: 6 + 4 * NUM_HBMS, NUM_OUTPUT_REGS: 0, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
     tapasco_ctrl_slave #(NUM_INPUT_REGS: 4 + 2 * NUM_HBMS, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
 
@@ -240,23 +272,6 @@ module SUSpMV_Full {
         y_result_writer.submit_y_vector_addr(y_vector_addr, num_y_repetitions)
     }
 
-    // Now shuffle the HBM indices, so the HBM lines go straight up instead of criss-cross
-    gen int[NUM_UNITS] HBM_IDX_PER_UNIT = [
-        // SLR0 LEFT
-        8,9,10,11,12,13,
-        // SLR0 RIGHT
-        // none
-
-        // SLR1 LEFT
-        0,1,2,3,4,5,6,7,
-        // SLR1 RIGHT
-        22,23,24,25,
-
-        // SLR2 LEFT
-        14,15,16,17,18,19,20,21,
-        // SLR2 RIGHT
-        26,27,28,29,30,31
-    ]
     // SUS TODO: Local Actions (https://github.com/pc2/sus-compiler/issues/198)
     int[NUM_HBMS] matrix_data_start_addrs
     int[NUM_HBMS] matrix_data_element_counts
