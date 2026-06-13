@@ -443,33 +443,83 @@ module YCollector {
     }
 }
 
+module XVectorMemBlock {
+    gen int X_DEPTH = 1024
+    gen int NUM_BRAMS = 8
+    gen int X_WRITE_SIZE = 16
+    gen int RAM_DEPTH = X_DEPTH * NUM_BRAMS
 
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) bits0
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) bits1
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) bits2
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) bits3
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) bits4
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) bits5
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) bits6
+    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) bits7
+    
+    domain write_dom
+    action write'0 : int#(FROM: 0, TO: RAM_DEPTH / X_WRITE_SIZE) wr_addr'0, float[X_WRITE_SIZE] x_values'0 {
+        bool[4][X_WRITE_SIZE][NUM_BRAMS] bram_write_parts
+        for int X_IDX in 0..X_WRITE_SIZE {
+            bool[32] x_value_bits = ToBits(x_values[X_IDX])
+            for int BRAM_IDX in 0..NUM_BRAMS {
+                bram_write_parts[BRAM_IDX][X_IDX] = x_value_bits[BRAM_IDX * 4 +: 4]
+            }
+        }
+        bits0.write(wr_addr, bram_write_parts[0])
+        bits1.write(wr_addr, bram_write_parts[1])
+        bits2.write(wr_addr, bram_write_parts[2])
+        bits3.write(wr_addr, bram_write_parts[3])
+        bits4.write(wr_addr, bram_write_parts[4])
+        bits5.write(wr_addr, bram_write_parts[5])
+        bits6.write(wr_addr, bram_write_parts[6])
+        bits7.write(wr_addr, bram_write_parts[7])
+    }
+    domain read_dom
+    action read : int#(FROM: 0, TO: RAM_DEPTH) rd_addr -> float x_value {
+        bool[4][1][8] bram_read_parts
+        bram_read_parts[0] = bits0.read(rd_addr)
+        bram_read_parts[1] = bits1.read(rd_addr)
+        bram_read_parts[2] = bits2.read(rd_addr)
+        bram_read_parts[3] = bits3.read(rd_addr)
+        bram_read_parts[4] = bits4.read(rd_addr)
+        bram_read_parts[5] = bits5.read(rd_addr)
+        bram_read_parts[6] = bits6.read(rd_addr)
+        bram_read_parts[7] = bits7.read(rd_addr)
+
+        bool[32] x_value_bits
+        for int I in 0..8 {
+            x_value_bits[I * 4 +: 4] = bram_read_parts[I][0]
+        }
+        x_value = FromBits(x_value_bits)
+    }
+}
 
 module XVectorMemory {
     gen int PARALLELISM = 6
     gen int X_DEPTH = 1024
     gen int X_NUM_BUFFERS = 8
     gen int X_WRITE_SIZE = 16
-    gen int RAM_DEPTH = X_DEPTH * X_NUM_BUFFERS
 
     state int#(FROM: 0, TO: X_NUM_BUFFERS) cur_reader_buffer
     state int#(FROM: 0, TO: X_NUM_BUFFERS) cur_writer_buffer
 
     domain reader
     // TODO Submodule Arrays (https://github.com/pc2/sus-compiler/issues/161)
-    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) ram1
-    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) ram2
-    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) ram3
-    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) ram4
-    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) ram5
-    RAM_Unbalanced#(DEPTH: RAM_DEPTH, READ_SIZE: 1, WRITE_SIZE: X_WRITE_SIZE) ram6
+    XVectorMemBlock ram1
+    XVectorMemBlock ram2
+    XVectorMemBlock ram3
+    XVectorMemBlock ram4
+    XVectorMemBlock ram5
+    XVectorMemBlock ram6
     action multiply_bys : float[PARALLELISM] weights, int#(FROM: 0, TO: X_DEPTH)[PARALLELISM] x_indices, bool is_last -> float[PARALLELISM] terms {
         int[PARALLELISM] ram_idx
         for int I in 0..PARALLELISM {
             ram_idx[I] = BitwiseIntConcat#(LOWER_BITS: clog2#(V: X_DEPTH))(cur_reader_buffer, x_indices[I])
         }
 
-        reg float[1][PARALLELISM] vector_values = [
+        reg float[PARALLELISM] vector_values = [
             ram1.read(ram_idx[0]),
             ram2.read(ram_idx[1]),
             ram3.read(ram_idx[2]),
@@ -479,7 +529,7 @@ module XVectorMemory {
         ]
 
         for int I in 0..PARALLELISM {
-            terms[I] = fp32_mul(weights[I], vector_values[I][0])
+            terms[I] = fp32_mul(weights[I], vector_values[I])
         }
 
         when is_last {
@@ -490,7 +540,7 @@ module XVectorMemory {
     domain writer
     state int#(FROM: 0, TO: X_DEPTH / X_WRITE_SIZE) cur_write_idx
     action write'0 : float[X_WRITE_SIZE] x_values'0, bool is_last_write'0 {
-        int write_idx = BitwiseIntConcat#(LOWER_BITS: clog2#(V: X_DEPTH / X_WRITE_SIZE))(cur_writer_buffer, cur_write_idx)
+        reg int write_idx = BitwiseIntConcat#(LOWER_BITS: clog2#(V: X_DEPTH / X_WRITE_SIZE))(cur_writer_buffer, cur_write_idx)
         ram1.write(write_idx, x_values)
         ram2.write(write_idx, x_values)
         ram3.write(write_idx, x_values)
