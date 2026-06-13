@@ -142,12 +142,21 @@ module LUTRAM_FWFT #(
 (* ram_style = "distributed" *) logic[WIDTH-1:0] mem[0:DEPTH-1];
 /*state*/ logic[$clog2(DEPTH)-1:0] read_addr;
 /*state*/ logic[$clog2(DEPTH)-1:0] write_addr;
+// Pipeline the write fields, because there seems to be a lot of trouble getting the write addr distributed. 
+logic[$clog2(DEPTH)-1:0] write_addr_pipeline;
+logic[WIDTH-1:0] push_data_pipeline;
+logic push_pipeline;
+always_ff @(posedge clk) begin
+    write_addr_pipeline <= write_addr;
+    push_data_pipeline <= push_data;
+    push_pipeline <= push;
+end
 always_ff @(posedge clk) begin
     if(rst) begin
         read_addr <= 0;
         pop_available <= 1'b0;
     end else if(!pop_available || pop) begin
-        if(read_addr != write_addr) begin
+        if(read_addr != write_addr_pipeline) begin
             pop_data <= mem[read_addr];
             pop_available <= 1'b1;
             read_addr <= read_addr + 1;
@@ -157,7 +166,7 @@ always_ff @(posedge clk) begin
     end
 end
 always_ff @(posedge clk) begin // state mem
-	if(push) mem[write_addr] <= push_data;
+	if(push_pipeline) mem[write_addr_pipeline] <= push_data_pipeline;
 end
 always_ff @(posedge clk) begin // state write_addr
 	if(push) write_addr <= write_addr + 1;
