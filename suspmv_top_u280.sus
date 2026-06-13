@@ -131,7 +131,7 @@ module SUSpMV_Full {
     ]
     
     //xrt_ctrl_slave #(NUM_INPUT_REGS: 6 + 4 * NUM_HBMS, NUM_OUTPUT_REGS: 0, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
-    tapasco_ctrl_slave #(NUM_INPUT_REGS: 4 + 2 * NUM_HBMS, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
+    tapasco_ctrl_slave_noregs #(NUM_INPUT_REGS: 4 + 2 * NUM_HBMS, ADDR_WIDTH: CTRL_ADDR_WIDTH, AXI_WIDTH: CTRL_AXI_WIDTH) ctrl
 
     // ============================= //
     //  AXI4-Lite Control interface  //
@@ -237,28 +237,56 @@ module SUSpMV_Full {
 
     // Pipeline regs to get from SLR0 to SLR1
     Tuple4 pack_ddr_settings
-    action_pipeline#(DEPTH: 6) pipe_ctrl_to_ddr
+    action_pipeline#(DEPTH: 8) pipe_ctrl_to_ddr
     
-    Tuple2 pack_hbm_settings
-    action_pipeline#(DEPTH: 6) pipe_ctrl_to_hbms
     CycleCounter#(TO: 1 << 64) cycle_counter
+    
+    // SUS TODO: Local Actions (https://github.com/pc2/sus-compiler/issues/198)
+    
+    state bool[CTRL_AXI_WIDTH][4] ddr_args
+
+    LineBusDistributor#(AXI_WIDTH: CTRL_AXI_WIDTH, NUM_OUTPUTS: 16, IDX_TO: 256) hbm_info_distributor_left
+    LineBusDistributor#(AXI_WIDTH: CTRL_AXI_WIDTH, NUM_OUTPUTS: 16, IDX_TO: 256) hbm_info_distributor_right
+    Tuple2 pack_hbm_ctrl
+    action_pipeline#(DEPTH: 6) pipeline_hbm_ctrl
+
+    when ctrl.set_reg : int reg_idx, bool[CTRL_AXI_WIDTH] data {
+        when reg_idx >= 2 & reg_idx < 6 {
+            ddr_args[IntNarrow#(FROM: 2, TO: 6)(reg_idx) - 2] = data
+        }
+        pipeline_hbm_ctrl.din(pack_hbm_ctrl.pack(reg_idx, data))
+    }
+    when pipeline_hbm_ctrl.dout : bool[] packed {
+        int reg_idx, bool[CTRL_AXI_WIDTH] data = pack_hbm_ctrl.unpack(packed)
+        hbm_info_distributor_left.write(reg_idx, data)
+        hbm_info_distributor_right.write(reg_idx, data)
+    }
+    bool[NUM_HBMS] hbm_ctrl_valid
+    int#(FROM: 0, TO: 256)[NUM_HBMS] hbm_ctrl_idx
+    bool[CTRL_AXI_WIDTH][NUM_HBMS] hbm_ctrl_data
+    for int I in 0..16 {
+        hbm_ctrl_valid[I] = hbm_info_distributor_left.pipeline_valids[I]
+        hbm_ctrl_valid[31-I] = hbm_info_distributor_right.pipeline_valids[I]
+        hbm_ctrl_idx[I] = hbm_info_distributor_left.pipeline_idxes[I]
+        hbm_ctrl_idx[31-I] = hbm_info_distributor_right.pipeline_idxes[I]
+        hbm_ctrl_data[I] = hbm_info_distributor_left.pipeline_datas[I]
+        hbm_ctrl_data[31-I] = hbm_info_distributor_right.pipeline_datas[I]
+    }
+    
+    gen int[NUM_HBMS] HBM_ADDR_REGS
+    gen int[NUM_HBMS] HBM_COUNT_REGS
+
+    for int I in 0..NUM_HBMS {
+        HBM_ADDR_REGS[I] = I * 2 + 4
+        HBM_COUNT_REGS[I] = I * 2 + 5
+    }
 
     when ctrl.start {
-        int x_vector_addr = BitsToUInt(ctrl.input_regs[0])
-        int y_vector_addr = BitsToUInt(ctrl.input_regs[1])
-        int num_x_pages = BitsToUInt(ctrl.input_regs[2]) mod 1 << 32
-        int num_y_repetitions = BitsToUInt(ctrl.input_regs[3]) mod 1 << 32
+        int x_vector_addr = BitsToUInt(ddr_args[0])
+        int y_vector_addr = BitsToUInt(ddr_args[1])
+        int num_x_pages = BitsToUInt(ddr_args[2]) mod 1 << 32
+        int num_y_repetitions = BitsToUInt(ddr_args[3]) mod 1 << 32
         pipe_ctrl_to_ddr.din(pack_ddr_settings.pack(x_vector_addr, y_vector_addr, num_x_pages, num_y_repetitions))
-
-        int[NUM_HBMS] matrix_data_start_addrs
-        int[NUM_HBMS] matrix_data_element_counts
-        for int HBM_I in 0..NUM_HBMS {
-            // Pipeline regs to reach both ends of SLR0
-            matrix_data_start_addrs[HBM_I] = BitsToUInt(ctrl.input_regs[4 + HBM_I * 2])
-            matrix_data_element_counts[HBM_I] = BitsToUInt(ctrl.input_regs[5 + HBM_I * 2]) mod 1 << 32
-        }
-
-        pipe_ctrl_to_hbms.din(pack_hbm_settings.pack(matrix_data_start_addrs, matrix_data_element_counts))
 
         cycle_counter.start()
     }
@@ -271,11 +299,6 @@ module SUSpMV_Full {
         x_vector_reader.start_loading(x_vector_addr, num_x_pages, num_y_repetitions)
         y_result_writer.submit_y_vector_addr(y_vector_addr, num_y_repetitions)
     }
-
-    // SUS TODO: Local Actions (https://github.com/pc2/sus-compiler/issues/198)
-    int[NUM_HBMS] matrix_data_start_addrs
-    int[NUM_HBMS] matrix_data_element_counts
-    bool set_matrix_data
 
     bool[256][NUM_HBMS] hbm_weight_datas_hbm
     bool[NUM_HBMS] hbm_weight_valids_hbm
@@ -297,13 +320,6 @@ module SUSpMV_Full {
         hbm_weight_valids_unit[UNIT_I] = hbm_weight_valids_hbm[HBM_I]
     }
 
-    when pipe_ctrl_to_hbms.dout : bool[] packed_hbm_settings {
-        matrix_data_start_addrs, matrix_data_element_counts = pack_hbm_settings.unpack(packed_hbm_settings)
-        set_matrix_data = true
-    } else {
-        set_matrix_data = false
-    }
-    
     when y_result_writer.write_has_been_committed {
         int num_cycles = cycle_counter.finish()
         ctrl.finish(UIntToBits(num_cycles))
@@ -457,31 +473,30 @@ module SUSpMV_Full {
     // ===================================================== //
 
     domain hbm00
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm00_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm00_writer_tie_off
-    output bool                                     maxi_hbm00_awvalid  = hbm00_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm00_awaddr   = hbm00_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm00_awlen    = hbm00_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm00_awsize   = hbm00_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm00_awburst  = hbm00_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm00_awprot   = hbm00_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm00_awcache  = hbm00_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm00_awqos    = hbm00_writer_tie_off.awqos
-    output bool                                     maxi_hbm00_awlock   = hbm00_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm00_awregion = hbm00_writer_tie_off.awregion
-    output bool                                     maxi_hbm00_wvalid   = hbm00_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm00_wdata    = hbm00_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm00_wstrb    = hbm00_writer_tie_off.wstrb
-    output bool                                     maxi_hbm00_wlast    = hbm00_writer_tie_off.wlast
-    output bool                                     maxi_hbm00_bready   = hbm00_writer_tie_off.bready
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[00], COUNT_REG: HBM_COUNT_REGS[00]) hbm00_reader
+    output bool                                     maxi_hbm00_awvalid  = hbm00_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm00_awaddr   = hbm00_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm00_awlen    = hbm00_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm00_awsize   = hbm00_reader.awsize
+    output bool[2]                                  maxi_hbm00_awburst  = hbm00_reader.awburst
+    output bool[3]                                  maxi_hbm00_awprot   = hbm00_reader.awprot
+    output bool[4]                                  maxi_hbm00_awcache  = hbm00_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm00_awqos    = hbm00_reader.awqos
+    output bool                                     maxi_hbm00_awlock   = hbm00_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm00_awregion = hbm00_reader.awregion
+    output bool                                     maxi_hbm00_wvalid   = hbm00_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm00_wdata    = hbm00_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm00_wstrb    = hbm00_reader.wstrb
+    output bool                                     maxi_hbm00_wlast    = hbm00_reader.wlast
+    output bool                                     maxi_hbm00_bready   = hbm00_reader.bready
     input  bool                                     maxi_hbm00_wready'0
     input  bool                                     maxi_hbm00_bvalid
     input  bool[2]                                  maxi_hbm00_bresp
     input  bool                                     maxi_hbm00_awready
-    hbm00_writer_tie_off.awready =                  maxi_hbm00_awready
-    hbm00_writer_tie_off.wready =                   maxi_hbm00_wready
-    hbm00_writer_tie_off.bvalid =                   maxi_hbm00_bvalid
-    hbm00_writer_tie_off.bresp =                    maxi_hbm00_bresp
+    hbm00_reader.awready =                          maxi_hbm00_awready
+    hbm00_reader.wready =                           maxi_hbm00_wready
+    hbm00_reader.bvalid =                           maxi_hbm00_bvalid
+    hbm00_reader.bresp =                            maxi_hbm00_bresp
     output bool                                     maxi_hbm00_arvalid  = hbm00_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm00_araddr   = hbm00_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm00_arlen    = hbm00_reader.arlen
@@ -504,47 +519,44 @@ module SUSpMV_Full {
     hbm00_reader.rresp =                            maxi_hbm00_rresp
     hbm00_reader.rlast =                            maxi_hbm00_rlast
 
-    bool _hbm00_reader_may_request = hbm00_reader.may_request_new_read
-    when set_matrix_data {
-        hbm00_reader.request_new_read(matrix_data_start_addrs[00], matrix_data_element_counts[00], [])
+    when hbm_ctrl_valid[00] {
+        hbm00_reader.set_reg(hbm_ctrl_idx[00], hbm_ctrl_data[00])
     }
     hbm00_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[00]
-    when hbm00_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm00_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[00] = true
-        hbm_weight_datas_hbm[00] = elements[0]
+        hbm_weight_datas_hbm[00] = elements
     } else {
         hbm_weight_valids_hbm[00] = false
     }
     when hbm_rst_fanout.douts[00] {
         hbm00_reader.rst()
-        hbm00_writer_tie_off.rst()
     }
-        domain hbm01
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm01_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm01_writer_tie_off
-    output bool                                     maxi_hbm01_awvalid  = hbm01_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm01_awaddr   = hbm01_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm01_awlen    = hbm01_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm01_awsize   = hbm01_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm01_awburst  = hbm01_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm01_awprot   = hbm01_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm01_awcache  = hbm01_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm01_awqos    = hbm01_writer_tie_off.awqos
-    output bool                                     maxi_hbm01_awlock   = hbm01_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm01_awregion = hbm01_writer_tie_off.awregion
-    output bool                                     maxi_hbm01_wvalid   = hbm01_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm01_wdata    = hbm01_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm01_wstrb    = hbm01_writer_tie_off.wstrb
-    output bool                                     maxi_hbm01_wlast    = hbm01_writer_tie_off.wlast
-    output bool                                     maxi_hbm01_bready   = hbm01_writer_tie_off.bready
+    domain hbm01
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[01], COUNT_REG: HBM_COUNT_REGS[01]) hbm01_reader
+    output bool                                     maxi_hbm01_awvalid  = hbm01_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm01_awaddr   = hbm01_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm01_awlen    = hbm01_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm01_awsize   = hbm01_reader.awsize
+    output bool[2]                                  maxi_hbm01_awburst  = hbm01_reader.awburst
+    output bool[3]                                  maxi_hbm01_awprot   = hbm01_reader.awprot
+    output bool[4]                                  maxi_hbm01_awcache  = hbm01_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm01_awqos    = hbm01_reader.awqos
+    output bool                                     maxi_hbm01_awlock   = hbm01_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm01_awregion = hbm01_reader.awregion
+    output bool                                     maxi_hbm01_wvalid   = hbm01_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm01_wdata    = hbm01_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm01_wstrb    = hbm01_reader.wstrb
+    output bool                                     maxi_hbm01_wlast    = hbm01_reader.wlast
+    output bool                                     maxi_hbm01_bready   = hbm01_reader.bready
     input  bool                                     maxi_hbm01_wready'0
     input  bool                                     maxi_hbm01_bvalid
     input  bool[2]                                  maxi_hbm01_bresp
     input  bool                                     maxi_hbm01_awready
-    hbm01_writer_tie_off.awready =                  maxi_hbm01_awready
-    hbm01_writer_tie_off.wready =                   maxi_hbm01_wready
-    hbm01_writer_tie_off.bvalid =                   maxi_hbm01_bvalid
-    hbm01_writer_tie_off.bresp =                    maxi_hbm01_bresp
+    hbm01_reader.awready =                          maxi_hbm01_awready
+    hbm01_reader.wready =                           maxi_hbm01_wready
+    hbm01_reader.bvalid =                           maxi_hbm01_bvalid
+    hbm01_reader.bresp =                            maxi_hbm01_bresp
     output bool                                     maxi_hbm01_arvalid  = hbm01_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm01_araddr   = hbm01_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm01_arlen    = hbm01_reader.arlen
@@ -567,47 +579,44 @@ module SUSpMV_Full {
     hbm01_reader.rresp =                            maxi_hbm01_rresp
     hbm01_reader.rlast =                            maxi_hbm01_rlast
 
-    bool _hbm01_reader_may_request = hbm01_reader.may_request_new_read
-    when set_matrix_data {
-        hbm01_reader.request_new_read(matrix_data_start_addrs[01], matrix_data_element_counts[01], [])
+    when hbm_ctrl_valid[01] {
+        hbm01_reader.set_reg(hbm_ctrl_idx[01], hbm_ctrl_data[01])
     }
     hbm01_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[01]
-    when hbm01_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm01_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[01] = true
-        hbm_weight_datas_hbm[01] = elements[0]
+        hbm_weight_datas_hbm[01] = elements
     } else {
         hbm_weight_valids_hbm[01] = false
     }
     when hbm_rst_fanout.douts[01] {
         hbm01_reader.rst()
-        hbm01_writer_tie_off.rst()
     }
-        domain hbm02
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm02_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm02_writer_tie_off
-    output bool                                     maxi_hbm02_awvalid  = hbm02_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm02_awaddr   = hbm02_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm02_awlen    = hbm02_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm02_awsize   = hbm02_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm02_awburst  = hbm02_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm02_awprot   = hbm02_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm02_awcache  = hbm02_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm02_awqos    = hbm02_writer_tie_off.awqos
-    output bool                                     maxi_hbm02_awlock   = hbm02_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm02_awregion = hbm02_writer_tie_off.awregion
-    output bool                                     maxi_hbm02_wvalid   = hbm02_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm02_wdata    = hbm02_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm02_wstrb    = hbm02_writer_tie_off.wstrb
-    output bool                                     maxi_hbm02_wlast    = hbm02_writer_tie_off.wlast
-    output bool                                     maxi_hbm02_bready   = hbm02_writer_tie_off.bready
+    domain hbm02
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[02], COUNT_REG: HBM_COUNT_REGS[02]) hbm02_reader
+    output bool                                     maxi_hbm02_awvalid  = hbm02_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm02_awaddr   = hbm02_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm02_awlen    = hbm02_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm02_awsize   = hbm02_reader.awsize
+    output bool[2]                                  maxi_hbm02_awburst  = hbm02_reader.awburst
+    output bool[3]                                  maxi_hbm02_awprot   = hbm02_reader.awprot
+    output bool[4]                                  maxi_hbm02_awcache  = hbm02_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm02_awqos    = hbm02_reader.awqos
+    output bool                                     maxi_hbm02_awlock   = hbm02_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm02_awregion = hbm02_reader.awregion
+    output bool                                     maxi_hbm02_wvalid   = hbm02_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm02_wdata    = hbm02_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm02_wstrb    = hbm02_reader.wstrb
+    output bool                                     maxi_hbm02_wlast    = hbm02_reader.wlast
+    output bool                                     maxi_hbm02_bready   = hbm02_reader.bready
     input  bool                                     maxi_hbm02_wready'0
     input  bool                                     maxi_hbm02_bvalid
     input  bool[2]                                  maxi_hbm02_bresp
     input  bool                                     maxi_hbm02_awready
-    hbm02_writer_tie_off.awready =                  maxi_hbm02_awready
-    hbm02_writer_tie_off.wready =                   maxi_hbm02_wready
-    hbm02_writer_tie_off.bvalid =                   maxi_hbm02_bvalid
-    hbm02_writer_tie_off.bresp =                    maxi_hbm02_bresp
+    hbm02_reader.awready =                          maxi_hbm02_awready
+    hbm02_reader.wready =                           maxi_hbm02_wready
+    hbm02_reader.bvalid =                           maxi_hbm02_bvalid
+    hbm02_reader.bresp =                            maxi_hbm02_bresp
     output bool                                     maxi_hbm02_arvalid  = hbm02_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm02_araddr   = hbm02_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm02_arlen    = hbm02_reader.arlen
@@ -630,47 +639,44 @@ module SUSpMV_Full {
     hbm02_reader.rresp =                            maxi_hbm02_rresp
     hbm02_reader.rlast =                            maxi_hbm02_rlast
 
-    bool _hbm02_reader_may_request = hbm02_reader.may_request_new_read
-    when set_matrix_data {
-        hbm02_reader.request_new_read(matrix_data_start_addrs[02], matrix_data_element_counts[02], [])
+    when hbm_ctrl_valid[02] {
+        hbm02_reader.set_reg(hbm_ctrl_idx[02], hbm_ctrl_data[02])
     }
     hbm02_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[02]
-    when hbm02_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm02_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[02] = true
-        hbm_weight_datas_hbm[02] = elements[0]
+        hbm_weight_datas_hbm[02] = elements
     } else {
         hbm_weight_valids_hbm[02] = false
     }
     when hbm_rst_fanout.douts[02] {
         hbm02_reader.rst()
-        hbm02_writer_tie_off.rst()
     }
-        domain hbm03
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm03_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm03_writer_tie_off
-    output bool                                     maxi_hbm03_awvalid  = hbm03_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm03_awaddr   = hbm03_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm03_awlen    = hbm03_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm03_awsize   = hbm03_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm03_awburst  = hbm03_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm03_awprot   = hbm03_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm03_awcache  = hbm03_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm03_awqos    = hbm03_writer_tie_off.awqos
-    output bool                                     maxi_hbm03_awlock   = hbm03_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm03_awregion = hbm03_writer_tie_off.awregion
-    output bool                                     maxi_hbm03_wvalid   = hbm03_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm03_wdata    = hbm03_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm03_wstrb    = hbm03_writer_tie_off.wstrb
-    output bool                                     maxi_hbm03_wlast    = hbm03_writer_tie_off.wlast
-    output bool                                     maxi_hbm03_bready   = hbm03_writer_tie_off.bready
+    domain hbm03
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[03], COUNT_REG: HBM_COUNT_REGS[03]) hbm03_reader
+    output bool                                     maxi_hbm03_awvalid  = hbm03_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm03_awaddr   = hbm03_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm03_awlen    = hbm03_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm03_awsize   = hbm03_reader.awsize
+    output bool[2]                                  maxi_hbm03_awburst  = hbm03_reader.awburst
+    output bool[3]                                  maxi_hbm03_awprot   = hbm03_reader.awprot
+    output bool[4]                                  maxi_hbm03_awcache  = hbm03_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm03_awqos    = hbm03_reader.awqos
+    output bool                                     maxi_hbm03_awlock   = hbm03_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm03_awregion = hbm03_reader.awregion
+    output bool                                     maxi_hbm03_wvalid   = hbm03_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm03_wdata    = hbm03_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm03_wstrb    = hbm03_reader.wstrb
+    output bool                                     maxi_hbm03_wlast    = hbm03_reader.wlast
+    output bool                                     maxi_hbm03_bready   = hbm03_reader.bready
     input  bool                                     maxi_hbm03_wready'0
     input  bool                                     maxi_hbm03_bvalid
     input  bool[2]                                  maxi_hbm03_bresp
     input  bool                                     maxi_hbm03_awready
-    hbm03_writer_tie_off.awready =                  maxi_hbm03_awready
-    hbm03_writer_tie_off.wready =                   maxi_hbm03_wready
-    hbm03_writer_tie_off.bvalid =                   maxi_hbm03_bvalid
-    hbm03_writer_tie_off.bresp =                    maxi_hbm03_bresp
+    hbm03_reader.awready =                          maxi_hbm03_awready
+    hbm03_reader.wready =                           maxi_hbm03_wready
+    hbm03_reader.bvalid =                           maxi_hbm03_bvalid
+    hbm03_reader.bresp =                            maxi_hbm03_bresp
     output bool                                     maxi_hbm03_arvalid  = hbm03_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm03_araddr   = hbm03_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm03_arlen    = hbm03_reader.arlen
@@ -693,47 +699,44 @@ module SUSpMV_Full {
     hbm03_reader.rresp =                            maxi_hbm03_rresp
     hbm03_reader.rlast =                            maxi_hbm03_rlast
 
-    bool _hbm03_reader_may_request = hbm03_reader.may_request_new_read
-    when set_matrix_data {
-        hbm03_reader.request_new_read(matrix_data_start_addrs[03], matrix_data_element_counts[03], [])
+    when hbm_ctrl_valid[03] {
+        hbm03_reader.set_reg(hbm_ctrl_idx[03], hbm_ctrl_data[03])
     }
     hbm03_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[03]
-    when hbm03_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm03_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[03] = true
-        hbm_weight_datas_hbm[03] = elements[0]
+        hbm_weight_datas_hbm[03] = elements
     } else {
         hbm_weight_valids_hbm[03] = false
     }
     when hbm_rst_fanout.douts[03] {
         hbm03_reader.rst()
-        hbm03_writer_tie_off.rst()
     }
-        domain hbm04
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm04_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm04_writer_tie_off
-    output bool                                     maxi_hbm04_awvalid  = hbm04_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm04_awaddr   = hbm04_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm04_awlen    = hbm04_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm04_awsize   = hbm04_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm04_awburst  = hbm04_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm04_awprot   = hbm04_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm04_awcache  = hbm04_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm04_awqos    = hbm04_writer_tie_off.awqos
-    output bool                                     maxi_hbm04_awlock   = hbm04_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm04_awregion = hbm04_writer_tie_off.awregion
-    output bool                                     maxi_hbm04_wvalid   = hbm04_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm04_wdata    = hbm04_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm04_wstrb    = hbm04_writer_tie_off.wstrb
-    output bool                                     maxi_hbm04_wlast    = hbm04_writer_tie_off.wlast
-    output bool                                     maxi_hbm04_bready   = hbm04_writer_tie_off.bready
+    domain hbm04
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[04], COUNT_REG: HBM_COUNT_REGS[04]) hbm04_reader
+    output bool                                     maxi_hbm04_awvalid  = hbm04_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm04_awaddr   = hbm04_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm04_awlen    = hbm04_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm04_awsize   = hbm04_reader.awsize
+    output bool[2]                                  maxi_hbm04_awburst  = hbm04_reader.awburst
+    output bool[3]                                  maxi_hbm04_awprot   = hbm04_reader.awprot
+    output bool[4]                                  maxi_hbm04_awcache  = hbm04_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm04_awqos    = hbm04_reader.awqos
+    output bool                                     maxi_hbm04_awlock   = hbm04_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm04_awregion = hbm04_reader.awregion
+    output bool                                     maxi_hbm04_wvalid   = hbm04_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm04_wdata    = hbm04_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm04_wstrb    = hbm04_reader.wstrb
+    output bool                                     maxi_hbm04_wlast    = hbm04_reader.wlast
+    output bool                                     maxi_hbm04_bready   = hbm04_reader.bready
     input  bool                                     maxi_hbm04_wready'0
     input  bool                                     maxi_hbm04_bvalid
     input  bool[2]                                  maxi_hbm04_bresp
     input  bool                                     maxi_hbm04_awready
-    hbm04_writer_tie_off.awready =                  maxi_hbm04_awready
-    hbm04_writer_tie_off.wready =                   maxi_hbm04_wready
-    hbm04_writer_tie_off.bvalid =                   maxi_hbm04_bvalid
-    hbm04_writer_tie_off.bresp =                    maxi_hbm04_bresp
+    hbm04_reader.awready =                          maxi_hbm04_awready
+    hbm04_reader.wready =                           maxi_hbm04_wready
+    hbm04_reader.bvalid =                           maxi_hbm04_bvalid
+    hbm04_reader.bresp =                            maxi_hbm04_bresp
     output bool                                     maxi_hbm04_arvalid  = hbm04_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm04_araddr   = hbm04_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm04_arlen    = hbm04_reader.arlen
@@ -756,47 +759,44 @@ module SUSpMV_Full {
     hbm04_reader.rresp =                            maxi_hbm04_rresp
     hbm04_reader.rlast =                            maxi_hbm04_rlast
 
-    bool _hbm04_reader_may_request = hbm04_reader.may_request_new_read
-    when set_matrix_data {
-        hbm04_reader.request_new_read(matrix_data_start_addrs[04], matrix_data_element_counts[04], [])
+    when hbm_ctrl_valid[04] {
+        hbm04_reader.set_reg(hbm_ctrl_idx[04], hbm_ctrl_data[04])
     }
     hbm04_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[04]
-    when hbm04_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm04_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[04] = true
-        hbm_weight_datas_hbm[04] = elements[0]
+        hbm_weight_datas_hbm[04] = elements
     } else {
         hbm_weight_valids_hbm[04] = false
     }
     when hbm_rst_fanout.douts[04] {
         hbm04_reader.rst()
-        hbm04_writer_tie_off.rst()
     }
-        domain hbm05
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm05_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm05_writer_tie_off
-    output bool                                     maxi_hbm05_awvalid  = hbm05_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm05_awaddr   = hbm05_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm05_awlen    = hbm05_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm05_awsize   = hbm05_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm05_awburst  = hbm05_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm05_awprot   = hbm05_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm05_awcache  = hbm05_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm05_awqos    = hbm05_writer_tie_off.awqos
-    output bool                                     maxi_hbm05_awlock   = hbm05_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm05_awregion = hbm05_writer_tie_off.awregion
-    output bool                                     maxi_hbm05_wvalid   = hbm05_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm05_wdata    = hbm05_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm05_wstrb    = hbm05_writer_tie_off.wstrb
-    output bool                                     maxi_hbm05_wlast    = hbm05_writer_tie_off.wlast
-    output bool                                     maxi_hbm05_bready   = hbm05_writer_tie_off.bready
+    domain hbm05
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[05], COUNT_REG: HBM_COUNT_REGS[05]) hbm05_reader
+    output bool                                     maxi_hbm05_awvalid  = hbm05_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm05_awaddr   = hbm05_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm05_awlen    = hbm05_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm05_awsize   = hbm05_reader.awsize
+    output bool[2]                                  maxi_hbm05_awburst  = hbm05_reader.awburst
+    output bool[3]                                  maxi_hbm05_awprot   = hbm05_reader.awprot
+    output bool[4]                                  maxi_hbm05_awcache  = hbm05_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm05_awqos    = hbm05_reader.awqos
+    output bool                                     maxi_hbm05_awlock   = hbm05_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm05_awregion = hbm05_reader.awregion
+    output bool                                     maxi_hbm05_wvalid   = hbm05_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm05_wdata    = hbm05_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm05_wstrb    = hbm05_reader.wstrb
+    output bool                                     maxi_hbm05_wlast    = hbm05_reader.wlast
+    output bool                                     maxi_hbm05_bready   = hbm05_reader.bready
     input  bool                                     maxi_hbm05_wready'0
     input  bool                                     maxi_hbm05_bvalid
     input  bool[2]                                  maxi_hbm05_bresp
     input  bool                                     maxi_hbm05_awready
-    hbm05_writer_tie_off.awready =                  maxi_hbm05_awready
-    hbm05_writer_tie_off.wready =                   maxi_hbm05_wready
-    hbm05_writer_tie_off.bvalid =                   maxi_hbm05_bvalid
-    hbm05_writer_tie_off.bresp =                    maxi_hbm05_bresp
+    hbm05_reader.awready =                          maxi_hbm05_awready
+    hbm05_reader.wready =                           maxi_hbm05_wready
+    hbm05_reader.bvalid =                           maxi_hbm05_bvalid
+    hbm05_reader.bresp =                            maxi_hbm05_bresp
     output bool                                     maxi_hbm05_arvalid  = hbm05_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm05_araddr   = hbm05_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm05_arlen    = hbm05_reader.arlen
@@ -819,47 +819,44 @@ module SUSpMV_Full {
     hbm05_reader.rresp =                            maxi_hbm05_rresp
     hbm05_reader.rlast =                            maxi_hbm05_rlast
 
-    bool _hbm05_reader_may_request = hbm05_reader.may_request_new_read
-    when set_matrix_data {
-        hbm05_reader.request_new_read(matrix_data_start_addrs[05], matrix_data_element_counts[05], [])
+    when hbm_ctrl_valid[05] {
+        hbm05_reader.set_reg(hbm_ctrl_idx[05], hbm_ctrl_data[05])
     }
     hbm05_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[05]
-    when hbm05_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm05_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[05] = true
-        hbm_weight_datas_hbm[05] = elements[0]
+        hbm_weight_datas_hbm[05] = elements
     } else {
         hbm_weight_valids_hbm[05] = false
     }
     when hbm_rst_fanout.douts[05] {
         hbm05_reader.rst()
-        hbm05_writer_tie_off.rst()
     }
-        domain hbm06
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm06_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm06_writer_tie_off
-    output bool                                     maxi_hbm06_awvalid  = hbm06_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm06_awaddr   = hbm06_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm06_awlen    = hbm06_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm06_awsize   = hbm06_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm06_awburst  = hbm06_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm06_awprot   = hbm06_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm06_awcache  = hbm06_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm06_awqos    = hbm06_writer_tie_off.awqos
-    output bool                                     maxi_hbm06_awlock   = hbm06_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm06_awregion = hbm06_writer_tie_off.awregion
-    output bool                                     maxi_hbm06_wvalid   = hbm06_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm06_wdata    = hbm06_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm06_wstrb    = hbm06_writer_tie_off.wstrb
-    output bool                                     maxi_hbm06_wlast    = hbm06_writer_tie_off.wlast
-    output bool                                     maxi_hbm06_bready   = hbm06_writer_tie_off.bready
+    domain hbm06
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[06], COUNT_REG: HBM_COUNT_REGS[06]) hbm06_reader
+    output bool                                     maxi_hbm06_awvalid  = hbm06_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm06_awaddr   = hbm06_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm06_awlen    = hbm06_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm06_awsize   = hbm06_reader.awsize
+    output bool[2]                                  maxi_hbm06_awburst  = hbm06_reader.awburst
+    output bool[3]                                  maxi_hbm06_awprot   = hbm06_reader.awprot
+    output bool[4]                                  maxi_hbm06_awcache  = hbm06_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm06_awqos    = hbm06_reader.awqos
+    output bool                                     maxi_hbm06_awlock   = hbm06_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm06_awregion = hbm06_reader.awregion
+    output bool                                     maxi_hbm06_wvalid   = hbm06_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm06_wdata    = hbm06_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm06_wstrb    = hbm06_reader.wstrb
+    output bool                                     maxi_hbm06_wlast    = hbm06_reader.wlast
+    output bool                                     maxi_hbm06_bready   = hbm06_reader.bready
     input  bool                                     maxi_hbm06_wready'0
     input  bool                                     maxi_hbm06_bvalid
     input  bool[2]                                  maxi_hbm06_bresp
     input  bool                                     maxi_hbm06_awready
-    hbm06_writer_tie_off.awready =                  maxi_hbm06_awready
-    hbm06_writer_tie_off.wready =                   maxi_hbm06_wready
-    hbm06_writer_tie_off.bvalid =                   maxi_hbm06_bvalid
-    hbm06_writer_tie_off.bresp =                    maxi_hbm06_bresp
+    hbm06_reader.awready =                          maxi_hbm06_awready
+    hbm06_reader.wready =                           maxi_hbm06_wready
+    hbm06_reader.bvalid =                           maxi_hbm06_bvalid
+    hbm06_reader.bresp =                            maxi_hbm06_bresp
     output bool                                     maxi_hbm06_arvalid  = hbm06_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm06_araddr   = hbm06_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm06_arlen    = hbm06_reader.arlen
@@ -882,47 +879,44 @@ module SUSpMV_Full {
     hbm06_reader.rresp =                            maxi_hbm06_rresp
     hbm06_reader.rlast =                            maxi_hbm06_rlast
 
-    bool _hbm06_reader_may_request = hbm06_reader.may_request_new_read
-    when set_matrix_data {
-        hbm06_reader.request_new_read(matrix_data_start_addrs[06], matrix_data_element_counts[06], [])
+    when hbm_ctrl_valid[06] {
+        hbm06_reader.set_reg(hbm_ctrl_idx[06], hbm_ctrl_data[06])
     }
     hbm06_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[06]
-    when hbm06_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm06_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[06] = true
-        hbm_weight_datas_hbm[06] = elements[0]
+        hbm_weight_datas_hbm[06] = elements
     } else {
         hbm_weight_valids_hbm[06] = false
     }
     when hbm_rst_fanout.douts[06] {
         hbm06_reader.rst()
-        hbm06_writer_tie_off.rst()
     }
-        domain hbm07
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm07_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm07_writer_tie_off
-    output bool                                     maxi_hbm07_awvalid  = hbm07_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm07_awaddr   = hbm07_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm07_awlen    = hbm07_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm07_awsize   = hbm07_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm07_awburst  = hbm07_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm07_awprot   = hbm07_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm07_awcache  = hbm07_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm07_awqos    = hbm07_writer_tie_off.awqos
-    output bool                                     maxi_hbm07_awlock   = hbm07_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm07_awregion = hbm07_writer_tie_off.awregion
-    output bool                                     maxi_hbm07_wvalid   = hbm07_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm07_wdata    = hbm07_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm07_wstrb    = hbm07_writer_tie_off.wstrb
-    output bool                                     maxi_hbm07_wlast    = hbm07_writer_tie_off.wlast
-    output bool                                     maxi_hbm07_bready   = hbm07_writer_tie_off.bready
+    domain hbm07
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[07], COUNT_REG: HBM_COUNT_REGS[07]) hbm07_reader
+    output bool                                     maxi_hbm07_awvalid  = hbm07_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm07_awaddr   = hbm07_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm07_awlen    = hbm07_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm07_awsize   = hbm07_reader.awsize
+    output bool[2]                                  maxi_hbm07_awburst  = hbm07_reader.awburst
+    output bool[3]                                  maxi_hbm07_awprot   = hbm07_reader.awprot
+    output bool[4]                                  maxi_hbm07_awcache  = hbm07_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm07_awqos    = hbm07_reader.awqos
+    output bool                                     maxi_hbm07_awlock   = hbm07_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm07_awregion = hbm07_reader.awregion
+    output bool                                     maxi_hbm07_wvalid   = hbm07_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm07_wdata    = hbm07_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm07_wstrb    = hbm07_reader.wstrb
+    output bool                                     maxi_hbm07_wlast    = hbm07_reader.wlast
+    output bool                                     maxi_hbm07_bready   = hbm07_reader.bready
     input  bool                                     maxi_hbm07_wready'0
     input  bool                                     maxi_hbm07_bvalid
     input  bool[2]                                  maxi_hbm07_bresp
     input  bool                                     maxi_hbm07_awready
-    hbm07_writer_tie_off.awready =                  maxi_hbm07_awready
-    hbm07_writer_tie_off.wready =                   maxi_hbm07_wready
-    hbm07_writer_tie_off.bvalid =                   maxi_hbm07_bvalid
-    hbm07_writer_tie_off.bresp =                    maxi_hbm07_bresp
+    hbm07_reader.awready =                          maxi_hbm07_awready
+    hbm07_reader.wready =                           maxi_hbm07_wready
+    hbm07_reader.bvalid =                           maxi_hbm07_bvalid
+    hbm07_reader.bresp =                            maxi_hbm07_bresp
     output bool                                     maxi_hbm07_arvalid  = hbm07_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm07_araddr   = hbm07_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm07_arlen    = hbm07_reader.arlen
@@ -945,47 +939,44 @@ module SUSpMV_Full {
     hbm07_reader.rresp =                            maxi_hbm07_rresp
     hbm07_reader.rlast =                            maxi_hbm07_rlast
 
-    bool _hbm07_reader_may_request = hbm07_reader.may_request_new_read
-    when set_matrix_data {
-        hbm07_reader.request_new_read(matrix_data_start_addrs[07], matrix_data_element_counts[07], [])
+    when hbm_ctrl_valid[07] {
+        hbm07_reader.set_reg(hbm_ctrl_idx[07], hbm_ctrl_data[07])
     }
     hbm07_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[07]
-    when hbm07_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm07_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[07] = true
-        hbm_weight_datas_hbm[07] = elements[0]
+        hbm_weight_datas_hbm[07] = elements
     } else {
         hbm_weight_valids_hbm[07] = false
     }
     when hbm_rst_fanout.douts[07] {
         hbm07_reader.rst()
-        hbm07_writer_tie_off.rst()
     }
-        domain hbm08
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm08_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm08_writer_tie_off
-    output bool                                     maxi_hbm08_awvalid  = hbm08_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm08_awaddr   = hbm08_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm08_awlen    = hbm08_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm08_awsize   = hbm08_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm08_awburst  = hbm08_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm08_awprot   = hbm08_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm08_awcache  = hbm08_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm08_awqos    = hbm08_writer_tie_off.awqos
-    output bool                                     maxi_hbm08_awlock   = hbm08_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm08_awregion = hbm08_writer_tie_off.awregion
-    output bool                                     maxi_hbm08_wvalid   = hbm08_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm08_wdata    = hbm08_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm08_wstrb    = hbm08_writer_tie_off.wstrb
-    output bool                                     maxi_hbm08_wlast    = hbm08_writer_tie_off.wlast
-    output bool                                     maxi_hbm08_bready   = hbm08_writer_tie_off.bready
+    domain hbm08
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[08], COUNT_REG: HBM_COUNT_REGS[08]) hbm08_reader
+    output bool                                     maxi_hbm08_awvalid  = hbm08_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm08_awaddr   = hbm08_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm08_awlen    = hbm08_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm08_awsize   = hbm08_reader.awsize
+    output bool[2]                                  maxi_hbm08_awburst  = hbm08_reader.awburst
+    output bool[3]                                  maxi_hbm08_awprot   = hbm08_reader.awprot
+    output bool[4]                                  maxi_hbm08_awcache  = hbm08_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm08_awqos    = hbm08_reader.awqos
+    output bool                                     maxi_hbm08_awlock   = hbm08_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm08_awregion = hbm08_reader.awregion
+    output bool                                     maxi_hbm08_wvalid   = hbm08_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm08_wdata    = hbm08_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm08_wstrb    = hbm08_reader.wstrb
+    output bool                                     maxi_hbm08_wlast    = hbm08_reader.wlast
+    output bool                                     maxi_hbm08_bready   = hbm08_reader.bready
     input  bool                                     maxi_hbm08_wready'0
     input  bool                                     maxi_hbm08_bvalid
     input  bool[2]                                  maxi_hbm08_bresp
     input  bool                                     maxi_hbm08_awready
-    hbm08_writer_tie_off.awready =                  maxi_hbm08_awready
-    hbm08_writer_tie_off.wready =                   maxi_hbm08_wready
-    hbm08_writer_tie_off.bvalid =                   maxi_hbm08_bvalid
-    hbm08_writer_tie_off.bresp =                    maxi_hbm08_bresp
+    hbm08_reader.awready =                          maxi_hbm08_awready
+    hbm08_reader.wready =                           maxi_hbm08_wready
+    hbm08_reader.bvalid =                           maxi_hbm08_bvalid
+    hbm08_reader.bresp =                            maxi_hbm08_bresp
     output bool                                     maxi_hbm08_arvalid  = hbm08_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm08_araddr   = hbm08_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm08_arlen    = hbm08_reader.arlen
@@ -1008,47 +999,44 @@ module SUSpMV_Full {
     hbm08_reader.rresp =                            maxi_hbm08_rresp
     hbm08_reader.rlast =                            maxi_hbm08_rlast
 
-    bool _hbm08_reader_may_request = hbm08_reader.may_request_new_read
-    when set_matrix_data {
-        hbm08_reader.request_new_read(matrix_data_start_addrs[08], matrix_data_element_counts[08], [])
+    when hbm_ctrl_valid[08] {
+        hbm08_reader.set_reg(hbm_ctrl_idx[08], hbm_ctrl_data[08])
     }
     hbm08_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[08]
-    when hbm08_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm08_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[08] = true
-        hbm_weight_datas_hbm[08] = elements[0]
+        hbm_weight_datas_hbm[08] = elements
     } else {
         hbm_weight_valids_hbm[08] = false
     }
     when hbm_rst_fanout.douts[08] {
         hbm08_reader.rst()
-        hbm08_writer_tie_off.rst()
     }
-        domain hbm09
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm09_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm09_writer_tie_off
-    output bool                                     maxi_hbm09_awvalid  = hbm09_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm09_awaddr   = hbm09_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm09_awlen    = hbm09_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm09_awsize   = hbm09_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm09_awburst  = hbm09_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm09_awprot   = hbm09_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm09_awcache  = hbm09_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm09_awqos    = hbm09_writer_tie_off.awqos
-    output bool                                     maxi_hbm09_awlock   = hbm09_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm09_awregion = hbm09_writer_tie_off.awregion
-    output bool                                     maxi_hbm09_wvalid   = hbm09_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm09_wdata    = hbm09_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm09_wstrb    = hbm09_writer_tie_off.wstrb
-    output bool                                     maxi_hbm09_wlast    = hbm09_writer_tie_off.wlast
-    output bool                                     maxi_hbm09_bready   = hbm09_writer_tie_off.bready
+    domain hbm09
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[09], COUNT_REG: HBM_COUNT_REGS[09]) hbm09_reader
+    output bool                                     maxi_hbm09_awvalid  = hbm09_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm09_awaddr   = hbm09_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm09_awlen    = hbm09_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm09_awsize   = hbm09_reader.awsize
+    output bool[2]                                  maxi_hbm09_awburst  = hbm09_reader.awburst
+    output bool[3]                                  maxi_hbm09_awprot   = hbm09_reader.awprot
+    output bool[4]                                  maxi_hbm09_awcache  = hbm09_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm09_awqos    = hbm09_reader.awqos
+    output bool                                     maxi_hbm09_awlock   = hbm09_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm09_awregion = hbm09_reader.awregion
+    output bool                                     maxi_hbm09_wvalid   = hbm09_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm09_wdata    = hbm09_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm09_wstrb    = hbm09_reader.wstrb
+    output bool                                     maxi_hbm09_wlast    = hbm09_reader.wlast
+    output bool                                     maxi_hbm09_bready   = hbm09_reader.bready
     input  bool                                     maxi_hbm09_wready'0
     input  bool                                     maxi_hbm09_bvalid
     input  bool[2]                                  maxi_hbm09_bresp
     input  bool                                     maxi_hbm09_awready
-    hbm09_writer_tie_off.awready =                  maxi_hbm09_awready
-    hbm09_writer_tie_off.wready =                   maxi_hbm09_wready
-    hbm09_writer_tie_off.bvalid =                   maxi_hbm09_bvalid
-    hbm09_writer_tie_off.bresp =                    maxi_hbm09_bresp
+    hbm09_reader.awready =                          maxi_hbm09_awready
+    hbm09_reader.wready =                           maxi_hbm09_wready
+    hbm09_reader.bvalid =                           maxi_hbm09_bvalid
+    hbm09_reader.bresp =                            maxi_hbm09_bresp
     output bool                                     maxi_hbm09_arvalid  = hbm09_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm09_araddr   = hbm09_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm09_arlen    = hbm09_reader.arlen
@@ -1071,47 +1059,44 @@ module SUSpMV_Full {
     hbm09_reader.rresp =                            maxi_hbm09_rresp
     hbm09_reader.rlast =                            maxi_hbm09_rlast
 
-    bool _hbm09_reader_may_request = hbm09_reader.may_request_new_read
-    when set_matrix_data {
-        hbm09_reader.request_new_read(matrix_data_start_addrs[09], matrix_data_element_counts[09], [])
+    when hbm_ctrl_valid[09] {
+        hbm09_reader.set_reg(hbm_ctrl_idx[09], hbm_ctrl_data[09])
     }
     hbm09_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[09]
-    when hbm09_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm09_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[09] = true
-        hbm_weight_datas_hbm[09] = elements[0]
+        hbm_weight_datas_hbm[09] = elements
     } else {
         hbm_weight_valids_hbm[09] = false
     }
     when hbm_rst_fanout.douts[09] {
         hbm09_reader.rst()
-        hbm09_writer_tie_off.rst()
     }
-        domain hbm10
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm10_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm10_writer_tie_off
-    output bool                                     maxi_hbm10_awvalid  = hbm10_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm10_awaddr   = hbm10_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm10_awlen    = hbm10_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm10_awsize   = hbm10_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm10_awburst  = hbm10_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm10_awprot   = hbm10_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm10_awcache  = hbm10_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm10_awqos    = hbm10_writer_tie_off.awqos
-    output bool                                     maxi_hbm10_awlock   = hbm10_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm10_awregion = hbm10_writer_tie_off.awregion
-    output bool                                     maxi_hbm10_wvalid   = hbm10_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm10_wdata    = hbm10_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm10_wstrb    = hbm10_writer_tie_off.wstrb
-    output bool                                     maxi_hbm10_wlast    = hbm10_writer_tie_off.wlast
-    output bool                                     maxi_hbm10_bready   = hbm10_writer_tie_off.bready
+    domain hbm10
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[10], COUNT_REG: HBM_COUNT_REGS[10]) hbm10_reader
+    output bool                                     maxi_hbm10_awvalid  = hbm10_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm10_awaddr   = hbm10_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm10_awlen    = hbm10_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm10_awsize   = hbm10_reader.awsize
+    output bool[2]                                  maxi_hbm10_awburst  = hbm10_reader.awburst
+    output bool[3]                                  maxi_hbm10_awprot   = hbm10_reader.awprot
+    output bool[4]                                  maxi_hbm10_awcache  = hbm10_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm10_awqos    = hbm10_reader.awqos
+    output bool                                     maxi_hbm10_awlock   = hbm10_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm10_awregion = hbm10_reader.awregion
+    output bool                                     maxi_hbm10_wvalid   = hbm10_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm10_wdata    = hbm10_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm10_wstrb    = hbm10_reader.wstrb
+    output bool                                     maxi_hbm10_wlast    = hbm10_reader.wlast
+    output bool                                     maxi_hbm10_bready   = hbm10_reader.bready
     input  bool                                     maxi_hbm10_wready'0
     input  bool                                     maxi_hbm10_bvalid
     input  bool[2]                                  maxi_hbm10_bresp
     input  bool                                     maxi_hbm10_awready
-    hbm10_writer_tie_off.awready =                  maxi_hbm10_awready
-    hbm10_writer_tie_off.wready =                   maxi_hbm10_wready
-    hbm10_writer_tie_off.bvalid =                   maxi_hbm10_bvalid
-    hbm10_writer_tie_off.bresp =                    maxi_hbm10_bresp
+    hbm10_reader.awready =                          maxi_hbm10_awready
+    hbm10_reader.wready =                           maxi_hbm10_wready
+    hbm10_reader.bvalid =                           maxi_hbm10_bvalid
+    hbm10_reader.bresp =                            maxi_hbm10_bresp
     output bool                                     maxi_hbm10_arvalid  = hbm10_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm10_araddr   = hbm10_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm10_arlen    = hbm10_reader.arlen
@@ -1134,47 +1119,44 @@ module SUSpMV_Full {
     hbm10_reader.rresp =                            maxi_hbm10_rresp
     hbm10_reader.rlast =                            maxi_hbm10_rlast
 
-    bool _hbm10_reader_may_request = hbm10_reader.may_request_new_read
-    when set_matrix_data {
-        hbm10_reader.request_new_read(matrix_data_start_addrs[10], matrix_data_element_counts[10], [])
+    when hbm_ctrl_valid[10] {
+        hbm10_reader.set_reg(hbm_ctrl_idx[10], hbm_ctrl_data[10])
     }
     hbm10_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[10]
-    when hbm10_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm10_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[10] = true
-        hbm_weight_datas_hbm[10] = elements[0]
+        hbm_weight_datas_hbm[10] = elements
     } else {
         hbm_weight_valids_hbm[10] = false
     }
     when hbm_rst_fanout.douts[10] {
         hbm10_reader.rst()
-        hbm10_writer_tie_off.rst()
     }
-        domain hbm11
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm11_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm11_writer_tie_off
-    output bool                                     maxi_hbm11_awvalid  = hbm11_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm11_awaddr   = hbm11_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm11_awlen    = hbm11_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm11_awsize   = hbm11_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm11_awburst  = hbm11_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm11_awprot   = hbm11_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm11_awcache  = hbm11_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm11_awqos    = hbm11_writer_tie_off.awqos
-    output bool                                     maxi_hbm11_awlock   = hbm11_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm11_awregion = hbm11_writer_tie_off.awregion
-    output bool                                     maxi_hbm11_wvalid   = hbm11_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm11_wdata    = hbm11_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm11_wstrb    = hbm11_writer_tie_off.wstrb
-    output bool                                     maxi_hbm11_wlast    = hbm11_writer_tie_off.wlast
-    output bool                                     maxi_hbm11_bready   = hbm11_writer_tie_off.bready
+    domain hbm11
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[11], COUNT_REG: HBM_COUNT_REGS[11]) hbm11_reader
+    output bool                                     maxi_hbm11_awvalid  = hbm11_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm11_awaddr   = hbm11_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm11_awlen    = hbm11_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm11_awsize   = hbm11_reader.awsize
+    output bool[2]                                  maxi_hbm11_awburst  = hbm11_reader.awburst
+    output bool[3]                                  maxi_hbm11_awprot   = hbm11_reader.awprot
+    output bool[4]                                  maxi_hbm11_awcache  = hbm11_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm11_awqos    = hbm11_reader.awqos
+    output bool                                     maxi_hbm11_awlock   = hbm11_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm11_awregion = hbm11_reader.awregion
+    output bool                                     maxi_hbm11_wvalid   = hbm11_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm11_wdata    = hbm11_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm11_wstrb    = hbm11_reader.wstrb
+    output bool                                     maxi_hbm11_wlast    = hbm11_reader.wlast
+    output bool                                     maxi_hbm11_bready   = hbm11_reader.bready
     input  bool                                     maxi_hbm11_wready'0
     input  bool                                     maxi_hbm11_bvalid
     input  bool[2]                                  maxi_hbm11_bresp
     input  bool                                     maxi_hbm11_awready
-    hbm11_writer_tie_off.awready =                  maxi_hbm11_awready
-    hbm11_writer_tie_off.wready =                   maxi_hbm11_wready
-    hbm11_writer_tie_off.bvalid =                   maxi_hbm11_bvalid
-    hbm11_writer_tie_off.bresp =                    maxi_hbm11_bresp
+    hbm11_reader.awready =                          maxi_hbm11_awready
+    hbm11_reader.wready =                           maxi_hbm11_wready
+    hbm11_reader.bvalid =                           maxi_hbm11_bvalid
+    hbm11_reader.bresp =                            maxi_hbm11_bresp
     output bool                                     maxi_hbm11_arvalid  = hbm11_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm11_araddr   = hbm11_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm11_arlen    = hbm11_reader.arlen
@@ -1197,47 +1179,44 @@ module SUSpMV_Full {
     hbm11_reader.rresp =                            maxi_hbm11_rresp
     hbm11_reader.rlast =                            maxi_hbm11_rlast
 
-    bool _hbm11_reader_may_request = hbm11_reader.may_request_new_read
-    when set_matrix_data {
-        hbm11_reader.request_new_read(matrix_data_start_addrs[11], matrix_data_element_counts[11], [])
+    when hbm_ctrl_valid[11] {
+        hbm11_reader.set_reg(hbm_ctrl_idx[11], hbm_ctrl_data[11])
     }
     hbm11_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[11]
-    when hbm11_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm11_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[11] = true
-        hbm_weight_datas_hbm[11] = elements[0]
+        hbm_weight_datas_hbm[11] = elements
     } else {
         hbm_weight_valids_hbm[11] = false
     }
     when hbm_rst_fanout.douts[11] {
         hbm11_reader.rst()
-        hbm11_writer_tie_off.rst()
     }
-        domain hbm12
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm12_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm12_writer_tie_off
-    output bool                                     maxi_hbm12_awvalid  = hbm12_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm12_awaddr   = hbm12_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm12_awlen    = hbm12_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm12_awsize   = hbm12_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm12_awburst  = hbm12_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm12_awprot   = hbm12_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm12_awcache  = hbm12_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm12_awqos    = hbm12_writer_tie_off.awqos
-    output bool                                     maxi_hbm12_awlock   = hbm12_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm12_awregion = hbm12_writer_tie_off.awregion
-    output bool                                     maxi_hbm12_wvalid   = hbm12_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm12_wdata    = hbm12_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm12_wstrb    = hbm12_writer_tie_off.wstrb
-    output bool                                     maxi_hbm12_wlast    = hbm12_writer_tie_off.wlast
-    output bool                                     maxi_hbm12_bready   = hbm12_writer_tie_off.bready
+    domain hbm12
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[12], COUNT_REG: HBM_COUNT_REGS[12]) hbm12_reader
+    output bool                                     maxi_hbm12_awvalid  = hbm12_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm12_awaddr   = hbm12_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm12_awlen    = hbm12_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm12_awsize   = hbm12_reader.awsize
+    output bool[2]                                  maxi_hbm12_awburst  = hbm12_reader.awburst
+    output bool[3]                                  maxi_hbm12_awprot   = hbm12_reader.awprot
+    output bool[4]                                  maxi_hbm12_awcache  = hbm12_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm12_awqos    = hbm12_reader.awqos
+    output bool                                     maxi_hbm12_awlock   = hbm12_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm12_awregion = hbm12_reader.awregion
+    output bool                                     maxi_hbm12_wvalid   = hbm12_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm12_wdata    = hbm12_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm12_wstrb    = hbm12_reader.wstrb
+    output bool                                     maxi_hbm12_wlast    = hbm12_reader.wlast
+    output bool                                     maxi_hbm12_bready   = hbm12_reader.bready
     input  bool                                     maxi_hbm12_wready'0
     input  bool                                     maxi_hbm12_bvalid
     input  bool[2]                                  maxi_hbm12_bresp
     input  bool                                     maxi_hbm12_awready
-    hbm12_writer_tie_off.awready =                  maxi_hbm12_awready
-    hbm12_writer_tie_off.wready =                   maxi_hbm12_wready
-    hbm12_writer_tie_off.bvalid =                   maxi_hbm12_bvalid
-    hbm12_writer_tie_off.bresp =                    maxi_hbm12_bresp
+    hbm12_reader.awready =                          maxi_hbm12_awready
+    hbm12_reader.wready =                           maxi_hbm12_wready
+    hbm12_reader.bvalid =                           maxi_hbm12_bvalid
+    hbm12_reader.bresp =                            maxi_hbm12_bresp
     output bool                                     maxi_hbm12_arvalid  = hbm12_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm12_araddr   = hbm12_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm12_arlen    = hbm12_reader.arlen
@@ -1260,47 +1239,44 @@ module SUSpMV_Full {
     hbm12_reader.rresp =                            maxi_hbm12_rresp
     hbm12_reader.rlast =                            maxi_hbm12_rlast
 
-    bool _hbm12_reader_may_request = hbm12_reader.may_request_new_read
-    when set_matrix_data {
-        hbm12_reader.request_new_read(matrix_data_start_addrs[12], matrix_data_element_counts[12], [])
+    when hbm_ctrl_valid[12] {
+        hbm12_reader.set_reg(hbm_ctrl_idx[12], hbm_ctrl_data[12])
     }
     hbm12_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[12]
-    when hbm12_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm12_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[12] = true
-        hbm_weight_datas_hbm[12] = elements[0]
+        hbm_weight_datas_hbm[12] = elements
     } else {
         hbm_weight_valids_hbm[12] = false
     }
     when hbm_rst_fanout.douts[12] {
         hbm12_reader.rst()
-        hbm12_writer_tie_off.rst()
     }
-        domain hbm13
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm13_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm13_writer_tie_off
-    output bool                                     maxi_hbm13_awvalid  = hbm13_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm13_awaddr   = hbm13_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm13_awlen    = hbm13_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm13_awsize   = hbm13_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm13_awburst  = hbm13_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm13_awprot   = hbm13_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm13_awcache  = hbm13_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm13_awqos    = hbm13_writer_tie_off.awqos
-    output bool                                     maxi_hbm13_awlock   = hbm13_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm13_awregion = hbm13_writer_tie_off.awregion
-    output bool                                     maxi_hbm13_wvalid   = hbm13_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm13_wdata    = hbm13_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm13_wstrb    = hbm13_writer_tie_off.wstrb
-    output bool                                     maxi_hbm13_wlast    = hbm13_writer_tie_off.wlast
-    output bool                                     maxi_hbm13_bready   = hbm13_writer_tie_off.bready
+    domain hbm13
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[13], COUNT_REG: HBM_COUNT_REGS[13]) hbm13_reader
+    output bool                                     maxi_hbm13_awvalid  = hbm13_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm13_awaddr   = hbm13_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm13_awlen    = hbm13_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm13_awsize   = hbm13_reader.awsize
+    output bool[2]                                  maxi_hbm13_awburst  = hbm13_reader.awburst
+    output bool[3]                                  maxi_hbm13_awprot   = hbm13_reader.awprot
+    output bool[4]                                  maxi_hbm13_awcache  = hbm13_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm13_awqos    = hbm13_reader.awqos
+    output bool                                     maxi_hbm13_awlock   = hbm13_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm13_awregion = hbm13_reader.awregion
+    output bool                                     maxi_hbm13_wvalid   = hbm13_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm13_wdata    = hbm13_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm13_wstrb    = hbm13_reader.wstrb
+    output bool                                     maxi_hbm13_wlast    = hbm13_reader.wlast
+    output bool                                     maxi_hbm13_bready   = hbm13_reader.bready
     input  bool                                     maxi_hbm13_wready'0
     input  bool                                     maxi_hbm13_bvalid
     input  bool[2]                                  maxi_hbm13_bresp
     input  bool                                     maxi_hbm13_awready
-    hbm13_writer_tie_off.awready =                  maxi_hbm13_awready
-    hbm13_writer_tie_off.wready =                   maxi_hbm13_wready
-    hbm13_writer_tie_off.bvalid =                   maxi_hbm13_bvalid
-    hbm13_writer_tie_off.bresp =                    maxi_hbm13_bresp
+    hbm13_reader.awready =                          maxi_hbm13_awready
+    hbm13_reader.wready =                           maxi_hbm13_wready
+    hbm13_reader.bvalid =                           maxi_hbm13_bvalid
+    hbm13_reader.bresp =                            maxi_hbm13_bresp
     output bool                                     maxi_hbm13_arvalid  = hbm13_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm13_araddr   = hbm13_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm13_arlen    = hbm13_reader.arlen
@@ -1323,47 +1299,44 @@ module SUSpMV_Full {
     hbm13_reader.rresp =                            maxi_hbm13_rresp
     hbm13_reader.rlast =                            maxi_hbm13_rlast
 
-    bool _hbm13_reader_may_request = hbm13_reader.may_request_new_read
-    when set_matrix_data {
-        hbm13_reader.request_new_read(matrix_data_start_addrs[13], matrix_data_element_counts[13], [])
+    when hbm_ctrl_valid[13] {
+        hbm13_reader.set_reg(hbm_ctrl_idx[13], hbm_ctrl_data[13])
     }
     hbm13_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[13]
-    when hbm13_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm13_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[13] = true
-        hbm_weight_datas_hbm[13] = elements[0]
+        hbm_weight_datas_hbm[13] = elements
     } else {
         hbm_weight_valids_hbm[13] = false
     }
     when hbm_rst_fanout.douts[13] {
         hbm13_reader.rst()
-        hbm13_writer_tie_off.rst()
     }
-        domain hbm14
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm14_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm14_writer_tie_off
-    output bool                                     maxi_hbm14_awvalid  = hbm14_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm14_awaddr   = hbm14_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm14_awlen    = hbm14_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm14_awsize   = hbm14_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm14_awburst  = hbm14_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm14_awprot   = hbm14_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm14_awcache  = hbm14_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm14_awqos    = hbm14_writer_tie_off.awqos
-    output bool                                     maxi_hbm14_awlock   = hbm14_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm14_awregion = hbm14_writer_tie_off.awregion
-    output bool                                     maxi_hbm14_wvalid   = hbm14_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm14_wdata    = hbm14_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm14_wstrb    = hbm14_writer_tie_off.wstrb
-    output bool                                     maxi_hbm14_wlast    = hbm14_writer_tie_off.wlast
-    output bool                                     maxi_hbm14_bready   = hbm14_writer_tie_off.bready
+    domain hbm14
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[14], COUNT_REG: HBM_COUNT_REGS[14]) hbm14_reader
+    output bool                                     maxi_hbm14_awvalid  = hbm14_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm14_awaddr   = hbm14_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm14_awlen    = hbm14_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm14_awsize   = hbm14_reader.awsize
+    output bool[2]                                  maxi_hbm14_awburst  = hbm14_reader.awburst
+    output bool[3]                                  maxi_hbm14_awprot   = hbm14_reader.awprot
+    output bool[4]                                  maxi_hbm14_awcache  = hbm14_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm14_awqos    = hbm14_reader.awqos
+    output bool                                     maxi_hbm14_awlock   = hbm14_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm14_awregion = hbm14_reader.awregion
+    output bool                                     maxi_hbm14_wvalid   = hbm14_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm14_wdata    = hbm14_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm14_wstrb    = hbm14_reader.wstrb
+    output bool                                     maxi_hbm14_wlast    = hbm14_reader.wlast
+    output bool                                     maxi_hbm14_bready   = hbm14_reader.bready
     input  bool                                     maxi_hbm14_wready'0
     input  bool                                     maxi_hbm14_bvalid
     input  bool[2]                                  maxi_hbm14_bresp
     input  bool                                     maxi_hbm14_awready
-    hbm14_writer_tie_off.awready =                  maxi_hbm14_awready
-    hbm14_writer_tie_off.wready =                   maxi_hbm14_wready
-    hbm14_writer_tie_off.bvalid =                   maxi_hbm14_bvalid
-    hbm14_writer_tie_off.bresp =                    maxi_hbm14_bresp
+    hbm14_reader.awready =                          maxi_hbm14_awready
+    hbm14_reader.wready =                           maxi_hbm14_wready
+    hbm14_reader.bvalid =                           maxi_hbm14_bvalid
+    hbm14_reader.bresp =                            maxi_hbm14_bresp
     output bool                                     maxi_hbm14_arvalid  = hbm14_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm14_araddr   = hbm14_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm14_arlen    = hbm14_reader.arlen
@@ -1386,47 +1359,44 @@ module SUSpMV_Full {
     hbm14_reader.rresp =                            maxi_hbm14_rresp
     hbm14_reader.rlast =                            maxi_hbm14_rlast
 
-    bool _hbm14_reader_may_request = hbm14_reader.may_request_new_read
-    when set_matrix_data {
-        hbm14_reader.request_new_read(matrix_data_start_addrs[14], matrix_data_element_counts[14], [])
+    when hbm_ctrl_valid[14] {
+        hbm14_reader.set_reg(hbm_ctrl_idx[14], hbm_ctrl_data[14])
     }
     hbm14_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[14]
-    when hbm14_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm14_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[14] = true
-        hbm_weight_datas_hbm[14] = elements[0]
+        hbm_weight_datas_hbm[14] = elements
     } else {
         hbm_weight_valids_hbm[14] = false
     }
     when hbm_rst_fanout.douts[14] {
         hbm14_reader.rst()
-        hbm14_writer_tie_off.rst()
     }
-        domain hbm15
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm15_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm15_writer_tie_off
-    output bool                                     maxi_hbm15_awvalid  = hbm15_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm15_awaddr   = hbm15_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm15_awlen    = hbm15_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm15_awsize   = hbm15_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm15_awburst  = hbm15_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm15_awprot   = hbm15_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm15_awcache  = hbm15_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm15_awqos    = hbm15_writer_tie_off.awqos
-    output bool                                     maxi_hbm15_awlock   = hbm15_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm15_awregion = hbm15_writer_tie_off.awregion
-    output bool                                     maxi_hbm15_wvalid   = hbm15_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm15_wdata    = hbm15_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm15_wstrb    = hbm15_writer_tie_off.wstrb
-    output bool                                     maxi_hbm15_wlast    = hbm15_writer_tie_off.wlast
-    output bool                                     maxi_hbm15_bready   = hbm15_writer_tie_off.bready
+    domain hbm15
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[15], COUNT_REG: HBM_COUNT_REGS[15]) hbm15_reader
+    output bool                                     maxi_hbm15_awvalid  = hbm15_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm15_awaddr   = hbm15_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm15_awlen    = hbm15_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm15_awsize   = hbm15_reader.awsize
+    output bool[2]                                  maxi_hbm15_awburst  = hbm15_reader.awburst
+    output bool[3]                                  maxi_hbm15_awprot   = hbm15_reader.awprot
+    output bool[4]                                  maxi_hbm15_awcache  = hbm15_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm15_awqos    = hbm15_reader.awqos
+    output bool                                     maxi_hbm15_awlock   = hbm15_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm15_awregion = hbm15_reader.awregion
+    output bool                                     maxi_hbm15_wvalid   = hbm15_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm15_wdata    = hbm15_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm15_wstrb    = hbm15_reader.wstrb
+    output bool                                     maxi_hbm15_wlast    = hbm15_reader.wlast
+    output bool                                     maxi_hbm15_bready   = hbm15_reader.bready
     input  bool                                     maxi_hbm15_wready'0
     input  bool                                     maxi_hbm15_bvalid
     input  bool[2]                                  maxi_hbm15_bresp
     input  bool                                     maxi_hbm15_awready
-    hbm15_writer_tie_off.awready =                  maxi_hbm15_awready
-    hbm15_writer_tie_off.wready =                   maxi_hbm15_wready
-    hbm15_writer_tie_off.bvalid =                   maxi_hbm15_bvalid
-    hbm15_writer_tie_off.bresp =                    maxi_hbm15_bresp
+    hbm15_reader.awready =                          maxi_hbm15_awready
+    hbm15_reader.wready =                           maxi_hbm15_wready
+    hbm15_reader.bvalid =                           maxi_hbm15_bvalid
+    hbm15_reader.bresp =                            maxi_hbm15_bresp
     output bool                                     maxi_hbm15_arvalid  = hbm15_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm15_araddr   = hbm15_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm15_arlen    = hbm15_reader.arlen
@@ -1449,47 +1419,44 @@ module SUSpMV_Full {
     hbm15_reader.rresp =                            maxi_hbm15_rresp
     hbm15_reader.rlast =                            maxi_hbm15_rlast
 
-    bool _hbm15_reader_may_request = hbm15_reader.may_request_new_read
-    when set_matrix_data {
-        hbm15_reader.request_new_read(matrix_data_start_addrs[15], matrix_data_element_counts[15], [])
+    when hbm_ctrl_valid[15] {
+        hbm15_reader.set_reg(hbm_ctrl_idx[15], hbm_ctrl_data[15])
     }
     hbm15_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[15]
-    when hbm15_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm15_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[15] = true
-        hbm_weight_datas_hbm[15] = elements[0]
+        hbm_weight_datas_hbm[15] = elements
     } else {
         hbm_weight_valids_hbm[15] = false
     }
     when hbm_rst_fanout.douts[15] {
         hbm15_reader.rst()
-        hbm15_writer_tie_off.rst()
     }
-        domain hbm16
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm16_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm16_writer_tie_off
-    output bool                                     maxi_hbm16_awvalid  = hbm16_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm16_awaddr   = hbm16_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm16_awlen    = hbm16_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm16_awsize   = hbm16_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm16_awburst  = hbm16_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm16_awprot   = hbm16_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm16_awcache  = hbm16_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm16_awqos    = hbm16_writer_tie_off.awqos
-    output bool                                     maxi_hbm16_awlock   = hbm16_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm16_awregion = hbm16_writer_tie_off.awregion
-    output bool                                     maxi_hbm16_wvalid   = hbm16_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm16_wdata    = hbm16_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm16_wstrb    = hbm16_writer_tie_off.wstrb
-    output bool                                     maxi_hbm16_wlast    = hbm16_writer_tie_off.wlast
-    output bool                                     maxi_hbm16_bready   = hbm16_writer_tie_off.bready
+    domain hbm16
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[16], COUNT_REG: HBM_COUNT_REGS[16]) hbm16_reader
+    output bool                                     maxi_hbm16_awvalid  = hbm16_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm16_awaddr   = hbm16_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm16_awlen    = hbm16_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm16_awsize   = hbm16_reader.awsize
+    output bool[2]                                  maxi_hbm16_awburst  = hbm16_reader.awburst
+    output bool[3]                                  maxi_hbm16_awprot   = hbm16_reader.awprot
+    output bool[4]                                  maxi_hbm16_awcache  = hbm16_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm16_awqos    = hbm16_reader.awqos
+    output bool                                     maxi_hbm16_awlock   = hbm16_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm16_awregion = hbm16_reader.awregion
+    output bool                                     maxi_hbm16_wvalid   = hbm16_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm16_wdata    = hbm16_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm16_wstrb    = hbm16_reader.wstrb
+    output bool                                     maxi_hbm16_wlast    = hbm16_reader.wlast
+    output bool                                     maxi_hbm16_bready   = hbm16_reader.bready
     input  bool                                     maxi_hbm16_wready'0
     input  bool                                     maxi_hbm16_bvalid
     input  bool[2]                                  maxi_hbm16_bresp
     input  bool                                     maxi_hbm16_awready
-    hbm16_writer_tie_off.awready =                  maxi_hbm16_awready
-    hbm16_writer_tie_off.wready =                   maxi_hbm16_wready
-    hbm16_writer_tie_off.bvalid =                   maxi_hbm16_bvalid
-    hbm16_writer_tie_off.bresp =                    maxi_hbm16_bresp
+    hbm16_reader.awready =                          maxi_hbm16_awready
+    hbm16_reader.wready =                           maxi_hbm16_wready
+    hbm16_reader.bvalid =                           maxi_hbm16_bvalid
+    hbm16_reader.bresp =                            maxi_hbm16_bresp
     output bool                                     maxi_hbm16_arvalid  = hbm16_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm16_araddr   = hbm16_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm16_arlen    = hbm16_reader.arlen
@@ -1512,47 +1479,44 @@ module SUSpMV_Full {
     hbm16_reader.rresp =                            maxi_hbm16_rresp
     hbm16_reader.rlast =                            maxi_hbm16_rlast
 
-    bool _hbm16_reader_may_request = hbm16_reader.may_request_new_read
-    when set_matrix_data {
-        hbm16_reader.request_new_read(matrix_data_start_addrs[16], matrix_data_element_counts[16], [])
+    when hbm_ctrl_valid[16] {
+        hbm16_reader.set_reg(hbm_ctrl_idx[16], hbm_ctrl_data[16])
     }
     hbm16_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[16]
-    when hbm16_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm16_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[16] = true
-        hbm_weight_datas_hbm[16] = elements[0]
+        hbm_weight_datas_hbm[16] = elements
     } else {
         hbm_weight_valids_hbm[16] = false
     }
     when hbm_rst_fanout.douts[16] {
         hbm16_reader.rst()
-        hbm16_writer_tie_off.rst()
     }
-        domain hbm17
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm17_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm17_writer_tie_off
-    output bool                                     maxi_hbm17_awvalid  = hbm17_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm17_awaddr   = hbm17_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm17_awlen    = hbm17_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm17_awsize   = hbm17_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm17_awburst  = hbm17_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm17_awprot   = hbm17_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm17_awcache  = hbm17_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm17_awqos    = hbm17_writer_tie_off.awqos
-    output bool                                     maxi_hbm17_awlock   = hbm17_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm17_awregion = hbm17_writer_tie_off.awregion
-    output bool                                     maxi_hbm17_wvalid   = hbm17_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm17_wdata    = hbm17_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm17_wstrb    = hbm17_writer_tie_off.wstrb
-    output bool                                     maxi_hbm17_wlast    = hbm17_writer_tie_off.wlast
-    output bool                                     maxi_hbm17_bready   = hbm17_writer_tie_off.bready
+    domain hbm17
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[17], COUNT_REG: HBM_COUNT_REGS[17]) hbm17_reader
+    output bool                                     maxi_hbm17_awvalid  = hbm17_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm17_awaddr   = hbm17_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm17_awlen    = hbm17_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm17_awsize   = hbm17_reader.awsize
+    output bool[2]                                  maxi_hbm17_awburst  = hbm17_reader.awburst
+    output bool[3]                                  maxi_hbm17_awprot   = hbm17_reader.awprot
+    output bool[4]                                  maxi_hbm17_awcache  = hbm17_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm17_awqos    = hbm17_reader.awqos
+    output bool                                     maxi_hbm17_awlock   = hbm17_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm17_awregion = hbm17_reader.awregion
+    output bool                                     maxi_hbm17_wvalid   = hbm17_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm17_wdata    = hbm17_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm17_wstrb    = hbm17_reader.wstrb
+    output bool                                     maxi_hbm17_wlast    = hbm17_reader.wlast
+    output bool                                     maxi_hbm17_bready   = hbm17_reader.bready
     input  bool                                     maxi_hbm17_wready'0
     input  bool                                     maxi_hbm17_bvalid
     input  bool[2]                                  maxi_hbm17_bresp
     input  bool                                     maxi_hbm17_awready
-    hbm17_writer_tie_off.awready =                  maxi_hbm17_awready
-    hbm17_writer_tie_off.wready =                   maxi_hbm17_wready
-    hbm17_writer_tie_off.bvalid =                   maxi_hbm17_bvalid
-    hbm17_writer_tie_off.bresp =                    maxi_hbm17_bresp
+    hbm17_reader.awready =                          maxi_hbm17_awready
+    hbm17_reader.wready =                           maxi_hbm17_wready
+    hbm17_reader.bvalid =                           maxi_hbm17_bvalid
+    hbm17_reader.bresp =                            maxi_hbm17_bresp
     output bool                                     maxi_hbm17_arvalid  = hbm17_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm17_araddr   = hbm17_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm17_arlen    = hbm17_reader.arlen
@@ -1575,47 +1539,44 @@ module SUSpMV_Full {
     hbm17_reader.rresp =                            maxi_hbm17_rresp
     hbm17_reader.rlast =                            maxi_hbm17_rlast
 
-    bool _hbm17_reader_may_request = hbm17_reader.may_request_new_read
-    when set_matrix_data {
-        hbm17_reader.request_new_read(matrix_data_start_addrs[17], matrix_data_element_counts[17], [])
+    when hbm_ctrl_valid[17] {
+        hbm17_reader.set_reg(hbm_ctrl_idx[17], hbm_ctrl_data[17])
     }
     hbm17_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[17]
-    when hbm17_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm17_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[17] = true
-        hbm_weight_datas_hbm[17] = elements[0]
+        hbm_weight_datas_hbm[17] = elements
     } else {
         hbm_weight_valids_hbm[17] = false
     }
     when hbm_rst_fanout.douts[17] {
         hbm17_reader.rst()
-        hbm17_writer_tie_off.rst()
     }
-        domain hbm18
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm18_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm18_writer_tie_off
-    output bool                                     maxi_hbm18_awvalid  = hbm18_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm18_awaddr   = hbm18_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm18_awlen    = hbm18_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm18_awsize   = hbm18_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm18_awburst  = hbm18_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm18_awprot   = hbm18_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm18_awcache  = hbm18_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm18_awqos    = hbm18_writer_tie_off.awqos
-    output bool                                     maxi_hbm18_awlock   = hbm18_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm18_awregion = hbm18_writer_tie_off.awregion
-    output bool                                     maxi_hbm18_wvalid   = hbm18_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm18_wdata    = hbm18_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm18_wstrb    = hbm18_writer_tie_off.wstrb
-    output bool                                     maxi_hbm18_wlast    = hbm18_writer_tie_off.wlast
-    output bool                                     maxi_hbm18_bready   = hbm18_writer_tie_off.bready
+    domain hbm18
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[18], COUNT_REG: HBM_COUNT_REGS[18]) hbm18_reader
+    output bool                                     maxi_hbm18_awvalid  = hbm18_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm18_awaddr   = hbm18_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm18_awlen    = hbm18_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm18_awsize   = hbm18_reader.awsize
+    output bool[2]                                  maxi_hbm18_awburst  = hbm18_reader.awburst
+    output bool[3]                                  maxi_hbm18_awprot   = hbm18_reader.awprot
+    output bool[4]                                  maxi_hbm18_awcache  = hbm18_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm18_awqos    = hbm18_reader.awqos
+    output bool                                     maxi_hbm18_awlock   = hbm18_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm18_awregion = hbm18_reader.awregion
+    output bool                                     maxi_hbm18_wvalid   = hbm18_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm18_wdata    = hbm18_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm18_wstrb    = hbm18_reader.wstrb
+    output bool                                     maxi_hbm18_wlast    = hbm18_reader.wlast
+    output bool                                     maxi_hbm18_bready   = hbm18_reader.bready
     input  bool                                     maxi_hbm18_wready'0
     input  bool                                     maxi_hbm18_bvalid
     input  bool[2]                                  maxi_hbm18_bresp
     input  bool                                     maxi_hbm18_awready
-    hbm18_writer_tie_off.awready =                  maxi_hbm18_awready
-    hbm18_writer_tie_off.wready =                   maxi_hbm18_wready
-    hbm18_writer_tie_off.bvalid =                   maxi_hbm18_bvalid
-    hbm18_writer_tie_off.bresp =                    maxi_hbm18_bresp
+    hbm18_reader.awready =                          maxi_hbm18_awready
+    hbm18_reader.wready =                           maxi_hbm18_wready
+    hbm18_reader.bvalid =                           maxi_hbm18_bvalid
+    hbm18_reader.bresp =                            maxi_hbm18_bresp
     output bool                                     maxi_hbm18_arvalid  = hbm18_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm18_araddr   = hbm18_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm18_arlen    = hbm18_reader.arlen
@@ -1638,47 +1599,44 @@ module SUSpMV_Full {
     hbm18_reader.rresp =                            maxi_hbm18_rresp
     hbm18_reader.rlast =                            maxi_hbm18_rlast
 
-    bool _hbm18_reader_may_request = hbm18_reader.may_request_new_read
-    when set_matrix_data {
-        hbm18_reader.request_new_read(matrix_data_start_addrs[18], matrix_data_element_counts[18], [])
+    when hbm_ctrl_valid[18] {
+        hbm18_reader.set_reg(hbm_ctrl_idx[18], hbm_ctrl_data[18])
     }
     hbm18_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[18]
-    when hbm18_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm18_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[18] = true
-        hbm_weight_datas_hbm[18] = elements[0]
+        hbm_weight_datas_hbm[18] = elements
     } else {
         hbm_weight_valids_hbm[18] = false
     }
     when hbm_rst_fanout.douts[18] {
         hbm18_reader.rst()
-        hbm18_writer_tie_off.rst()
     }
-        domain hbm19
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm19_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm19_writer_tie_off
-    output bool                                     maxi_hbm19_awvalid  = hbm19_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm19_awaddr   = hbm19_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm19_awlen    = hbm19_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm19_awsize   = hbm19_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm19_awburst  = hbm19_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm19_awprot   = hbm19_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm19_awcache  = hbm19_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm19_awqos    = hbm19_writer_tie_off.awqos
-    output bool                                     maxi_hbm19_awlock   = hbm19_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm19_awregion = hbm19_writer_tie_off.awregion
-    output bool                                     maxi_hbm19_wvalid   = hbm19_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm19_wdata    = hbm19_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm19_wstrb    = hbm19_writer_tie_off.wstrb
-    output bool                                     maxi_hbm19_wlast    = hbm19_writer_tie_off.wlast
-    output bool                                     maxi_hbm19_bready   = hbm19_writer_tie_off.bready
+    domain hbm19
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[19], COUNT_REG: HBM_COUNT_REGS[19]) hbm19_reader
+    output bool                                     maxi_hbm19_awvalid  = hbm19_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm19_awaddr   = hbm19_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm19_awlen    = hbm19_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm19_awsize   = hbm19_reader.awsize
+    output bool[2]                                  maxi_hbm19_awburst  = hbm19_reader.awburst
+    output bool[3]                                  maxi_hbm19_awprot   = hbm19_reader.awprot
+    output bool[4]                                  maxi_hbm19_awcache  = hbm19_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm19_awqos    = hbm19_reader.awqos
+    output bool                                     maxi_hbm19_awlock   = hbm19_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm19_awregion = hbm19_reader.awregion
+    output bool                                     maxi_hbm19_wvalid   = hbm19_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm19_wdata    = hbm19_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm19_wstrb    = hbm19_reader.wstrb
+    output bool                                     maxi_hbm19_wlast    = hbm19_reader.wlast
+    output bool                                     maxi_hbm19_bready   = hbm19_reader.bready
     input  bool                                     maxi_hbm19_wready'0
     input  bool                                     maxi_hbm19_bvalid
     input  bool[2]                                  maxi_hbm19_bresp
     input  bool                                     maxi_hbm19_awready
-    hbm19_writer_tie_off.awready =                  maxi_hbm19_awready
-    hbm19_writer_tie_off.wready =                   maxi_hbm19_wready
-    hbm19_writer_tie_off.bvalid =                   maxi_hbm19_bvalid
-    hbm19_writer_tie_off.bresp =                    maxi_hbm19_bresp
+    hbm19_reader.awready =                          maxi_hbm19_awready
+    hbm19_reader.wready =                           maxi_hbm19_wready
+    hbm19_reader.bvalid =                           maxi_hbm19_bvalid
+    hbm19_reader.bresp =                            maxi_hbm19_bresp
     output bool                                     maxi_hbm19_arvalid  = hbm19_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm19_araddr   = hbm19_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm19_arlen    = hbm19_reader.arlen
@@ -1701,47 +1659,44 @@ module SUSpMV_Full {
     hbm19_reader.rresp =                            maxi_hbm19_rresp
     hbm19_reader.rlast =                            maxi_hbm19_rlast
 
-    bool _hbm19_reader_may_request = hbm19_reader.may_request_new_read
-    when set_matrix_data {
-        hbm19_reader.request_new_read(matrix_data_start_addrs[19], matrix_data_element_counts[19], [])
+    when hbm_ctrl_valid[19] {
+        hbm19_reader.set_reg(hbm_ctrl_idx[19], hbm_ctrl_data[19])
     }
     hbm19_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[19]
-    when hbm19_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm19_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[19] = true
-        hbm_weight_datas_hbm[19] = elements[0]
+        hbm_weight_datas_hbm[19] = elements
     } else {
         hbm_weight_valids_hbm[19] = false
     }
     when hbm_rst_fanout.douts[19] {
         hbm19_reader.rst()
-        hbm19_writer_tie_off.rst()
     }
-        domain hbm20
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm20_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm20_writer_tie_off
-    output bool                                     maxi_hbm20_awvalid  = hbm20_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm20_awaddr   = hbm20_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm20_awlen    = hbm20_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm20_awsize   = hbm20_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm20_awburst  = hbm20_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm20_awprot   = hbm20_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm20_awcache  = hbm20_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm20_awqos    = hbm20_writer_tie_off.awqos
-    output bool                                     maxi_hbm20_awlock   = hbm20_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm20_awregion = hbm20_writer_tie_off.awregion
-    output bool                                     maxi_hbm20_wvalid   = hbm20_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm20_wdata    = hbm20_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm20_wstrb    = hbm20_writer_tie_off.wstrb
-    output bool                                     maxi_hbm20_wlast    = hbm20_writer_tie_off.wlast
-    output bool                                     maxi_hbm20_bready   = hbm20_writer_tie_off.bready
+    domain hbm20
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[20], COUNT_REG: HBM_COUNT_REGS[20]) hbm20_reader
+    output bool                                     maxi_hbm20_awvalid  = hbm20_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm20_awaddr   = hbm20_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm20_awlen    = hbm20_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm20_awsize   = hbm20_reader.awsize
+    output bool[2]                                  maxi_hbm20_awburst  = hbm20_reader.awburst
+    output bool[3]                                  maxi_hbm20_awprot   = hbm20_reader.awprot
+    output bool[4]                                  maxi_hbm20_awcache  = hbm20_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm20_awqos    = hbm20_reader.awqos
+    output bool                                     maxi_hbm20_awlock   = hbm20_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm20_awregion = hbm20_reader.awregion
+    output bool                                     maxi_hbm20_wvalid   = hbm20_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm20_wdata    = hbm20_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm20_wstrb    = hbm20_reader.wstrb
+    output bool                                     maxi_hbm20_wlast    = hbm20_reader.wlast
+    output bool                                     maxi_hbm20_bready   = hbm20_reader.bready
     input  bool                                     maxi_hbm20_wready'0
     input  bool                                     maxi_hbm20_bvalid
     input  bool[2]                                  maxi_hbm20_bresp
     input  bool                                     maxi_hbm20_awready
-    hbm20_writer_tie_off.awready =                  maxi_hbm20_awready
-    hbm20_writer_tie_off.wready =                   maxi_hbm20_wready
-    hbm20_writer_tie_off.bvalid =                   maxi_hbm20_bvalid
-    hbm20_writer_tie_off.bresp =                    maxi_hbm20_bresp
+    hbm20_reader.awready =                          maxi_hbm20_awready
+    hbm20_reader.wready =                           maxi_hbm20_wready
+    hbm20_reader.bvalid =                           maxi_hbm20_bvalid
+    hbm20_reader.bresp =                            maxi_hbm20_bresp
     output bool                                     maxi_hbm20_arvalid  = hbm20_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm20_araddr   = hbm20_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm20_arlen    = hbm20_reader.arlen
@@ -1764,47 +1719,44 @@ module SUSpMV_Full {
     hbm20_reader.rresp =                            maxi_hbm20_rresp
     hbm20_reader.rlast =                            maxi_hbm20_rlast
 
-    bool _hbm20_reader_may_request = hbm20_reader.may_request_new_read
-    when set_matrix_data {
-        hbm20_reader.request_new_read(matrix_data_start_addrs[20], matrix_data_element_counts[20], [])
+    when hbm_ctrl_valid[20] {
+        hbm20_reader.set_reg(hbm_ctrl_idx[20], hbm_ctrl_data[20])
     }
     hbm20_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[20]
-    when hbm20_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm20_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[20] = true
-        hbm_weight_datas_hbm[20] = elements[0]
+        hbm_weight_datas_hbm[20] = elements
     } else {
         hbm_weight_valids_hbm[20] = false
     }
     when hbm_rst_fanout.douts[20] {
         hbm20_reader.rst()
-        hbm20_writer_tie_off.rst()
     }
-        domain hbm21
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm21_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm21_writer_tie_off
-    output bool                                     maxi_hbm21_awvalid  = hbm21_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm21_awaddr   = hbm21_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm21_awlen    = hbm21_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm21_awsize   = hbm21_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm21_awburst  = hbm21_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm21_awprot   = hbm21_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm21_awcache  = hbm21_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm21_awqos    = hbm21_writer_tie_off.awqos
-    output bool                                     maxi_hbm21_awlock   = hbm21_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm21_awregion = hbm21_writer_tie_off.awregion
-    output bool                                     maxi_hbm21_wvalid   = hbm21_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm21_wdata    = hbm21_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm21_wstrb    = hbm21_writer_tie_off.wstrb
-    output bool                                     maxi_hbm21_wlast    = hbm21_writer_tie_off.wlast
-    output bool                                     maxi_hbm21_bready   = hbm21_writer_tie_off.bready
+    domain hbm21
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[21], COUNT_REG: HBM_COUNT_REGS[21]) hbm21_reader
+    output bool                                     maxi_hbm21_awvalid  = hbm21_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm21_awaddr   = hbm21_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm21_awlen    = hbm21_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm21_awsize   = hbm21_reader.awsize
+    output bool[2]                                  maxi_hbm21_awburst  = hbm21_reader.awburst
+    output bool[3]                                  maxi_hbm21_awprot   = hbm21_reader.awprot
+    output bool[4]                                  maxi_hbm21_awcache  = hbm21_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm21_awqos    = hbm21_reader.awqos
+    output bool                                     maxi_hbm21_awlock   = hbm21_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm21_awregion = hbm21_reader.awregion
+    output bool                                     maxi_hbm21_wvalid   = hbm21_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm21_wdata    = hbm21_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm21_wstrb    = hbm21_reader.wstrb
+    output bool                                     maxi_hbm21_wlast    = hbm21_reader.wlast
+    output bool                                     maxi_hbm21_bready   = hbm21_reader.bready
     input  bool                                     maxi_hbm21_wready'0
     input  bool                                     maxi_hbm21_bvalid
     input  bool[2]                                  maxi_hbm21_bresp
     input  bool                                     maxi_hbm21_awready
-    hbm21_writer_tie_off.awready =                  maxi_hbm21_awready
-    hbm21_writer_tie_off.wready =                   maxi_hbm21_wready
-    hbm21_writer_tie_off.bvalid =                   maxi_hbm21_bvalid
-    hbm21_writer_tie_off.bresp =                    maxi_hbm21_bresp
+    hbm21_reader.awready =                          maxi_hbm21_awready
+    hbm21_reader.wready =                           maxi_hbm21_wready
+    hbm21_reader.bvalid =                           maxi_hbm21_bvalid
+    hbm21_reader.bresp =                            maxi_hbm21_bresp
     output bool                                     maxi_hbm21_arvalid  = hbm21_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm21_araddr   = hbm21_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm21_arlen    = hbm21_reader.arlen
@@ -1827,47 +1779,44 @@ module SUSpMV_Full {
     hbm21_reader.rresp =                            maxi_hbm21_rresp
     hbm21_reader.rlast =                            maxi_hbm21_rlast
 
-    bool _hbm21_reader_may_request = hbm21_reader.may_request_new_read
-    when set_matrix_data {
-        hbm21_reader.request_new_read(matrix_data_start_addrs[21], matrix_data_element_counts[21], [])
+    when hbm_ctrl_valid[21] {
+        hbm21_reader.set_reg(hbm_ctrl_idx[21], hbm_ctrl_data[21])
     }
     hbm21_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[21]
-    when hbm21_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm21_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[21] = true
-        hbm_weight_datas_hbm[21] = elements[0]
+        hbm_weight_datas_hbm[21] = elements
     } else {
         hbm_weight_valids_hbm[21] = false
     }
     when hbm_rst_fanout.douts[21] {
         hbm21_reader.rst()
-        hbm21_writer_tie_off.rst()
     }
-        domain hbm22
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm22_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm22_writer_tie_off
-    output bool                                     maxi_hbm22_awvalid  = hbm22_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm22_awaddr   = hbm22_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm22_awlen    = hbm22_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm22_awsize   = hbm22_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm22_awburst  = hbm22_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm22_awprot   = hbm22_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm22_awcache  = hbm22_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm22_awqos    = hbm22_writer_tie_off.awqos
-    output bool                                     maxi_hbm22_awlock   = hbm22_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm22_awregion = hbm22_writer_tie_off.awregion
-    output bool                                     maxi_hbm22_wvalid   = hbm22_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm22_wdata    = hbm22_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm22_wstrb    = hbm22_writer_tie_off.wstrb
-    output bool                                     maxi_hbm22_wlast    = hbm22_writer_tie_off.wlast
-    output bool                                     maxi_hbm22_bready   = hbm22_writer_tie_off.bready
+    domain hbm22
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[22], COUNT_REG: HBM_COUNT_REGS[22]) hbm22_reader
+    output bool                                     maxi_hbm22_awvalid  = hbm22_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm22_awaddr   = hbm22_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm22_awlen    = hbm22_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm22_awsize   = hbm22_reader.awsize
+    output bool[2]                                  maxi_hbm22_awburst  = hbm22_reader.awburst
+    output bool[3]                                  maxi_hbm22_awprot   = hbm22_reader.awprot
+    output bool[4]                                  maxi_hbm22_awcache  = hbm22_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm22_awqos    = hbm22_reader.awqos
+    output bool                                     maxi_hbm22_awlock   = hbm22_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm22_awregion = hbm22_reader.awregion
+    output bool                                     maxi_hbm22_wvalid   = hbm22_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm22_wdata    = hbm22_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm22_wstrb    = hbm22_reader.wstrb
+    output bool                                     maxi_hbm22_wlast    = hbm22_reader.wlast
+    output bool                                     maxi_hbm22_bready   = hbm22_reader.bready
     input  bool                                     maxi_hbm22_wready'0
     input  bool                                     maxi_hbm22_bvalid
     input  bool[2]                                  maxi_hbm22_bresp
     input  bool                                     maxi_hbm22_awready
-    hbm22_writer_tie_off.awready =                  maxi_hbm22_awready
-    hbm22_writer_tie_off.wready =                   maxi_hbm22_wready
-    hbm22_writer_tie_off.bvalid =                   maxi_hbm22_bvalid
-    hbm22_writer_tie_off.bresp =                    maxi_hbm22_bresp
+    hbm22_reader.awready =                          maxi_hbm22_awready
+    hbm22_reader.wready =                           maxi_hbm22_wready
+    hbm22_reader.bvalid =                           maxi_hbm22_bvalid
+    hbm22_reader.bresp =                            maxi_hbm22_bresp
     output bool                                     maxi_hbm22_arvalid  = hbm22_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm22_araddr   = hbm22_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm22_arlen    = hbm22_reader.arlen
@@ -1890,47 +1839,44 @@ module SUSpMV_Full {
     hbm22_reader.rresp =                            maxi_hbm22_rresp
     hbm22_reader.rlast =                            maxi_hbm22_rlast
 
-    bool _hbm22_reader_may_request = hbm22_reader.may_request_new_read
-    when set_matrix_data {
-        hbm22_reader.request_new_read(matrix_data_start_addrs[22], matrix_data_element_counts[22], [])
+    when hbm_ctrl_valid[22] {
+        hbm22_reader.set_reg(hbm_ctrl_idx[22], hbm_ctrl_data[22])
     }
     hbm22_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[22]
-    when hbm22_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm22_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[22] = true
-        hbm_weight_datas_hbm[22] = elements[0]
+        hbm_weight_datas_hbm[22] = elements
     } else {
         hbm_weight_valids_hbm[22] = false
     }
     when hbm_rst_fanout.douts[22] {
         hbm22_reader.rst()
-        hbm22_writer_tie_off.rst()
     }
-        domain hbm23
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm23_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm23_writer_tie_off
-    output bool                                     maxi_hbm23_awvalid  = hbm23_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm23_awaddr   = hbm23_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm23_awlen    = hbm23_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm23_awsize   = hbm23_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm23_awburst  = hbm23_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm23_awprot   = hbm23_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm23_awcache  = hbm23_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm23_awqos    = hbm23_writer_tie_off.awqos
-    output bool                                     maxi_hbm23_awlock   = hbm23_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm23_awregion = hbm23_writer_tie_off.awregion
-    output bool                                     maxi_hbm23_wvalid   = hbm23_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm23_wdata    = hbm23_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm23_wstrb    = hbm23_writer_tie_off.wstrb
-    output bool                                     maxi_hbm23_wlast    = hbm23_writer_tie_off.wlast
-    output bool                                     maxi_hbm23_bready   = hbm23_writer_tie_off.bready
+    domain hbm23
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[23], COUNT_REG: HBM_COUNT_REGS[23]) hbm23_reader
+    output bool                                     maxi_hbm23_awvalid  = hbm23_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm23_awaddr   = hbm23_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm23_awlen    = hbm23_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm23_awsize   = hbm23_reader.awsize
+    output bool[2]                                  maxi_hbm23_awburst  = hbm23_reader.awburst
+    output bool[3]                                  maxi_hbm23_awprot   = hbm23_reader.awprot
+    output bool[4]                                  maxi_hbm23_awcache  = hbm23_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm23_awqos    = hbm23_reader.awqos
+    output bool                                     maxi_hbm23_awlock   = hbm23_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm23_awregion = hbm23_reader.awregion
+    output bool                                     maxi_hbm23_wvalid   = hbm23_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm23_wdata    = hbm23_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm23_wstrb    = hbm23_reader.wstrb
+    output bool                                     maxi_hbm23_wlast    = hbm23_reader.wlast
+    output bool                                     maxi_hbm23_bready   = hbm23_reader.bready
     input  bool                                     maxi_hbm23_wready'0
     input  bool                                     maxi_hbm23_bvalid
     input  bool[2]                                  maxi_hbm23_bresp
     input  bool                                     maxi_hbm23_awready
-    hbm23_writer_tie_off.awready =                  maxi_hbm23_awready
-    hbm23_writer_tie_off.wready =                   maxi_hbm23_wready
-    hbm23_writer_tie_off.bvalid =                   maxi_hbm23_bvalid
-    hbm23_writer_tie_off.bresp =                    maxi_hbm23_bresp
+    hbm23_reader.awready =                          maxi_hbm23_awready
+    hbm23_reader.wready =                           maxi_hbm23_wready
+    hbm23_reader.bvalid =                           maxi_hbm23_bvalid
+    hbm23_reader.bresp =                            maxi_hbm23_bresp
     output bool                                     maxi_hbm23_arvalid  = hbm23_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm23_araddr   = hbm23_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm23_arlen    = hbm23_reader.arlen
@@ -1953,47 +1899,44 @@ module SUSpMV_Full {
     hbm23_reader.rresp =                            maxi_hbm23_rresp
     hbm23_reader.rlast =                            maxi_hbm23_rlast
 
-    bool _hbm23_reader_may_request = hbm23_reader.may_request_new_read
-    when set_matrix_data {
-        hbm23_reader.request_new_read(matrix_data_start_addrs[23], matrix_data_element_counts[23], [])
+    when hbm_ctrl_valid[23] {
+        hbm23_reader.set_reg(hbm_ctrl_idx[23], hbm_ctrl_data[23])
     }
     hbm23_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[23]
-    when hbm23_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm23_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[23] = true
-        hbm_weight_datas_hbm[23] = elements[0]
+        hbm_weight_datas_hbm[23] = elements
     } else {
         hbm_weight_valids_hbm[23] = false
     }
     when hbm_rst_fanout.douts[23] {
         hbm23_reader.rst()
-        hbm23_writer_tie_off.rst()
     }
-        domain hbm24
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm24_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm24_writer_tie_off
-    output bool                                     maxi_hbm24_awvalid  = hbm24_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm24_awaddr   = hbm24_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm24_awlen    = hbm24_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm24_awsize   = hbm24_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm24_awburst  = hbm24_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm24_awprot   = hbm24_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm24_awcache  = hbm24_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm24_awqos    = hbm24_writer_tie_off.awqos
-    output bool                                     maxi_hbm24_awlock   = hbm24_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm24_awregion = hbm24_writer_tie_off.awregion
-    output bool                                     maxi_hbm24_wvalid   = hbm24_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm24_wdata    = hbm24_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm24_wstrb    = hbm24_writer_tie_off.wstrb
-    output bool                                     maxi_hbm24_wlast    = hbm24_writer_tie_off.wlast
-    output bool                                     maxi_hbm24_bready   = hbm24_writer_tie_off.bready
+    domain hbm24
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[24], COUNT_REG: HBM_COUNT_REGS[24]) hbm24_reader
+    output bool                                     maxi_hbm24_awvalid  = hbm24_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm24_awaddr   = hbm24_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm24_awlen    = hbm24_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm24_awsize   = hbm24_reader.awsize
+    output bool[2]                                  maxi_hbm24_awburst  = hbm24_reader.awburst
+    output bool[3]                                  maxi_hbm24_awprot   = hbm24_reader.awprot
+    output bool[4]                                  maxi_hbm24_awcache  = hbm24_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm24_awqos    = hbm24_reader.awqos
+    output bool                                     maxi_hbm24_awlock   = hbm24_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm24_awregion = hbm24_reader.awregion
+    output bool                                     maxi_hbm24_wvalid   = hbm24_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm24_wdata    = hbm24_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm24_wstrb    = hbm24_reader.wstrb
+    output bool                                     maxi_hbm24_wlast    = hbm24_reader.wlast
+    output bool                                     maxi_hbm24_bready   = hbm24_reader.bready
     input  bool                                     maxi_hbm24_wready'0
     input  bool                                     maxi_hbm24_bvalid
     input  bool[2]                                  maxi_hbm24_bresp
     input  bool                                     maxi_hbm24_awready
-    hbm24_writer_tie_off.awready =                  maxi_hbm24_awready
-    hbm24_writer_tie_off.wready =                   maxi_hbm24_wready
-    hbm24_writer_tie_off.bvalid =                   maxi_hbm24_bvalid
-    hbm24_writer_tie_off.bresp =                    maxi_hbm24_bresp
+    hbm24_reader.awready =                          maxi_hbm24_awready
+    hbm24_reader.wready =                           maxi_hbm24_wready
+    hbm24_reader.bvalid =                           maxi_hbm24_bvalid
+    hbm24_reader.bresp =                            maxi_hbm24_bresp
     output bool                                     maxi_hbm24_arvalid  = hbm24_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm24_araddr   = hbm24_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm24_arlen    = hbm24_reader.arlen
@@ -2016,47 +1959,44 @@ module SUSpMV_Full {
     hbm24_reader.rresp =                            maxi_hbm24_rresp
     hbm24_reader.rlast =                            maxi_hbm24_rlast
 
-    bool _hbm24_reader_may_request = hbm24_reader.may_request_new_read
-    when set_matrix_data {
-        hbm24_reader.request_new_read(matrix_data_start_addrs[24], matrix_data_element_counts[24], [])
+    when hbm_ctrl_valid[24] {
+        hbm24_reader.set_reg(hbm_ctrl_idx[24], hbm_ctrl_data[24])
     }
     hbm24_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[24]
-    when hbm24_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm24_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[24] = true
-        hbm_weight_datas_hbm[24] = elements[0]
+        hbm_weight_datas_hbm[24] = elements
     } else {
         hbm_weight_valids_hbm[24] = false
     }
     when hbm_rst_fanout.douts[24] {
         hbm24_reader.rst()
-        hbm24_writer_tie_off.rst()
     }
-        domain hbm25
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm25_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm25_writer_tie_off
-    output bool                                     maxi_hbm25_awvalid  = hbm25_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm25_awaddr   = hbm25_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm25_awlen    = hbm25_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm25_awsize   = hbm25_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm25_awburst  = hbm25_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm25_awprot   = hbm25_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm25_awcache  = hbm25_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm25_awqos    = hbm25_writer_tie_off.awqos
-    output bool                                     maxi_hbm25_awlock   = hbm25_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm25_awregion = hbm25_writer_tie_off.awregion
-    output bool                                     maxi_hbm25_wvalid   = hbm25_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm25_wdata    = hbm25_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm25_wstrb    = hbm25_writer_tie_off.wstrb
-    output bool                                     maxi_hbm25_wlast    = hbm25_writer_tie_off.wlast
-    output bool                                     maxi_hbm25_bready   = hbm25_writer_tie_off.bready
+    domain hbm25
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[25], COUNT_REG: HBM_COUNT_REGS[25]) hbm25_reader
+    output bool                                     maxi_hbm25_awvalid  = hbm25_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm25_awaddr   = hbm25_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm25_awlen    = hbm25_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm25_awsize   = hbm25_reader.awsize
+    output bool[2]                                  maxi_hbm25_awburst  = hbm25_reader.awburst
+    output bool[3]                                  maxi_hbm25_awprot   = hbm25_reader.awprot
+    output bool[4]                                  maxi_hbm25_awcache  = hbm25_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm25_awqos    = hbm25_reader.awqos
+    output bool                                     maxi_hbm25_awlock   = hbm25_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm25_awregion = hbm25_reader.awregion
+    output bool                                     maxi_hbm25_wvalid   = hbm25_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm25_wdata    = hbm25_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm25_wstrb    = hbm25_reader.wstrb
+    output bool                                     maxi_hbm25_wlast    = hbm25_reader.wlast
+    output bool                                     maxi_hbm25_bready   = hbm25_reader.bready
     input  bool                                     maxi_hbm25_wready'0
     input  bool                                     maxi_hbm25_bvalid
     input  bool[2]                                  maxi_hbm25_bresp
     input  bool                                     maxi_hbm25_awready
-    hbm25_writer_tie_off.awready =                  maxi_hbm25_awready
-    hbm25_writer_tie_off.wready =                   maxi_hbm25_wready
-    hbm25_writer_tie_off.bvalid =                   maxi_hbm25_bvalid
-    hbm25_writer_tie_off.bresp =                    maxi_hbm25_bresp
+    hbm25_reader.awready =                          maxi_hbm25_awready
+    hbm25_reader.wready =                           maxi_hbm25_wready
+    hbm25_reader.bvalid =                           maxi_hbm25_bvalid
+    hbm25_reader.bresp =                            maxi_hbm25_bresp
     output bool                                     maxi_hbm25_arvalid  = hbm25_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm25_araddr   = hbm25_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm25_arlen    = hbm25_reader.arlen
@@ -2079,47 +2019,44 @@ module SUSpMV_Full {
     hbm25_reader.rresp =                            maxi_hbm25_rresp
     hbm25_reader.rlast =                            maxi_hbm25_rlast
 
-    bool _hbm25_reader_may_request = hbm25_reader.may_request_new_read
-    when set_matrix_data {
-        hbm25_reader.request_new_read(matrix_data_start_addrs[25], matrix_data_element_counts[25], [])
+    when hbm_ctrl_valid[25] {
+        hbm25_reader.set_reg(hbm_ctrl_idx[25], hbm_ctrl_data[25])
     }
     hbm25_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[25]
-    when hbm25_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm25_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[25] = true
-        hbm_weight_datas_hbm[25] = elements[0]
+        hbm_weight_datas_hbm[25] = elements
     } else {
         hbm_weight_valids_hbm[25] = false
     }
     when hbm_rst_fanout.douts[25] {
         hbm25_reader.rst()
-        hbm25_writer_tie_off.rst()
     }
-        domain hbm26
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm26_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm26_writer_tie_off
-    output bool                                     maxi_hbm26_awvalid  = hbm26_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm26_awaddr   = hbm26_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm26_awlen    = hbm26_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm26_awsize   = hbm26_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm26_awburst  = hbm26_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm26_awprot   = hbm26_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm26_awcache  = hbm26_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm26_awqos    = hbm26_writer_tie_off.awqos
-    output bool                                     maxi_hbm26_awlock   = hbm26_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm26_awregion = hbm26_writer_tie_off.awregion
-    output bool                                     maxi_hbm26_wvalid   = hbm26_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm26_wdata    = hbm26_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm26_wstrb    = hbm26_writer_tie_off.wstrb
-    output bool                                     maxi_hbm26_wlast    = hbm26_writer_tie_off.wlast
-    output bool                                     maxi_hbm26_bready   = hbm26_writer_tie_off.bready
+    domain hbm26
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[26], COUNT_REG: HBM_COUNT_REGS[26]) hbm26_reader
+    output bool                                     maxi_hbm26_awvalid  = hbm26_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm26_awaddr   = hbm26_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm26_awlen    = hbm26_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm26_awsize   = hbm26_reader.awsize
+    output bool[2]                                  maxi_hbm26_awburst  = hbm26_reader.awburst
+    output bool[3]                                  maxi_hbm26_awprot   = hbm26_reader.awprot
+    output bool[4]                                  maxi_hbm26_awcache  = hbm26_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm26_awqos    = hbm26_reader.awqos
+    output bool                                     maxi_hbm26_awlock   = hbm26_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm26_awregion = hbm26_reader.awregion
+    output bool                                     maxi_hbm26_wvalid   = hbm26_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm26_wdata    = hbm26_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm26_wstrb    = hbm26_reader.wstrb
+    output bool                                     maxi_hbm26_wlast    = hbm26_reader.wlast
+    output bool                                     maxi_hbm26_bready   = hbm26_reader.bready
     input  bool                                     maxi_hbm26_wready'0
     input  bool                                     maxi_hbm26_bvalid
     input  bool[2]                                  maxi_hbm26_bresp
     input  bool                                     maxi_hbm26_awready
-    hbm26_writer_tie_off.awready =                  maxi_hbm26_awready
-    hbm26_writer_tie_off.wready =                   maxi_hbm26_wready
-    hbm26_writer_tie_off.bvalid =                   maxi_hbm26_bvalid
-    hbm26_writer_tie_off.bresp =                    maxi_hbm26_bresp
+    hbm26_reader.awready =                          maxi_hbm26_awready
+    hbm26_reader.wready =                           maxi_hbm26_wready
+    hbm26_reader.bvalid =                           maxi_hbm26_bvalid
+    hbm26_reader.bresp =                            maxi_hbm26_bresp
     output bool                                     maxi_hbm26_arvalid  = hbm26_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm26_araddr   = hbm26_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm26_arlen    = hbm26_reader.arlen
@@ -2142,47 +2079,44 @@ module SUSpMV_Full {
     hbm26_reader.rresp =                            maxi_hbm26_rresp
     hbm26_reader.rlast =                            maxi_hbm26_rlast
 
-    bool _hbm26_reader_may_request = hbm26_reader.may_request_new_read
-    when set_matrix_data {
-        hbm26_reader.request_new_read(matrix_data_start_addrs[26], matrix_data_element_counts[26], [])
+    when hbm_ctrl_valid[26] {
+        hbm26_reader.set_reg(hbm_ctrl_idx[26], hbm_ctrl_data[26])
     }
     hbm26_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[26]
-    when hbm26_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm26_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[26] = true
-        hbm_weight_datas_hbm[26] = elements[0]
+        hbm_weight_datas_hbm[26] = elements
     } else {
         hbm_weight_valids_hbm[26] = false
     }
     when hbm_rst_fanout.douts[26] {
         hbm26_reader.rst()
-        hbm26_writer_tie_off.rst()
     }
-        domain hbm27
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm27_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm27_writer_tie_off
-    output bool                                     maxi_hbm27_awvalid  = hbm27_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm27_awaddr   = hbm27_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm27_awlen    = hbm27_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm27_awsize   = hbm27_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm27_awburst  = hbm27_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm27_awprot   = hbm27_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm27_awcache  = hbm27_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm27_awqos    = hbm27_writer_tie_off.awqos
-    output bool                                     maxi_hbm27_awlock   = hbm27_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm27_awregion = hbm27_writer_tie_off.awregion
-    output bool                                     maxi_hbm27_wvalid   = hbm27_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm27_wdata    = hbm27_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm27_wstrb    = hbm27_writer_tie_off.wstrb
-    output bool                                     maxi_hbm27_wlast    = hbm27_writer_tie_off.wlast
-    output bool                                     maxi_hbm27_bready   = hbm27_writer_tie_off.bready
+    domain hbm27
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[27], COUNT_REG: HBM_COUNT_REGS[27]) hbm27_reader
+    output bool                                     maxi_hbm27_awvalid  = hbm27_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm27_awaddr   = hbm27_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm27_awlen    = hbm27_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm27_awsize   = hbm27_reader.awsize
+    output bool[2]                                  maxi_hbm27_awburst  = hbm27_reader.awburst
+    output bool[3]                                  maxi_hbm27_awprot   = hbm27_reader.awprot
+    output bool[4]                                  maxi_hbm27_awcache  = hbm27_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm27_awqos    = hbm27_reader.awqos
+    output bool                                     maxi_hbm27_awlock   = hbm27_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm27_awregion = hbm27_reader.awregion
+    output bool                                     maxi_hbm27_wvalid   = hbm27_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm27_wdata    = hbm27_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm27_wstrb    = hbm27_reader.wstrb
+    output bool                                     maxi_hbm27_wlast    = hbm27_reader.wlast
+    output bool                                     maxi_hbm27_bready   = hbm27_reader.bready
     input  bool                                     maxi_hbm27_wready'0
     input  bool                                     maxi_hbm27_bvalid
     input  bool[2]                                  maxi_hbm27_bresp
     input  bool                                     maxi_hbm27_awready
-    hbm27_writer_tie_off.awready =                  maxi_hbm27_awready
-    hbm27_writer_tie_off.wready =                   maxi_hbm27_wready
-    hbm27_writer_tie_off.bvalid =                   maxi_hbm27_bvalid
-    hbm27_writer_tie_off.bresp =                    maxi_hbm27_bresp
+    hbm27_reader.awready =                          maxi_hbm27_awready
+    hbm27_reader.wready =                           maxi_hbm27_wready
+    hbm27_reader.bvalid =                           maxi_hbm27_bvalid
+    hbm27_reader.bresp =                            maxi_hbm27_bresp
     output bool                                     maxi_hbm27_arvalid  = hbm27_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm27_araddr   = hbm27_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm27_arlen    = hbm27_reader.arlen
@@ -2205,47 +2139,44 @@ module SUSpMV_Full {
     hbm27_reader.rresp =                            maxi_hbm27_rresp
     hbm27_reader.rlast =                            maxi_hbm27_rlast
 
-    bool _hbm27_reader_may_request = hbm27_reader.may_request_new_read
-    when set_matrix_data {
-        hbm27_reader.request_new_read(matrix_data_start_addrs[27], matrix_data_element_counts[27], [])
+    when hbm_ctrl_valid[27] {
+        hbm27_reader.set_reg(hbm_ctrl_idx[27], hbm_ctrl_data[27])
     }
     hbm27_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[27]
-    when hbm27_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm27_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[27] = true
-        hbm_weight_datas_hbm[27] = elements[0]
+        hbm_weight_datas_hbm[27] = elements
     } else {
         hbm_weight_valids_hbm[27] = false
     }
     when hbm_rst_fanout.douts[27] {
         hbm27_reader.rst()
-        hbm27_writer_tie_off.rst()
     }
-        domain hbm28
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm28_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm28_writer_tie_off
-    output bool                                     maxi_hbm28_awvalid  = hbm28_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm28_awaddr   = hbm28_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm28_awlen    = hbm28_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm28_awsize   = hbm28_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm28_awburst  = hbm28_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm28_awprot   = hbm28_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm28_awcache  = hbm28_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm28_awqos    = hbm28_writer_tie_off.awqos
-    output bool                                     maxi_hbm28_awlock   = hbm28_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm28_awregion = hbm28_writer_tie_off.awregion
-    output bool                                     maxi_hbm28_wvalid   = hbm28_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm28_wdata    = hbm28_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm28_wstrb    = hbm28_writer_tie_off.wstrb
-    output bool                                     maxi_hbm28_wlast    = hbm28_writer_tie_off.wlast
-    output bool                                     maxi_hbm28_bready   = hbm28_writer_tie_off.bready
+    domain hbm28
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[28], COUNT_REG: HBM_COUNT_REGS[28]) hbm28_reader
+    output bool                                     maxi_hbm28_awvalid  = hbm28_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm28_awaddr   = hbm28_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm28_awlen    = hbm28_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm28_awsize   = hbm28_reader.awsize
+    output bool[2]                                  maxi_hbm28_awburst  = hbm28_reader.awburst
+    output bool[3]                                  maxi_hbm28_awprot   = hbm28_reader.awprot
+    output bool[4]                                  maxi_hbm28_awcache  = hbm28_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm28_awqos    = hbm28_reader.awqos
+    output bool                                     maxi_hbm28_awlock   = hbm28_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm28_awregion = hbm28_reader.awregion
+    output bool                                     maxi_hbm28_wvalid   = hbm28_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm28_wdata    = hbm28_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm28_wstrb    = hbm28_reader.wstrb
+    output bool                                     maxi_hbm28_wlast    = hbm28_reader.wlast
+    output bool                                     maxi_hbm28_bready   = hbm28_reader.bready
     input  bool                                     maxi_hbm28_wready'0
     input  bool                                     maxi_hbm28_bvalid
     input  bool[2]                                  maxi_hbm28_bresp
     input  bool                                     maxi_hbm28_awready
-    hbm28_writer_tie_off.awready =                  maxi_hbm28_awready
-    hbm28_writer_tie_off.wready =                   maxi_hbm28_wready
-    hbm28_writer_tie_off.bvalid =                   maxi_hbm28_bvalid
-    hbm28_writer_tie_off.bresp =                    maxi_hbm28_bresp
+    hbm28_reader.awready =                          maxi_hbm28_awready
+    hbm28_reader.wready =                           maxi_hbm28_wready
+    hbm28_reader.bvalid =                           maxi_hbm28_bvalid
+    hbm28_reader.bresp =                            maxi_hbm28_bresp
     output bool                                     maxi_hbm28_arvalid  = hbm28_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm28_araddr   = hbm28_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm28_arlen    = hbm28_reader.arlen
@@ -2268,47 +2199,44 @@ module SUSpMV_Full {
     hbm28_reader.rresp =                            maxi_hbm28_rresp
     hbm28_reader.rlast =                            maxi_hbm28_rlast
 
-    bool _hbm28_reader_may_request = hbm28_reader.may_request_new_read
-    when set_matrix_data {
-        hbm28_reader.request_new_read(matrix_data_start_addrs[28], matrix_data_element_counts[28], [])
+    when hbm_ctrl_valid[28] {
+        hbm28_reader.set_reg(hbm_ctrl_idx[28], hbm_ctrl_data[28])
     }
     hbm28_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[28]
-    when hbm28_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm28_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[28] = true
-        hbm_weight_datas_hbm[28] = elements[0]
+        hbm_weight_datas_hbm[28] = elements
     } else {
         hbm_weight_valids_hbm[28] = false
     }
     when hbm_rst_fanout.douts[28] {
         hbm28_reader.rst()
-        hbm28_writer_tie_off.rst()
     }
-        domain hbm29
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm29_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm29_writer_tie_off
-    output bool                                     maxi_hbm29_awvalid  = hbm29_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm29_awaddr   = hbm29_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm29_awlen    = hbm29_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm29_awsize   = hbm29_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm29_awburst  = hbm29_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm29_awprot   = hbm29_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm29_awcache  = hbm29_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm29_awqos    = hbm29_writer_tie_off.awqos
-    output bool                                     maxi_hbm29_awlock   = hbm29_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm29_awregion = hbm29_writer_tie_off.awregion
-    output bool                                     maxi_hbm29_wvalid   = hbm29_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm29_wdata    = hbm29_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm29_wstrb    = hbm29_writer_tie_off.wstrb
-    output bool                                     maxi_hbm29_wlast    = hbm29_writer_tie_off.wlast
-    output bool                                     maxi_hbm29_bready   = hbm29_writer_tie_off.bready
+    domain hbm29
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[29], COUNT_REG: HBM_COUNT_REGS[29]) hbm29_reader
+    output bool                                     maxi_hbm29_awvalid  = hbm29_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm29_awaddr   = hbm29_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm29_awlen    = hbm29_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm29_awsize   = hbm29_reader.awsize
+    output bool[2]                                  maxi_hbm29_awburst  = hbm29_reader.awburst
+    output bool[3]                                  maxi_hbm29_awprot   = hbm29_reader.awprot
+    output bool[4]                                  maxi_hbm29_awcache  = hbm29_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm29_awqos    = hbm29_reader.awqos
+    output bool                                     maxi_hbm29_awlock   = hbm29_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm29_awregion = hbm29_reader.awregion
+    output bool                                     maxi_hbm29_wvalid   = hbm29_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm29_wdata    = hbm29_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm29_wstrb    = hbm29_reader.wstrb
+    output bool                                     maxi_hbm29_wlast    = hbm29_reader.wlast
+    output bool                                     maxi_hbm29_bready   = hbm29_reader.bready
     input  bool                                     maxi_hbm29_wready'0
     input  bool                                     maxi_hbm29_bvalid
     input  bool[2]                                  maxi_hbm29_bresp
     input  bool                                     maxi_hbm29_awready
-    hbm29_writer_tie_off.awready =                  maxi_hbm29_awready
-    hbm29_writer_tie_off.wready =                   maxi_hbm29_wready
-    hbm29_writer_tie_off.bvalid =                   maxi_hbm29_bvalid
-    hbm29_writer_tie_off.bresp =                    maxi_hbm29_bresp
+    hbm29_reader.awready =                          maxi_hbm29_awready
+    hbm29_reader.wready =                           maxi_hbm29_wready
+    hbm29_reader.bvalid =                           maxi_hbm29_bvalid
+    hbm29_reader.bresp =                            maxi_hbm29_bresp
     output bool                                     maxi_hbm29_arvalid  = hbm29_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm29_araddr   = hbm29_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm29_arlen    = hbm29_reader.arlen
@@ -2331,47 +2259,44 @@ module SUSpMV_Full {
     hbm29_reader.rresp =                            maxi_hbm29_rresp
     hbm29_reader.rlast =                            maxi_hbm29_rlast
 
-    bool _hbm29_reader_may_request = hbm29_reader.may_request_new_read
-    when set_matrix_data {
-        hbm29_reader.request_new_read(matrix_data_start_addrs[29], matrix_data_element_counts[29], [])
+    when hbm_ctrl_valid[29] {
+        hbm29_reader.set_reg(hbm_ctrl_idx[29], hbm_ctrl_data[29])
     }
     hbm29_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[29]
-    when hbm29_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm29_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[29] = true
-        hbm_weight_datas_hbm[29] = elements[0]
+        hbm_weight_datas_hbm[29] = elements
     } else {
         hbm_weight_valids_hbm[29] = false
     }
     when hbm_rst_fanout.douts[29] {
         hbm29_reader.rst()
-        hbm29_writer_tie_off.rst()
     }
-        domain hbm30
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm30_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm30_writer_tie_off
-    output bool                                     maxi_hbm30_awvalid  = hbm30_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm30_awaddr   = hbm30_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm30_awlen    = hbm30_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm30_awsize   = hbm30_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm30_awburst  = hbm30_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm30_awprot   = hbm30_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm30_awcache  = hbm30_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm30_awqos    = hbm30_writer_tie_off.awqos
-    output bool                                     maxi_hbm30_awlock   = hbm30_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm30_awregion = hbm30_writer_tie_off.awregion
-    output bool                                     maxi_hbm30_wvalid   = hbm30_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm30_wdata    = hbm30_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm30_wstrb    = hbm30_writer_tie_off.wstrb
-    output bool                                     maxi_hbm30_wlast    = hbm30_writer_tie_off.wlast
-    output bool                                     maxi_hbm30_bready   = hbm30_writer_tie_off.bready
+    domain hbm30
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[30], COUNT_REG: HBM_COUNT_REGS[30]) hbm30_reader
+    output bool                                     maxi_hbm30_awvalid  = hbm30_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm30_awaddr   = hbm30_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm30_awlen    = hbm30_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm30_awsize   = hbm30_reader.awsize
+    output bool[2]                                  maxi_hbm30_awburst  = hbm30_reader.awburst
+    output bool[3]                                  maxi_hbm30_awprot   = hbm30_reader.awprot
+    output bool[4]                                  maxi_hbm30_awcache  = hbm30_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm30_awqos    = hbm30_reader.awqos
+    output bool                                     maxi_hbm30_awlock   = hbm30_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm30_awregion = hbm30_reader.awregion
+    output bool                                     maxi_hbm30_wvalid   = hbm30_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm30_wdata    = hbm30_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm30_wstrb    = hbm30_reader.wstrb
+    output bool                                     maxi_hbm30_wlast    = hbm30_reader.wlast
+    output bool                                     maxi_hbm30_bready   = hbm30_reader.bready
     input  bool                                     maxi_hbm30_wready'0
     input  bool                                     maxi_hbm30_bvalid
     input  bool[2]                                  maxi_hbm30_bresp
     input  bool                                     maxi_hbm30_awready
-    hbm30_writer_tie_off.awready =                  maxi_hbm30_awready
-    hbm30_writer_tie_off.wready =                   maxi_hbm30_wready
-    hbm30_writer_tie_off.bvalid =                   maxi_hbm30_bvalid
-    hbm30_writer_tie_off.bresp =                    maxi_hbm30_bresp
+    hbm30_reader.awready =                          maxi_hbm30_awready
+    hbm30_reader.wready =                           maxi_hbm30_wready
+    hbm30_reader.bvalid =                           maxi_hbm30_bvalid
+    hbm30_reader.bresp =                            maxi_hbm30_bresp
     output bool                                     maxi_hbm30_arvalid  = hbm30_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm30_araddr   = hbm30_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm30_arlen    = hbm30_reader.arlen
@@ -2394,47 +2319,44 @@ module SUSpMV_Full {
     hbm30_reader.rresp =                            maxi_hbm30_rresp
     hbm30_reader.rlast =                            maxi_hbm30_rlast
 
-    bool _hbm30_reader_may_request = hbm30_reader.may_request_new_read
-    when set_matrix_data {
-        hbm30_reader.request_new_read(matrix_data_start_addrs[30], matrix_data_element_counts[30], [])
+    when hbm_ctrl_valid[30] {
+        hbm30_reader.set_reg(hbm_ctrl_idx[30], hbm_ctrl_data[30])
     }
     hbm30_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[30]
-    when hbm30_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm30_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[30] = true
-        hbm_weight_datas_hbm[30] = elements[0]
+        hbm_weight_datas_hbm[30] = elements
     } else {
         hbm_weight_valids_hbm[30] = false
     }
     when hbm_rst_fanout.douts[30] {
         hbm30_reader.rst()
-        hbm30_writer_tie_off.rst()
     }
-        domain hbm31
-    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm31_reader
-    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm31_writer_tie_off
-    output bool                                     maxi_hbm31_awvalid  = hbm31_writer_tie_off.awvalid
-    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm31_awaddr   = hbm31_writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm31_awlen    = hbm31_writer_tie_off.awlen
-    output int#(FROM: 0, TO: 8)                     maxi_hbm31_awsize   = hbm31_writer_tie_off.awsize
-    output bool[2]                                  maxi_hbm31_awburst  = hbm31_writer_tie_off.awburst
-    output bool[3]                                  maxi_hbm31_awprot   = hbm31_writer_tie_off.awprot
-    output bool[4]                                  maxi_hbm31_awcache  = hbm31_writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm31_awqos    = hbm31_writer_tie_off.awqos
-    output bool                                     maxi_hbm31_awlock   = hbm31_writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm31_awregion = hbm31_writer_tie_off.awregion
-    output bool                                     maxi_hbm31_wvalid   = hbm31_writer_tie_off.wvalid
-    output bool[HBM_AXI_WIDTH]                      maxi_hbm31_wdata    = hbm31_writer_tie_off.wdata
-    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm31_wstrb    = hbm31_writer_tie_off.wstrb
-    output bool                                     maxi_hbm31_wlast    = hbm31_writer_tie_off.wlast
-    output bool                                     maxi_hbm31_bready   = hbm31_writer_tie_off.bready
+    domain hbm31
+    HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[31], COUNT_REG: HBM_COUNT_REGS[31]) hbm31_reader
+    output bool                                     maxi_hbm31_awvalid  = hbm31_reader.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm31_awaddr   = hbm31_reader.awaddr
+    output int#(FROM: 0, TO: 256)                   maxi_hbm31_awlen    = hbm31_reader.awlen
+    output int#(FROM: 0, TO: 8)                     maxi_hbm31_awsize   = hbm31_reader.awsize
+    output bool[2]                                  maxi_hbm31_awburst  = hbm31_reader.awburst
+    output bool[3]                                  maxi_hbm31_awprot   = hbm31_reader.awprot
+    output bool[4]                                  maxi_hbm31_awcache  = hbm31_reader.awcache
+    output int#(FROM: 0, TO: 16)                    maxi_hbm31_awqos    = hbm31_reader.awqos
+    output bool                                     maxi_hbm31_awlock   = hbm31_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm31_awregion = hbm31_reader.awregion
+    output bool                                     maxi_hbm31_wvalid   = hbm31_reader.wvalid
+    output bool[HBM_AXI_WIDTH]                      maxi_hbm31_wdata    = hbm31_reader.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm31_wstrb    = hbm31_reader.wstrb
+    output bool                                     maxi_hbm31_wlast    = hbm31_reader.wlast
+    output bool                                     maxi_hbm31_bready   = hbm31_reader.bready
     input  bool                                     maxi_hbm31_wready'0
     input  bool                                     maxi_hbm31_bvalid
     input  bool[2]                                  maxi_hbm31_bresp
     input  bool                                     maxi_hbm31_awready
-    hbm31_writer_tie_off.awready =                  maxi_hbm31_awready
-    hbm31_writer_tie_off.wready =                   maxi_hbm31_wready
-    hbm31_writer_tie_off.bvalid =                   maxi_hbm31_bvalid
-    hbm31_writer_tie_off.bresp =                    maxi_hbm31_bresp
+    hbm31_reader.awready =                          maxi_hbm31_awready
+    hbm31_reader.wready =                           maxi_hbm31_wready
+    hbm31_reader.bvalid =                           maxi_hbm31_bvalid
+    hbm31_reader.bresp =                            maxi_hbm31_bresp
     output bool                                     maxi_hbm31_arvalid  = hbm31_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm31_araddr   = hbm31_reader.araddr
     output int#(FROM: 0, TO: 256)                   maxi_hbm31_arlen    = hbm31_reader.arlen
@@ -2457,19 +2379,17 @@ module SUSpMV_Full {
     hbm31_reader.rresp =                            maxi_hbm31_rresp
     hbm31_reader.rlast =                            maxi_hbm31_rlast
 
-    bool _hbm31_reader_may_request = hbm31_reader.may_request_new_read
-    when set_matrix_data {
-        hbm31_reader.request_new_read(matrix_data_start_addrs[31], matrix_data_element_counts[31], [])
+    when hbm_ctrl_valid[31] {
+        hbm31_reader.set_reg(hbm_ctrl_idx[31], hbm_ctrl_data[31])
     }
     hbm31_reader.ready_for_lots_of_data = hbm_may_pushes_hbm[31]
-    when hbm31_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+    when hbm31_reader.chunk_valid : bool[256] elements {
         hbm_weight_valids_hbm[31] = true
-        hbm_weight_datas_hbm[31] = elements[0]
+        hbm_weight_datas_hbm[31] = elements
     } else {
         hbm_weight_valids_hbm[31] = false
     }
     when hbm_rst_fanout.douts[31] {
         hbm31_reader.rst()
-        hbm31_writer_tie_off.rst()
     }
 }

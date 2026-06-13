@@ -447,6 +447,11 @@ add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_ctrl_to_ddr
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_weights_*_slr0]
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_rst_slr0]
 
+add_cells_to_pblock [get_pblocks slr0_left] [get_cells hbm_info_distributor_left]
+add_cells_to_pblock [get_pblocks slr0_right] [get_cells hbm_info_distributor_right]
+add_cells_to_pblock [get_pblocks slr0_right] [get_cells pipeline_hbm_ctrl]
+
+
 # SLR0 -> SLR1
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_*_slr0_to_slr1/from_slr]
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr1] [get_cells pipe_*_slr0_to_slr1/to_slr]

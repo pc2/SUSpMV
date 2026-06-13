@@ -458,3 +458,108 @@ module WideFanout#(T, int SIZE, int DEPTH) {
         douts[I] = pipe.dout
     }
 }
+
+module LineBusDistributor#(int AXI_WIDTH, int NUM_OUTPUTS, int IDX_TO) {
+    output state bool[NUM_OUTPUTS] pipeline_valids
+    output state int#(FROM: 0, TO: IDX_TO)[NUM_OUTPUTS] pipeline_idxes
+    output state bool[AXI_WIDTH][NUM_OUTPUTS] pipeline_datas
+
+    for int I in 1..NUM_OUTPUTS {
+        pipeline_valids[I] = pipeline_valids[I - 1]
+        pipeline_idxes[I] = pipeline_idxes[I - 1]
+        pipeline_datas[I] = pipeline_datas[I - 1]
+    }
+
+    action write : int#(FROM: 0, TO: IDX_TO) idx, bool[AXI_WIDTH] data {
+        pipeline_valids[0] = true
+        pipeline_idxes[0] = idx
+        pipeline_datas[0] = data
+    } else {
+        pipeline_valids[0] = false
+    }
+}
+
+module HBMReader#(int START_REG, int ADDR_REG, int COUNT_REG) {
+    gen int HBM_AXI_WIDTH = 256
+    gen int MEM_ADDR_WIDTH = 64
+    gen int NUM_CTRL_REGS = 256
+
+    domain axi4
+    axi_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) hbm00_reader
+    axi_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) hbm00_writer_tie_off
+    output bool                                     awvalid  = hbm00_writer_tie_off.awvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   awaddr   = hbm00_writer_tie_off.awaddr
+    output int#(FROM: 0, TO: 256)                   awlen    = hbm00_writer_tie_off.awlen
+    output int#(FROM: 0, TO: 8)                     awsize   = hbm00_writer_tie_off.awsize
+    output bool[2]                                  awburst  = hbm00_writer_tie_off.awburst
+    output bool[3]                                  awprot   = hbm00_writer_tie_off.awprot
+    output bool[4]                                  awcache  = hbm00_writer_tie_off.awcache
+    output int#(FROM: 0, TO: 16)                    awqos    = hbm00_writer_tie_off.awqos
+    output bool                                     awlock   = hbm00_writer_tie_off.awlock
+    output int#(FROM: 0, TO: 16)                    awregion = hbm00_writer_tie_off.awregion
+    output bool                                     wvalid   = hbm00_writer_tie_off.wvalid
+    output bool[HBM_AXI_WIDTH]                      wdata    = hbm00_writer_tie_off.wdata
+    output bool[HBM_AXI_WIDTH / 8]                  wstrb    = hbm00_writer_tie_off.wstrb
+    output bool                                     wlast    = hbm00_writer_tie_off.wlast
+    output bool                                     bready   = hbm00_writer_tie_off.bready
+    input  bool                                     wready'0
+    input  bool                                     bvalid
+    input  bool[2]                                  bresp
+    input  bool                                     awready
+    hbm00_writer_tie_off.awready =                  awready
+    hbm00_writer_tie_off.wready =                   wready
+    hbm00_writer_tie_off.bvalid =                   bvalid
+    hbm00_writer_tie_off.bresp =                    bresp
+    output bool                                     arvalid  = hbm00_reader.arvalid
+    output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   araddr   = hbm00_reader.araddr
+    output int#(FROM: 0, TO: 256)                   arlen    = hbm00_reader.arlen
+    output int#(FROM: 0, TO: 8)                     arsize   = hbm00_reader.arsize
+    output bool[2]                                  arburst  = hbm00_reader.arburst
+    output bool[3]                                  arprot   = hbm00_reader.arprot
+    output bool[4]                                  arcache  = hbm00_reader.arcache
+    output int#(FROM: 0, TO: 16)                    arqos    = hbm00_reader.arqos
+    output bool                                     arlock   = hbm00_reader.arlock
+    output int#(FROM: 0, TO: 16)                    arregion = hbm00_reader.arregion
+    output bool                                     rready   = hbm00_reader.rready
+    input  bool                                     arready'0
+    input  bool                                     rvalid
+    input  bool[HBM_AXI_WIDTH]                      rdata
+    input  bool[2]                                  rresp
+    input  bool                                     rlast
+    hbm00_reader.arready =                          arready
+    hbm00_reader.rvalid =                           rvalid
+    hbm00_reader.rdata =                            rdata
+    hbm00_reader.rresp =                            rresp
+    hbm00_reader.rlast =                            rlast
+
+    bool _hbm00_reader_may_request = hbm00_reader.may_request_new_read
+
+    state int stored_addr
+    state int stored_count
+
+    domain cfg
+    action set_reg'0 : int#(FROM: 0, TO: NUM_CTRL_REGS) reg_idx'0, bool[MEM_ADDR_WIDTH] v'0 {
+        int v_as_int = BitsToUInt(v)
+        when reg_idx == ADDR_REG {
+            stored_addr = v_as_int
+        }
+        when reg_idx == COUNT_REG {
+            stored_count = v_as_int mod 1 << 32
+        }
+        when reg_idx == START_REG {
+            hbm00_reader.request_new_read(stored_addr, stored_count, [])
+        }
+    }
+    domain data
+    input bool ready_for_lots_of_data
+    trigger chunk_valid : bool[256] elements
+    hbm00_reader.ready_for_lots_of_data = ready_for_lots_of_data
+    when hbm00_reader.chunk_valid : bool[256][1] elements, int _chunk_length, int _chunk_offset, bool _last, bool[0] _extra_data_out {
+        chunk_valid(elements[0])
+    }
+    domain reset
+    action rst {
+        hbm00_reader.rst()
+        hbm00_writer_tie_off.rst()
+    }
+}
