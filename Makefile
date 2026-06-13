@@ -41,23 +41,27 @@ U280/sus_codegen.sv: $(FILES)
 XOS_VCK := $(BIN_DIR)/SUSpMV_Full.xo
 LOCAL_XOS := ../SUSpMV_Full.xo
 
-U280/SUSpMV_Full.xo: pack_kernel.tcl pblocks.xdc U280/sus_codegen.sv slr_crossing.sv
+U280/SUSpMV_Full.zip: pack_kernel.tcl pblocks.xdc U280/sus_codegen.sv slr_crossing.sv
 	rm -f $(BIN_DIR)/SUSpMV_Full.xo
 	rm -rf $(BIN_DIR)/pack_prj
 	mkdir $(BIN_DIR)/pack_prj
 	cd $(BIN_DIR)/pack_prj;\
 	vivado -mode batch -source ../../pack_kernel.tcl -tclargs $(PART) ../SUSpMV_Full.xo $(SUS_FLOAT_LIB_PATH) ../../pblocks.xdc
+	rm -f $(BIN_DIR)/SUSpMV_Full.zip
+	cd $(BIN_DIR)/pack_prj && zip -r ../SUSpMV_Full.zip SUSpMV_Full_ip
 
 v80/sus_codegen.sv: $(FILES)
 	mkdir -p $(BIN_DIR)
 	sus_compiler $(FILES) -o $(BIN_DIR)/sus_codegen.sv --top SUSpMV_Full
 
-v80/SUSpMV_Full.xo: pack_kernel.tcl pblocks_v80.xdc v80/sus_codegen.sv slr_crossing.sv
+v80/SUSpMV_Full.zip: pack_kernel.tcl pblocks_v80.xdc v80/sus_codegen.sv slr_crossing.sv
 	rm -f $(BIN_DIR)/SUSpMV_Full.xo
 	rm -rf $(BIN_DIR)/pack_prj
 	mkdir $(BIN_DIR)/pack_prj
 	cd $(BIN_DIR)/pack_prj;\
 	vivado -mode batch -source ../../pack_kernel.tcl -tclargs $(PART) ../SUSpMV_Full.xo $(SUS_FLOAT_LIB_PATH) ../../pblocks_v80.xdc
+	rm -f $(BIN_DIR)/SUSpMV_Full.zip
+	cd $(BIN_DIR)/pack_prj && zip -r ../SUSpMV_Full.zip SUSpMV_Full_ip
 
 VCK5000/overlay_hw_emu.xclbin: vck5000_connectivity.cfg $(XOS_VCK)
 	rm -f $(BIN_DIR)/overlay_hw_emu.xclbin
@@ -157,15 +161,11 @@ testSpMVUnit_known: U280/sus_codegen.sv
 testIO: U280/sus_codegen.sv tests/IO/matrix_params.vh
 	cd tests/IO && vivado -mode batch -source sim.tcl
 
-U280/tapasco: U280/SUSpMV_Full.xo
-	rm -f $(BIN_DIR)/SUSpMV_Full.zip
-	cd $(BIN_DIR)/pack_prj && zip -r ../SUSpMV_Full.zip SUSpMV_Full_ip
+U280/tapasco: U280/SUSpMV_Full.zip
 	tapasco import $(BIN_DIR)/SUSpMV_Full.zip as 100 -p AU280
 	tapasco --jobsFile tapasco/job_au280.json
 
-v80/tapasco: v80/SUSpMV_Full.xo
-	rm -f $(BIN_DIR)/SUSpMV_Full.zip
-	cd $(BIN_DIR)/pack_prj && zip -r ../SUSpMV_Full.zip SUSpMV_Full_ip
+v80/tapasco: v80/SUSpMV_Full.zip
 	tapasco import $(BIN_DIR)/SUSpMV_Full.zip as 100 -p v80
 	tapasco --jobsFile tapasco/job_v80.json
 

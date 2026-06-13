@@ -364,7 +364,7 @@ add_cells_to_pblock [get_pblocks hbm_left] [get_cells -quiet [list \
 
 create_pblock hbm_right
 set_property PARENT slr0_right [get_pblocks hbm_right]
-resize_pblock [get_pblocks hbm_right] -add {CLOCKREGION_X4Y0:CLOCKREGION_X7Y0}
+resize_pblock [get_pblocks hbm_right] -add {CLOCKREGION_X4Y0:CLOCKREGION_X7Y3}
 set_property IS_SOFT TRUE [get_pblocks hbm_right]
 add_cells_to_pblock [get_pblocks hbm_right] [get_cells -quiet [list \
     hbm16_reader \
