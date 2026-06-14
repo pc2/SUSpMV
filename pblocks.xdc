@@ -340,45 +340,99 @@ add_cells_to_pblock [get_pblocks slr2_right_5_pblock] [get_cells suspmv_slr2/rig
 # ============ #
 
 create_pblock hbm_left
-set_property PARENT slr0_left [get_pblocks hbm_left]
 resize_pblock [get_pblocks hbm_left] -add {CLOCKREGION_X0Y0:CLOCKREGION_X3Y0}
+set_property PARENT slr0_left [get_pblocks hbm_left]
 set_property IS_SOFT TRUE [get_pblocks hbm_left]
-add_cells_to_pblock [get_pblocks hbm_left] [get_cells -quiet [list \
+
+create_pblock hbm_00_03
+resize_pblock [get_pblocks hbm_00_03] -add {CLOCKREGION_X0Y0:CLOCKREGION_X0Y0}
+set_property PARENT hbm_left [get_pblocks hbm_00_03]
+set_property IS_SOFT TRUE [get_pblocks hbm_00_03]
+
+create_pblock hbm_04_07
+resize_pblock [get_pblocks hbm_04_07] -add {CLOCKREGION_X1Y0:CLOCKREGION_X1Y0}
+set_property PARENT hbm_left [get_pblocks hbm_04_07]
+set_property IS_SOFT TRUE [get_pblocks hbm_04_07]
+
+create_pblock hbm_08_11
+resize_pblock [get_pblocks hbm_08_11] -add {CLOCKREGION_X2Y0:CLOCKREGION_X2Y0}
+set_property PARENT hbm_left [get_pblocks hbm_08_11]
+set_property IS_SOFT TRUE [get_pblocks hbm_08_11]
+
+create_pblock hbm_12_15
+resize_pblock [get_pblocks hbm_12_15] -add {CLOCKREGION_X3Y0:CLOCKREGION_X3Y0}
+set_property PARENT hbm_left [get_pblocks hbm_12_15]
+set_property IS_SOFT TRUE [get_pblocks hbm_12_15]
+
+create_pblock hbm_right
+set_property PARENT slr0_right [get_pblocks hbm_right]
+resize_pblock [get_pblocks hbm_right] -add {CLOCKREGION_X4Y0:CLOCKREGION_X7Y3}
+set_property IS_SOFT TRUE [get_pblocks hbm_right]
+
+create_pblock hbm_16_19
+resize_pblock [get_pblocks hbm_16_19] -add {CLOCKREGION_X4Y0:CLOCKREGION_X4Y0}
+set_property PARENT hbm_right [get_pblocks hbm_16_19]
+set_property IS_SOFT TRUE [get_pblocks hbm_16_19]
+
+create_pblock hbm_20_23
+resize_pblock [get_pblocks hbm_20_23] -add {CLOCKREGION_X5Y0:CLOCKREGION_X5Y0}
+set_property PARENT hbm_right [get_pblocks hbm_20_23]
+set_property IS_SOFT TRUE [get_pblocks hbm_20_23]
+
+create_pblock hbm_24_27
+resize_pblock [get_pblocks hbm_24_27] -add {CLOCKREGION_X6Y0:CLOCKREGION_X6Y0}
+set_property PARENT hbm_right [get_pblocks hbm_24_27]
+set_property IS_SOFT TRUE [get_pblocks hbm_24_27]
+
+create_pblock hbm_28_31
+resize_pblock [get_pblocks hbm_28_31] -add {CLOCKREGION_X7Y0:CLOCKREGION_X7Y0}
+set_property PARENT hbm_right [get_pblocks hbm_28_31]
+set_property IS_SOFT TRUE [get_pblocks hbm_28_31]
+
+add_cells_to_pblock [get_pblocks hbm_00_03] [get_cells -quiet [list \
     hbm00_reader \
     hbm01_reader \
     hbm02_reader \
     hbm03_reader \
+]]
+add_cells_to_pblock [get_pblocks hbm_04_07] [get_cells -quiet [list \
     hbm04_reader \
     hbm05_reader \
     hbm06_reader \
     hbm07_reader \
+]]
+add_cells_to_pblock [get_pblocks hbm_08_11] [get_cells -quiet [list \
     hbm08_reader \
     hbm09_reader \
     hbm10_reader \
     hbm11_reader \
+]]
+add_cells_to_pblock [get_pblocks hbm_12_15] [get_cells -quiet [list \
     hbm12_reader \
     hbm13_reader \
     hbm14_reader \
     hbm15_reader \
 ]]
 
-create_pblock hbm_right
-set_property PARENT slr0_right [get_pblocks hbm_right]
-resize_pblock [get_pblocks hbm_right] -add {CLOCKREGION_X4Y0:CLOCKREGION_X7Y3}
-set_property IS_SOFT TRUE [get_pblocks hbm_right]
-add_cells_to_pblock [get_pblocks hbm_right] [get_cells -quiet [list \
+add_cells_to_pblock [get_pblocks hbm_16_19] [get_cells -quiet [list \
     hbm16_reader \
     hbm17_reader \
     hbm18_reader \
     hbm19_reader \
+]]
+add_cells_to_pblock [get_pblocks hbm_20_23] [get_cells -quiet [list \
     hbm20_reader \
     hbm21_reader \
     hbm22_reader \
     hbm23_reader \
+]]
+add_cells_to_pblock [get_pblocks hbm_24_27] [get_cells -quiet [list \
     hbm24_reader \
     hbm25_reader \
     hbm26_reader \
     hbm27_reader \
+]]
+add_cells_to_pblock [get_pblocks hbm_28_31] [get_cells -quiet [list \
     hbm28_reader \
     hbm29_reader \
     hbm30_reader \
@@ -442,14 +496,15 @@ add_cells_to_pblock [get_pblocks slr2_right] [get_cells -quiet [list \
 # ==================== #
 
 # SLR0 local connections
-add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_ctrl_to_hbms]
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_ctrl_to_ddr]
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_weights_*_slr0]
 add_cells_to_pblock [get_pblocks pblock_suspmv_slr0] [get_cells pipe_rst_slr0]
 
-add_cells_to_pblock [get_pblocks slr0_left] [get_cells hbm_info_distributor_left]
-add_cells_to_pblock [get_pblocks slr0_right] [get_cells hbm_info_distributor_right]
-add_cells_to_pblock [get_pblocks slr0_right] [get_cells pipeline_hbm_ctrl]
+add_cells_to_pblock [get_pblocks hbm_left] [get_cells hbm_info_distributor_left]
+add_cells_to_pblock [get_pblocks hbm_right] [get_cells hbm_info_distributor_right]
+add_cells_to_pblock [get_pblocks slr0_right] [get_cells pipe_ctrl_to_hbm]
+add_cells_to_pblock [get_pblocks slr0_left] [get_cells pipe_ctrl_to_hbm_left]
+add_cells_to_pblock [get_pblocks slr0_right] [get_cells pipe_ctrl_to_hbm_right]
 
 
 # SLR0 -> SLR1
