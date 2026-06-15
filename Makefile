@@ -34,7 +34,7 @@ v80/%: SUS_FLOAT_LIB_PATH := sus-float/Versal
 v80/%: FILES += sus-float/Versal/fp_wrappers.sus
 v80/%: FILES += sus-float/Versal/extensions.sus
 
-U280/sus_codegen.sv: $(FILES)
+U280/sus_codegen.sv: $(FILES) suspmv_top_u280.sus
 	mkdir -p $(BIN_DIR)
 	sus_compiler $(FILES) -o $(BIN_DIR)/sus_codegen.sv --top SUSpMV_Full
 

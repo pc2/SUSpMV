@@ -212,7 +212,7 @@ module JoiningFIFO#(T, int NUM_FIFOS, int DEPTH, int MAY_PUSH_LATENCY) {
     }
 
     int#(FROM: 0, TO: DEPTH * 2)[NUM_FIFOS] relative_write_addrs
-    bool read_addr_in_second_half = read_addr >= DEPTH
+    reg bool read_addr_in_second_half = read_addr >= DEPTH
     for int I in 0..NUM_FIFOS {
         when read_addr_in_second_half {
             relative_write_addrs[I] = (write_addrs[I] - DEPTH) mod DEPTH
@@ -223,7 +223,7 @@ module JoiningFIFO#(T, int NUM_FIFOS, int DEPTH, int MAY_PUSH_LATENCY) {
     /// We don't actually care about the pipelining of minimum_write_addr
     /// because it is monotonically ascending, 
     LatencyCut cut_minimum_write_addr
-    int pipelined_relative_write_addrs = TreeMin(relative_write_addrs)
+    reg int pipelined_relative_write_addrs = TreeMin(relative_write_addrs)
     cut_minimum_write_addr.din = pipelined_relative_write_addrs
     int minimum_write_addr = cut_minimum_write_addr.dout
 
@@ -362,8 +362,8 @@ module YCollector {
     state int#(FROM: 0, TO: HALF_RAM_DEPTH + 1)[NUM_BUCKETS] num_ys_left_per_bucket
     state int#(FROM: 0, TO: HALF_RAM_DEPTH)[NUM_BUCKETS] cur_output_y_per_bucket
 
-    JoiningFIFO#(DEPTH: 32, NUM_FIFOS: NUM_BUCKETS) output_fifo
-    output_fifo.pushes = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
+    JoiningFIFO#(DEPTH: 32, NUM_FIFOS: NUM_BUCKETS) joining_fifo
+    joining_fifo.pushes = RepeatGen#(T: type bool, V: false, SIZE: NUM_BUCKETS)
     for int BUCKET in 0..NUM_BUCKETS {
         RAM#(T: type float, DEPTH: HALF_RAM_DEPTH * NUM_Y_BUFFERS) bucket_ram
         
@@ -371,14 +371,22 @@ module YCollector {
             reg int front_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_front_buffer, bucket_write_index[BUCKET])
             reg bucket_read_value[BUCKET] = bucket_ram.read(front_index)
             bucket_ram.write(front_index, bucket_write_value[BUCKET])
-        } else when num_ys_left_per_bucket[BUCKET] != 0 & output_fifo.may_pushes[BUCKET] {
-            reg int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer, cur_output_y_per_bucket[BUCKET])
-            reg float read_value = bucket_ram.read(back_index)
-            bucket_ram.write(back_index, 0.0)
-            reg output_fifo.datas[BUCKET] = read_value
-            reg output_fifo.pushes[BUCKET] = true
-            cur_output_y_per_bucket[BUCKET] = cur_output_y_per_bucket[BUCKET] + 1 mod HALF_RAM_DEPTH
-            num_ys_left_per_bucket[BUCKET] = num_ys_left_per_bucket[BUCKET] - 1 mod HALF_RAM_DEPTH
+        } else {
+            bool can_push_bucket_to_out_fifo = num_ys_left_per_bucket[BUCKET] != 0 & joining_fifo.may_pushes[BUCKET]
+
+            // pipeline stage for condition, since it's on the critical path, but not needed instantaneously. 
+            reg bool can_push_bucket_to_out_fifo_d = can_push_bucket_to_out_fifo
+            when can_push_bucket_to_out_fifo {
+                num_ys_left_per_bucket[BUCKET] = num_ys_left_per_bucket[BUCKET] - 1 mod HALF_RAM_DEPTH
+            }
+            when can_push_bucket_to_out_fifo_d{
+                reg int back_index = BitwiseIntConcat#(LOWER_BITS: clog2#(V: HALF_RAM_DEPTH))(current_back_buffer, cur_output_y_per_bucket[BUCKET])
+                reg float read_value = bucket_ram.read(back_index)
+                bucket_ram.write(back_index, 0.0)
+                reg joining_fifo.datas[BUCKET] = read_value
+                reg joining_fifo.pushes[BUCKET] = true
+                cur_output_y_per_bucket[BUCKET] = cur_output_y_per_bucket[BUCKET] + 1 mod HALF_RAM_DEPTH
+            }
         }
 
         // Separate out is_long_rst, to reduce its fanout. Only write should be overwritten, read shouldn't happen anyway. 
@@ -410,8 +418,8 @@ module YCollector {
     input bool may_y_valid'0
     trigger y_valid'0 : float[16] output_y_values, int#(FROM: 0, TO: 17) num_y_valid, bool is_last_y
     
-    when output_fifo.may_pop & may_y_valid {
-        reg float[NUM_BUCKETS] floats_out = output_fifo.pop()
+    when joining_fifo.may_pop & may_y_valid {
+        reg float[NUM_BUCKETS] floats_out = joining_fifo.pop()
         when num_ys_left_to_output > NUM_BUCKETS {
             y_valid(floats_out, NUM_BUCKETS, false)
             num_ys_left_to_output = IntNarrow#(FROM: 0, TO: NUM_Y_INDICES)(num_ys_left_to_output - NUM_BUCKETS)
@@ -430,7 +438,7 @@ module YCollector {
         saw_any_y = false
         currently_outputting = false
         y_index_manager.rst()
-        output_fifo.rst()
+        joining_fifo.rst()
         y_ends_fifo.rst()
     }
 

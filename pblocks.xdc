@@ -374,20 +374,10 @@ resize_pblock [get_pblocks hbm_16_19] -add {CLOCKREGION_X4Y0:CLOCKREGION_X4Y0}
 set_property PARENT hbm_right [get_pblocks hbm_16_19]
 set_property IS_SOFT TRUE [get_pblocks hbm_16_19]
 
-create_pblock hbm_20_23
-resize_pblock [get_pblocks hbm_20_23] -add {CLOCKREGION_X5Y0:CLOCKREGION_X5Y0}
-set_property PARENT hbm_right [get_pblocks hbm_20_23]
-set_property IS_SOFT TRUE [get_pblocks hbm_20_23]
-
-create_pblock hbm_24_27
-resize_pblock [get_pblocks hbm_24_27] -add {CLOCKREGION_X6Y0:CLOCKREGION_X6Y0}
-set_property PARENT hbm_right [get_pblocks hbm_24_27]
-set_property IS_SOFT TRUE [get_pblocks hbm_24_27]
-
-create_pblock hbm_28_31
-resize_pblock [get_pblocks hbm_28_31] -add {CLOCKREGION_X7Y0:CLOCKREGION_X7Y0}
-set_property PARENT hbm_right [get_pblocks hbm_28_31]
-set_property IS_SOFT TRUE [get_pblocks hbm_28_31]
+create_pblock hbm_20_31
+resize_pblock [get_pblocks hbm_20_31] -add {CLOCKREGION_X5Y0:CLOCKREGION_X7Y0}
+set_property PARENT hbm_right [get_pblocks hbm_20_31]
+set_property IS_SOFT TRUE [get_pblocks hbm_20_31]
 
 add_cells_to_pblock [get_pblocks hbm_00_03] [get_cells -quiet [list \
     hbm00_reader \
@@ -420,19 +410,16 @@ add_cells_to_pblock [get_pblocks hbm_16_19] [get_cells -quiet [list \
     hbm18_reader \
     hbm19_reader \
 ]]
-add_cells_to_pblock [get_pblocks hbm_20_23] [get_cells -quiet [list \
+# clock regions on the right side are weird & have differing number of HBM interfaces - 4, 5, 5, 2. Bundle all together
+add_cells_to_pblock [get_pblocks hbm_20_31] [get_cells -quiet [list \
     hbm20_reader \
     hbm21_reader \
     hbm22_reader \
     hbm23_reader \
-]]
-add_cells_to_pblock [get_pblocks hbm_24_27] [get_cells -quiet [list \
     hbm24_reader \
     hbm25_reader \
     hbm26_reader \
     hbm27_reader \
-]]
-add_cells_to_pblock [get_pblocks hbm_28_31] [get_cells -quiet [list \
     hbm28_reader \
     hbm29_reader \
     hbm30_reader \

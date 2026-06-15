@@ -248,37 +248,49 @@ module SUSpMV_Full {
     LineBusDistributor#(AXI_WIDTH: CTRL_AXI_WIDTH, NUM_OUTPUTS: 16, IDX_TO: 256) hbm_info_distributor_left
     LineBusDistributor#(AXI_WIDTH: CTRL_AXI_WIDTH, NUM_OUTPUTS: 16, IDX_TO: 256) hbm_info_distributor_right
     Tuple2 pack_hbm_ctrl
-    action_pipeline#(DEPTH: 6) pipeline_hbm_ctrl
+    action_pipeline#(DEPTH: 6) pipe_ctrl_to_hbm
+    Tuple2 pack_hbm_ctrl_left
+    action_pipeline#(DEPTH: 2) pipe_ctrl_to_hbm_left
+    Tuple2 pack_hbm_ctrl_right
+    action_pipeline#(DEPTH: 2) pipe_ctrl_to_hbm_right
 
     when ctrl.set_reg : int reg_idx, bool[CTRL_AXI_WIDTH] data {
         when reg_idx >= 2 & reg_idx < 6 {
             ddr_args[IntNarrow#(FROM: 2, TO: 6)(reg_idx) - 2] = data
         }
-        pipeline_hbm_ctrl.din(pack_hbm_ctrl.pack(reg_idx, data))
+        pipe_ctrl_to_hbm.din(pack_hbm_ctrl.pack(reg_idx, data))
     }
-    when pipeline_hbm_ctrl.dout : bool[] packed {
+    when pipe_ctrl_to_hbm.dout : bool[] packed {
         int reg_idx, bool[CTRL_AXI_WIDTH] data = pack_hbm_ctrl.unpack(packed)
+        pipe_ctrl_to_hbm_left.din(pack_hbm_ctrl_left.pack(reg_idx, data))
+        pipe_ctrl_to_hbm_right.din(pack_hbm_ctrl_right.pack(reg_idx, data))
+    }
+    when pipe_ctrl_to_hbm_left.dout : bool[] packed {
+        int reg_idx, bool[CTRL_AXI_WIDTH] data = pack_hbm_ctrl_left.unpack(packed)
         hbm_info_distributor_left.write(reg_idx, data)
+    }
+    when pipe_ctrl_to_hbm_right.dout : bool[] packed {
+        int reg_idx, bool[CTRL_AXI_WIDTH] data = pack_hbm_ctrl_right.unpack(packed)
         hbm_info_distributor_right.write(reg_idx, data)
     }
     bool[NUM_HBMS] hbm_ctrl_valid
     int#(FROM: 0, TO: 256)[NUM_HBMS] hbm_ctrl_idx
     bool[CTRL_AXI_WIDTH][NUM_HBMS] hbm_ctrl_data
     for int I in 0..16 {
-        hbm_ctrl_valid[I] = hbm_info_distributor_left.pipeline_valids[I]
-        hbm_ctrl_valid[31-I] = hbm_info_distributor_right.pipeline_valids[I]
-        hbm_ctrl_idx[I] = hbm_info_distributor_left.pipeline_idxes[I]
-        hbm_ctrl_idx[31-I] = hbm_info_distributor_right.pipeline_idxes[I]
-        hbm_ctrl_data[I] = hbm_info_distributor_left.pipeline_datas[I]
-        hbm_ctrl_data[31-I] = hbm_info_distributor_right.pipeline_datas[I]
+        hbm_ctrl_valid[15-I] = hbm_info_distributor_left.valids[I]
+        hbm_ctrl_valid[16+I] = hbm_info_distributor_right.valids[I]
+        hbm_ctrl_idx[15-I] = hbm_info_distributor_left.idxes[I]
+        hbm_ctrl_idx[16+I] = hbm_info_distributor_right.idxes[I]
+        hbm_ctrl_data[15-I] = hbm_info_distributor_left.datas[I]
+        hbm_ctrl_data[16+I] = hbm_info_distributor_right.datas[I]
     }
     
     gen int[NUM_HBMS] HBM_ADDR_REGS
     gen int[NUM_HBMS] HBM_COUNT_REGS
 
     for int I in 0..NUM_HBMS {
-        HBM_ADDR_REGS[I] = I * 2 + 4
-        HBM_COUNT_REGS[I] = I * 2 + 5
+        HBM_ADDR_REGS[I] = I * 2 + 4 + 2
+        HBM_COUNT_REGS[I] = I * 2 + 5 + 2
     }
 
     when ctrl.start {
@@ -489,7 +501,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm00_wstrb    = hbm00_reader.wstrb
     output bool                                     maxi_hbm00_wlast    = hbm00_reader.wlast
     output bool                                     maxi_hbm00_bready   = hbm00_reader.bready
-    input  bool                                     maxi_hbm00_wready'0
+    input  bool                                     maxi_hbm00_wready
     input  bool                                     maxi_hbm00_bvalid
     input  bool[2]                                  maxi_hbm00_bresp
     input  bool                                     maxi_hbm00_awready
@@ -508,7 +520,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm00_arlock   = hbm00_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm00_arregion = hbm00_reader.arregion
     output bool                                     maxi_hbm00_rready   = hbm00_reader.rready
-    input  bool                                     maxi_hbm00_arready'0
+    input  bool                                     maxi_hbm00_arready
     input  bool                                     maxi_hbm00_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm00_rdata
     input  bool[2]                                  maxi_hbm00_rresp
@@ -549,7 +561,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm01_wstrb    = hbm01_reader.wstrb
     output bool                                     maxi_hbm01_wlast    = hbm01_reader.wlast
     output bool                                     maxi_hbm01_bready   = hbm01_reader.bready
-    input  bool                                     maxi_hbm01_wready'0
+    input  bool                                     maxi_hbm01_wready
     input  bool                                     maxi_hbm01_bvalid
     input  bool[2]                                  maxi_hbm01_bresp
     input  bool                                     maxi_hbm01_awready
@@ -568,7 +580,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm01_arlock   = hbm01_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm01_arregion = hbm01_reader.arregion
     output bool                                     maxi_hbm01_rready   = hbm01_reader.rready
-    input  bool                                     maxi_hbm01_arready'0
+    input  bool                                     maxi_hbm01_arready
     input  bool                                     maxi_hbm01_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm01_rdata
     input  bool[2]                                  maxi_hbm01_rresp
@@ -609,7 +621,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm02_wstrb    = hbm02_reader.wstrb
     output bool                                     maxi_hbm02_wlast    = hbm02_reader.wlast
     output bool                                     maxi_hbm02_bready   = hbm02_reader.bready
-    input  bool                                     maxi_hbm02_wready'0
+    input  bool                                     maxi_hbm02_wready
     input  bool                                     maxi_hbm02_bvalid
     input  bool[2]                                  maxi_hbm02_bresp
     input  bool                                     maxi_hbm02_awready
@@ -628,7 +640,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm02_arlock   = hbm02_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm02_arregion = hbm02_reader.arregion
     output bool                                     maxi_hbm02_rready   = hbm02_reader.rready
-    input  bool                                     maxi_hbm02_arready'0
+    input  bool                                     maxi_hbm02_arready
     input  bool                                     maxi_hbm02_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm02_rdata
     input  bool[2]                                  maxi_hbm02_rresp
@@ -669,7 +681,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm03_wstrb    = hbm03_reader.wstrb
     output bool                                     maxi_hbm03_wlast    = hbm03_reader.wlast
     output bool                                     maxi_hbm03_bready   = hbm03_reader.bready
-    input  bool                                     maxi_hbm03_wready'0
+    input  bool                                     maxi_hbm03_wready
     input  bool                                     maxi_hbm03_bvalid
     input  bool[2]                                  maxi_hbm03_bresp
     input  bool                                     maxi_hbm03_awready
@@ -688,7 +700,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm03_arlock   = hbm03_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm03_arregion = hbm03_reader.arregion
     output bool                                     maxi_hbm03_rready   = hbm03_reader.rready
-    input  bool                                     maxi_hbm03_arready'0
+    input  bool                                     maxi_hbm03_arready
     input  bool                                     maxi_hbm03_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm03_rdata
     input  bool[2]                                  maxi_hbm03_rresp
@@ -729,7 +741,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm04_wstrb    = hbm04_reader.wstrb
     output bool                                     maxi_hbm04_wlast    = hbm04_reader.wlast
     output bool                                     maxi_hbm04_bready   = hbm04_reader.bready
-    input  bool                                     maxi_hbm04_wready'0
+    input  bool                                     maxi_hbm04_wready
     input  bool                                     maxi_hbm04_bvalid
     input  bool[2]                                  maxi_hbm04_bresp
     input  bool                                     maxi_hbm04_awready
@@ -748,7 +760,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm04_arlock   = hbm04_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm04_arregion = hbm04_reader.arregion
     output bool                                     maxi_hbm04_rready   = hbm04_reader.rready
-    input  bool                                     maxi_hbm04_arready'0
+    input  bool                                     maxi_hbm04_arready
     input  bool                                     maxi_hbm04_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm04_rdata
     input  bool[2]                                  maxi_hbm04_rresp
@@ -789,7 +801,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm05_wstrb    = hbm05_reader.wstrb
     output bool                                     maxi_hbm05_wlast    = hbm05_reader.wlast
     output bool                                     maxi_hbm05_bready   = hbm05_reader.bready
-    input  bool                                     maxi_hbm05_wready'0
+    input  bool                                     maxi_hbm05_wready
     input  bool                                     maxi_hbm05_bvalid
     input  bool[2]                                  maxi_hbm05_bresp
     input  bool                                     maxi_hbm05_awready
@@ -808,7 +820,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm05_arlock   = hbm05_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm05_arregion = hbm05_reader.arregion
     output bool                                     maxi_hbm05_rready   = hbm05_reader.rready
-    input  bool                                     maxi_hbm05_arready'0
+    input  bool                                     maxi_hbm05_arready
     input  bool                                     maxi_hbm05_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm05_rdata
     input  bool[2]                                  maxi_hbm05_rresp
@@ -849,7 +861,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm06_wstrb    = hbm06_reader.wstrb
     output bool                                     maxi_hbm06_wlast    = hbm06_reader.wlast
     output bool                                     maxi_hbm06_bready   = hbm06_reader.bready
-    input  bool                                     maxi_hbm06_wready'0
+    input  bool                                     maxi_hbm06_wready
     input  bool                                     maxi_hbm06_bvalid
     input  bool[2]                                  maxi_hbm06_bresp
     input  bool                                     maxi_hbm06_awready
@@ -868,7 +880,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm06_arlock   = hbm06_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm06_arregion = hbm06_reader.arregion
     output bool                                     maxi_hbm06_rready   = hbm06_reader.rready
-    input  bool                                     maxi_hbm06_arready'0
+    input  bool                                     maxi_hbm06_arready
     input  bool                                     maxi_hbm06_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm06_rdata
     input  bool[2]                                  maxi_hbm06_rresp
@@ -909,7 +921,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm07_wstrb    = hbm07_reader.wstrb
     output bool                                     maxi_hbm07_wlast    = hbm07_reader.wlast
     output bool                                     maxi_hbm07_bready   = hbm07_reader.bready
-    input  bool                                     maxi_hbm07_wready'0
+    input  bool                                     maxi_hbm07_wready
     input  bool                                     maxi_hbm07_bvalid
     input  bool[2]                                  maxi_hbm07_bresp
     input  bool                                     maxi_hbm07_awready
@@ -928,7 +940,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm07_arlock   = hbm07_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm07_arregion = hbm07_reader.arregion
     output bool                                     maxi_hbm07_rready   = hbm07_reader.rready
-    input  bool                                     maxi_hbm07_arready'0
+    input  bool                                     maxi_hbm07_arready
     input  bool                                     maxi_hbm07_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm07_rdata
     input  bool[2]                                  maxi_hbm07_rresp
@@ -969,7 +981,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm08_wstrb    = hbm08_reader.wstrb
     output bool                                     maxi_hbm08_wlast    = hbm08_reader.wlast
     output bool                                     maxi_hbm08_bready   = hbm08_reader.bready
-    input  bool                                     maxi_hbm08_wready'0
+    input  bool                                     maxi_hbm08_wready
     input  bool                                     maxi_hbm08_bvalid
     input  bool[2]                                  maxi_hbm08_bresp
     input  bool                                     maxi_hbm08_awready
@@ -988,7 +1000,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm08_arlock   = hbm08_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm08_arregion = hbm08_reader.arregion
     output bool                                     maxi_hbm08_rready   = hbm08_reader.rready
-    input  bool                                     maxi_hbm08_arready'0
+    input  bool                                     maxi_hbm08_arready
     input  bool                                     maxi_hbm08_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm08_rdata
     input  bool[2]                                  maxi_hbm08_rresp
@@ -1029,7 +1041,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm09_wstrb    = hbm09_reader.wstrb
     output bool                                     maxi_hbm09_wlast    = hbm09_reader.wlast
     output bool                                     maxi_hbm09_bready   = hbm09_reader.bready
-    input  bool                                     maxi_hbm09_wready'0
+    input  bool                                     maxi_hbm09_wready
     input  bool                                     maxi_hbm09_bvalid
     input  bool[2]                                  maxi_hbm09_bresp
     input  bool                                     maxi_hbm09_awready
@@ -1048,7 +1060,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm09_arlock   = hbm09_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm09_arregion = hbm09_reader.arregion
     output bool                                     maxi_hbm09_rready   = hbm09_reader.rready
-    input  bool                                     maxi_hbm09_arready'0
+    input  bool                                     maxi_hbm09_arready
     input  bool                                     maxi_hbm09_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm09_rdata
     input  bool[2]                                  maxi_hbm09_rresp
@@ -1089,7 +1101,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm10_wstrb    = hbm10_reader.wstrb
     output bool                                     maxi_hbm10_wlast    = hbm10_reader.wlast
     output bool                                     maxi_hbm10_bready   = hbm10_reader.bready
-    input  bool                                     maxi_hbm10_wready'0
+    input  bool                                     maxi_hbm10_wready
     input  bool                                     maxi_hbm10_bvalid
     input  bool[2]                                  maxi_hbm10_bresp
     input  bool                                     maxi_hbm10_awready
@@ -1108,7 +1120,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm10_arlock   = hbm10_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm10_arregion = hbm10_reader.arregion
     output bool                                     maxi_hbm10_rready   = hbm10_reader.rready
-    input  bool                                     maxi_hbm10_arready'0
+    input  bool                                     maxi_hbm10_arready
     input  bool                                     maxi_hbm10_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm10_rdata
     input  bool[2]                                  maxi_hbm10_rresp
@@ -1149,7 +1161,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm11_wstrb    = hbm11_reader.wstrb
     output bool                                     maxi_hbm11_wlast    = hbm11_reader.wlast
     output bool                                     maxi_hbm11_bready   = hbm11_reader.bready
-    input  bool                                     maxi_hbm11_wready'0
+    input  bool                                     maxi_hbm11_wready
     input  bool                                     maxi_hbm11_bvalid
     input  bool[2]                                  maxi_hbm11_bresp
     input  bool                                     maxi_hbm11_awready
@@ -1168,7 +1180,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm11_arlock   = hbm11_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm11_arregion = hbm11_reader.arregion
     output bool                                     maxi_hbm11_rready   = hbm11_reader.rready
-    input  bool                                     maxi_hbm11_arready'0
+    input  bool                                     maxi_hbm11_arready
     input  bool                                     maxi_hbm11_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm11_rdata
     input  bool[2]                                  maxi_hbm11_rresp
@@ -1209,7 +1221,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm12_wstrb    = hbm12_reader.wstrb
     output bool                                     maxi_hbm12_wlast    = hbm12_reader.wlast
     output bool                                     maxi_hbm12_bready   = hbm12_reader.bready
-    input  bool                                     maxi_hbm12_wready'0
+    input  bool                                     maxi_hbm12_wready
     input  bool                                     maxi_hbm12_bvalid
     input  bool[2]                                  maxi_hbm12_bresp
     input  bool                                     maxi_hbm12_awready
@@ -1228,7 +1240,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm12_arlock   = hbm12_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm12_arregion = hbm12_reader.arregion
     output bool                                     maxi_hbm12_rready   = hbm12_reader.rready
-    input  bool                                     maxi_hbm12_arready'0
+    input  bool                                     maxi_hbm12_arready
     input  bool                                     maxi_hbm12_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm12_rdata
     input  bool[2]                                  maxi_hbm12_rresp
@@ -1269,7 +1281,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm13_wstrb    = hbm13_reader.wstrb
     output bool                                     maxi_hbm13_wlast    = hbm13_reader.wlast
     output bool                                     maxi_hbm13_bready   = hbm13_reader.bready
-    input  bool                                     maxi_hbm13_wready'0
+    input  bool                                     maxi_hbm13_wready
     input  bool                                     maxi_hbm13_bvalid
     input  bool[2]                                  maxi_hbm13_bresp
     input  bool                                     maxi_hbm13_awready
@@ -1288,7 +1300,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm13_arlock   = hbm13_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm13_arregion = hbm13_reader.arregion
     output bool                                     maxi_hbm13_rready   = hbm13_reader.rready
-    input  bool                                     maxi_hbm13_arready'0
+    input  bool                                     maxi_hbm13_arready
     input  bool                                     maxi_hbm13_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm13_rdata
     input  bool[2]                                  maxi_hbm13_rresp
@@ -1329,7 +1341,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm14_wstrb    = hbm14_reader.wstrb
     output bool                                     maxi_hbm14_wlast    = hbm14_reader.wlast
     output bool                                     maxi_hbm14_bready   = hbm14_reader.bready
-    input  bool                                     maxi_hbm14_wready'0
+    input  bool                                     maxi_hbm14_wready
     input  bool                                     maxi_hbm14_bvalid
     input  bool[2]                                  maxi_hbm14_bresp
     input  bool                                     maxi_hbm14_awready
@@ -1348,7 +1360,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm14_arlock   = hbm14_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm14_arregion = hbm14_reader.arregion
     output bool                                     maxi_hbm14_rready   = hbm14_reader.rready
-    input  bool                                     maxi_hbm14_arready'0
+    input  bool                                     maxi_hbm14_arready
     input  bool                                     maxi_hbm14_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm14_rdata
     input  bool[2]                                  maxi_hbm14_rresp
@@ -1389,7 +1401,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm15_wstrb    = hbm15_reader.wstrb
     output bool                                     maxi_hbm15_wlast    = hbm15_reader.wlast
     output bool                                     maxi_hbm15_bready   = hbm15_reader.bready
-    input  bool                                     maxi_hbm15_wready'0
+    input  bool                                     maxi_hbm15_wready
     input  bool                                     maxi_hbm15_bvalid
     input  bool[2]                                  maxi_hbm15_bresp
     input  bool                                     maxi_hbm15_awready
@@ -1408,7 +1420,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm15_arlock   = hbm15_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm15_arregion = hbm15_reader.arregion
     output bool                                     maxi_hbm15_rready   = hbm15_reader.rready
-    input  bool                                     maxi_hbm15_arready'0
+    input  bool                                     maxi_hbm15_arready
     input  bool                                     maxi_hbm15_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm15_rdata
     input  bool[2]                                  maxi_hbm15_rresp
@@ -1449,7 +1461,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm16_wstrb    = hbm16_reader.wstrb
     output bool                                     maxi_hbm16_wlast    = hbm16_reader.wlast
     output bool                                     maxi_hbm16_bready   = hbm16_reader.bready
-    input  bool                                     maxi_hbm16_wready'0
+    input  bool                                     maxi_hbm16_wready
     input  bool                                     maxi_hbm16_bvalid
     input  bool[2]                                  maxi_hbm16_bresp
     input  bool                                     maxi_hbm16_awready
@@ -1468,7 +1480,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm16_arlock   = hbm16_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm16_arregion = hbm16_reader.arregion
     output bool                                     maxi_hbm16_rready   = hbm16_reader.rready
-    input  bool                                     maxi_hbm16_arready'0
+    input  bool                                     maxi_hbm16_arready
     input  bool                                     maxi_hbm16_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm16_rdata
     input  bool[2]                                  maxi_hbm16_rresp
@@ -1509,7 +1521,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm17_wstrb    = hbm17_reader.wstrb
     output bool                                     maxi_hbm17_wlast    = hbm17_reader.wlast
     output bool                                     maxi_hbm17_bready   = hbm17_reader.bready
-    input  bool                                     maxi_hbm17_wready'0
+    input  bool                                     maxi_hbm17_wready
     input  bool                                     maxi_hbm17_bvalid
     input  bool[2]                                  maxi_hbm17_bresp
     input  bool                                     maxi_hbm17_awready
@@ -1528,7 +1540,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm17_arlock   = hbm17_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm17_arregion = hbm17_reader.arregion
     output bool                                     maxi_hbm17_rready   = hbm17_reader.rready
-    input  bool                                     maxi_hbm17_arready'0
+    input  bool                                     maxi_hbm17_arready
     input  bool                                     maxi_hbm17_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm17_rdata
     input  bool[2]                                  maxi_hbm17_rresp
@@ -1569,7 +1581,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm18_wstrb    = hbm18_reader.wstrb
     output bool                                     maxi_hbm18_wlast    = hbm18_reader.wlast
     output bool                                     maxi_hbm18_bready   = hbm18_reader.bready
-    input  bool                                     maxi_hbm18_wready'0
+    input  bool                                     maxi_hbm18_wready
     input  bool                                     maxi_hbm18_bvalid
     input  bool[2]                                  maxi_hbm18_bresp
     input  bool                                     maxi_hbm18_awready
@@ -1588,7 +1600,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm18_arlock   = hbm18_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm18_arregion = hbm18_reader.arregion
     output bool                                     maxi_hbm18_rready   = hbm18_reader.rready
-    input  bool                                     maxi_hbm18_arready'0
+    input  bool                                     maxi_hbm18_arready
     input  bool                                     maxi_hbm18_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm18_rdata
     input  bool[2]                                  maxi_hbm18_rresp
@@ -1629,7 +1641,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm19_wstrb    = hbm19_reader.wstrb
     output bool                                     maxi_hbm19_wlast    = hbm19_reader.wlast
     output bool                                     maxi_hbm19_bready   = hbm19_reader.bready
-    input  bool                                     maxi_hbm19_wready'0
+    input  bool                                     maxi_hbm19_wready
     input  bool                                     maxi_hbm19_bvalid
     input  bool[2]                                  maxi_hbm19_bresp
     input  bool                                     maxi_hbm19_awready
@@ -1648,7 +1660,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm19_arlock   = hbm19_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm19_arregion = hbm19_reader.arregion
     output bool                                     maxi_hbm19_rready   = hbm19_reader.rready
-    input  bool                                     maxi_hbm19_arready'0
+    input  bool                                     maxi_hbm19_arready
     input  bool                                     maxi_hbm19_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm19_rdata
     input  bool[2]                                  maxi_hbm19_rresp
@@ -1689,7 +1701,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm20_wstrb    = hbm20_reader.wstrb
     output bool                                     maxi_hbm20_wlast    = hbm20_reader.wlast
     output bool                                     maxi_hbm20_bready   = hbm20_reader.bready
-    input  bool                                     maxi_hbm20_wready'0
+    input  bool                                     maxi_hbm20_wready
     input  bool                                     maxi_hbm20_bvalid
     input  bool[2]                                  maxi_hbm20_bresp
     input  bool                                     maxi_hbm20_awready
@@ -1708,7 +1720,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm20_arlock   = hbm20_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm20_arregion = hbm20_reader.arregion
     output bool                                     maxi_hbm20_rready   = hbm20_reader.rready
-    input  bool                                     maxi_hbm20_arready'0
+    input  bool                                     maxi_hbm20_arready
     input  bool                                     maxi_hbm20_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm20_rdata
     input  bool[2]                                  maxi_hbm20_rresp
@@ -1749,7 +1761,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm21_wstrb    = hbm21_reader.wstrb
     output bool                                     maxi_hbm21_wlast    = hbm21_reader.wlast
     output bool                                     maxi_hbm21_bready   = hbm21_reader.bready
-    input  bool                                     maxi_hbm21_wready'0
+    input  bool                                     maxi_hbm21_wready
     input  bool                                     maxi_hbm21_bvalid
     input  bool[2]                                  maxi_hbm21_bresp
     input  bool                                     maxi_hbm21_awready
@@ -1768,7 +1780,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm21_arlock   = hbm21_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm21_arregion = hbm21_reader.arregion
     output bool                                     maxi_hbm21_rready   = hbm21_reader.rready
-    input  bool                                     maxi_hbm21_arready'0
+    input  bool                                     maxi_hbm21_arready
     input  bool                                     maxi_hbm21_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm21_rdata
     input  bool[2]                                  maxi_hbm21_rresp
@@ -1809,7 +1821,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm22_wstrb    = hbm22_reader.wstrb
     output bool                                     maxi_hbm22_wlast    = hbm22_reader.wlast
     output bool                                     maxi_hbm22_bready   = hbm22_reader.bready
-    input  bool                                     maxi_hbm22_wready'0
+    input  bool                                     maxi_hbm22_wready
     input  bool                                     maxi_hbm22_bvalid
     input  bool[2]                                  maxi_hbm22_bresp
     input  bool                                     maxi_hbm22_awready
@@ -1828,7 +1840,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm22_arlock   = hbm22_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm22_arregion = hbm22_reader.arregion
     output bool                                     maxi_hbm22_rready   = hbm22_reader.rready
-    input  bool                                     maxi_hbm22_arready'0
+    input  bool                                     maxi_hbm22_arready
     input  bool                                     maxi_hbm22_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm22_rdata
     input  bool[2]                                  maxi_hbm22_rresp
@@ -1869,7 +1881,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm23_wstrb    = hbm23_reader.wstrb
     output bool                                     maxi_hbm23_wlast    = hbm23_reader.wlast
     output bool                                     maxi_hbm23_bready   = hbm23_reader.bready
-    input  bool                                     maxi_hbm23_wready'0
+    input  bool                                     maxi_hbm23_wready
     input  bool                                     maxi_hbm23_bvalid
     input  bool[2]                                  maxi_hbm23_bresp
     input  bool                                     maxi_hbm23_awready
@@ -1888,7 +1900,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm23_arlock   = hbm23_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm23_arregion = hbm23_reader.arregion
     output bool                                     maxi_hbm23_rready   = hbm23_reader.rready
-    input  bool                                     maxi_hbm23_arready'0
+    input  bool                                     maxi_hbm23_arready
     input  bool                                     maxi_hbm23_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm23_rdata
     input  bool[2]                                  maxi_hbm23_rresp
@@ -1929,7 +1941,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm24_wstrb    = hbm24_reader.wstrb
     output bool                                     maxi_hbm24_wlast    = hbm24_reader.wlast
     output bool                                     maxi_hbm24_bready   = hbm24_reader.bready
-    input  bool                                     maxi_hbm24_wready'0
+    input  bool                                     maxi_hbm24_wready
     input  bool                                     maxi_hbm24_bvalid
     input  bool[2]                                  maxi_hbm24_bresp
     input  bool                                     maxi_hbm24_awready
@@ -1948,7 +1960,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm24_arlock   = hbm24_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm24_arregion = hbm24_reader.arregion
     output bool                                     maxi_hbm24_rready   = hbm24_reader.rready
-    input  bool                                     maxi_hbm24_arready'0
+    input  bool                                     maxi_hbm24_arready
     input  bool                                     maxi_hbm24_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm24_rdata
     input  bool[2]                                  maxi_hbm24_rresp
@@ -1989,7 +2001,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm25_wstrb    = hbm25_reader.wstrb
     output bool                                     maxi_hbm25_wlast    = hbm25_reader.wlast
     output bool                                     maxi_hbm25_bready   = hbm25_reader.bready
-    input  bool                                     maxi_hbm25_wready'0
+    input  bool                                     maxi_hbm25_wready
     input  bool                                     maxi_hbm25_bvalid
     input  bool[2]                                  maxi_hbm25_bresp
     input  bool                                     maxi_hbm25_awready
@@ -2008,7 +2020,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm25_arlock   = hbm25_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm25_arregion = hbm25_reader.arregion
     output bool                                     maxi_hbm25_rready   = hbm25_reader.rready
-    input  bool                                     maxi_hbm25_arready'0
+    input  bool                                     maxi_hbm25_arready
     input  bool                                     maxi_hbm25_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm25_rdata
     input  bool[2]                                  maxi_hbm25_rresp
@@ -2049,7 +2061,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm26_wstrb    = hbm26_reader.wstrb
     output bool                                     maxi_hbm26_wlast    = hbm26_reader.wlast
     output bool                                     maxi_hbm26_bready   = hbm26_reader.bready
-    input  bool                                     maxi_hbm26_wready'0
+    input  bool                                     maxi_hbm26_wready
     input  bool                                     maxi_hbm26_bvalid
     input  bool[2]                                  maxi_hbm26_bresp
     input  bool                                     maxi_hbm26_awready
@@ -2068,7 +2080,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm26_arlock   = hbm26_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm26_arregion = hbm26_reader.arregion
     output bool                                     maxi_hbm26_rready   = hbm26_reader.rready
-    input  bool                                     maxi_hbm26_arready'0
+    input  bool                                     maxi_hbm26_arready
     input  bool                                     maxi_hbm26_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm26_rdata
     input  bool[2]                                  maxi_hbm26_rresp
@@ -2109,7 +2121,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm27_wstrb    = hbm27_reader.wstrb
     output bool                                     maxi_hbm27_wlast    = hbm27_reader.wlast
     output bool                                     maxi_hbm27_bready   = hbm27_reader.bready
-    input  bool                                     maxi_hbm27_wready'0
+    input  bool                                     maxi_hbm27_wready
     input  bool                                     maxi_hbm27_bvalid
     input  bool[2]                                  maxi_hbm27_bresp
     input  bool                                     maxi_hbm27_awready
@@ -2128,7 +2140,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm27_arlock   = hbm27_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm27_arregion = hbm27_reader.arregion
     output bool                                     maxi_hbm27_rready   = hbm27_reader.rready
-    input  bool                                     maxi_hbm27_arready'0
+    input  bool                                     maxi_hbm27_arready
     input  bool                                     maxi_hbm27_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm27_rdata
     input  bool[2]                                  maxi_hbm27_rresp
@@ -2169,7 +2181,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm28_wstrb    = hbm28_reader.wstrb
     output bool                                     maxi_hbm28_wlast    = hbm28_reader.wlast
     output bool                                     maxi_hbm28_bready   = hbm28_reader.bready
-    input  bool                                     maxi_hbm28_wready'0
+    input  bool                                     maxi_hbm28_wready
     input  bool                                     maxi_hbm28_bvalid
     input  bool[2]                                  maxi_hbm28_bresp
     input  bool                                     maxi_hbm28_awready
@@ -2188,7 +2200,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm28_arlock   = hbm28_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm28_arregion = hbm28_reader.arregion
     output bool                                     maxi_hbm28_rready   = hbm28_reader.rready
-    input  bool                                     maxi_hbm28_arready'0
+    input  bool                                     maxi_hbm28_arready
     input  bool                                     maxi_hbm28_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm28_rdata
     input  bool[2]                                  maxi_hbm28_rresp
@@ -2229,7 +2241,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm29_wstrb    = hbm29_reader.wstrb
     output bool                                     maxi_hbm29_wlast    = hbm29_reader.wlast
     output bool                                     maxi_hbm29_bready   = hbm29_reader.bready
-    input  bool                                     maxi_hbm29_wready'0
+    input  bool                                     maxi_hbm29_wready
     input  bool                                     maxi_hbm29_bvalid
     input  bool[2]                                  maxi_hbm29_bresp
     input  bool                                     maxi_hbm29_awready
@@ -2248,7 +2260,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm29_arlock   = hbm29_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm29_arregion = hbm29_reader.arregion
     output bool                                     maxi_hbm29_rready   = hbm29_reader.rready
-    input  bool                                     maxi_hbm29_arready'0
+    input  bool                                     maxi_hbm29_arready
     input  bool                                     maxi_hbm29_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm29_rdata
     input  bool[2]                                  maxi_hbm29_rresp
@@ -2289,7 +2301,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm30_wstrb    = hbm30_reader.wstrb
     output bool                                     maxi_hbm30_wlast    = hbm30_reader.wlast
     output bool                                     maxi_hbm30_bready   = hbm30_reader.bready
-    input  bool                                     maxi_hbm30_wready'0
+    input  bool                                     maxi_hbm30_wready
     input  bool                                     maxi_hbm30_bvalid
     input  bool[2]                                  maxi_hbm30_bresp
     input  bool                                     maxi_hbm30_awready
@@ -2308,7 +2320,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm30_arlock   = hbm30_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm30_arregion = hbm30_reader.arregion
     output bool                                     maxi_hbm30_rready   = hbm30_reader.rready
-    input  bool                                     maxi_hbm30_arready'0
+    input  bool                                     maxi_hbm30_arready
     input  bool                                     maxi_hbm30_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm30_rdata
     input  bool[2]                                  maxi_hbm30_rresp
@@ -2349,7 +2361,7 @@ module SUSpMV_Full {
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm31_wstrb    = hbm31_reader.wstrb
     output bool                                     maxi_hbm31_wlast    = hbm31_reader.wlast
     output bool                                     maxi_hbm31_bready   = hbm31_reader.bready
-    input  bool                                     maxi_hbm31_wready'0
+    input  bool                                     maxi_hbm31_wready
     input  bool                                     maxi_hbm31_bvalid
     input  bool[2]                                  maxi_hbm31_bresp
     input  bool                                     maxi_hbm31_awready
@@ -2368,7 +2380,7 @@ module SUSpMV_Full {
     output bool                                     maxi_hbm31_arlock   = hbm31_reader.arlock
     output int#(FROM: 0, TO: 16)                    maxi_hbm31_arregion = hbm31_reader.arregion
     output bool                                     maxi_hbm31_rready   = hbm31_reader.rready
-    input  bool                                     maxi_hbm31_arready'0
+    input  bool                                     maxi_hbm31_arready
     input  bool                                     maxi_hbm31_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm31_rdata
     input  bool[2]                                  maxi_hbm31_rresp
