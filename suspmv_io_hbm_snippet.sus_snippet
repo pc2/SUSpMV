@@ -2,20 +2,18 @@
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[{HBM_IDX}], COUNT_REG: HBM_COUNT_REGS[{HBM_IDX}]) hbm{HBM_IDX}_reader
     output bool                                     maxi_hbm{HBM_IDX}_awvalid  = hbm{HBM_IDX}_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm{HBM_IDX}_awaddr   = hbm{HBM_IDX}_reader.awaddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm{HBM_IDX}_awlen    = hbm{HBM_IDX}_reader.awlen
+    output int#(FROM: 0, TO: 16)                    maxi_hbm{HBM_IDX}_awlen    = hbm{HBM_IDX}_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm{HBM_IDX}_awsize   = hbm{HBM_IDX}_reader.awsize
     output bool[2]                                  maxi_hbm{HBM_IDX}_awburst  = hbm{HBM_IDX}_reader.awburst
     output bool[3]                                  maxi_hbm{HBM_IDX}_awprot   = hbm{HBM_IDX}_reader.awprot
     output bool[4]                                  maxi_hbm{HBM_IDX}_awcache  = hbm{HBM_IDX}_reader.awcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm{HBM_IDX}_awqos    = hbm{HBM_IDX}_reader.awqos
-    output bool                                     maxi_hbm{HBM_IDX}_awlock   = hbm{HBM_IDX}_reader.awlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm{HBM_IDX}_awregion = hbm{HBM_IDX}_reader.awregion
+    output bool[2]                                  maxi_hbm{HBM_IDX}_awlock   = hbm{HBM_IDX}_reader.awlock
     output bool                                     maxi_hbm{HBM_IDX}_wvalid   = hbm{HBM_IDX}_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm{HBM_IDX}_wdata    = hbm{HBM_IDX}_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm{HBM_IDX}_wstrb    = hbm{HBM_IDX}_reader.wstrb
     output bool                                     maxi_hbm{HBM_IDX}_wlast    = hbm{HBM_IDX}_reader.wlast
     output bool                                     maxi_hbm{HBM_IDX}_bready   = hbm{HBM_IDX}_reader.bready
-    input  bool                                     maxi_hbm{HBM_IDX}_wready'0
+    input  bool                                     maxi_hbm{HBM_IDX}_wready
     input  bool                                     maxi_hbm{HBM_IDX}_bvalid
     input  bool[2]                                  maxi_hbm{HBM_IDX}_bresp
     input  bool                                     maxi_hbm{HBM_IDX}_awready
@@ -25,16 +23,14 @@
     hbm{HBM_IDX}_reader.bresp =                            maxi_hbm{HBM_IDX}_bresp
     output bool                                     maxi_hbm{HBM_IDX}_arvalid  = hbm{HBM_IDX}_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm{HBM_IDX}_araddr   = hbm{HBM_IDX}_reader.araddr
-    output int#(FROM: 0, TO: 256)                   maxi_hbm{HBM_IDX}_arlen    = hbm{HBM_IDX}_reader.arlen
+    output int#(FROM: 0, TO: 16)                    maxi_hbm{HBM_IDX}_arlen    = hbm{HBM_IDX}_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm{HBM_IDX}_arsize   = hbm{HBM_IDX}_reader.arsize
     output bool[2]                                  maxi_hbm{HBM_IDX}_arburst  = hbm{HBM_IDX}_reader.arburst
     output bool[3]                                  maxi_hbm{HBM_IDX}_arprot   = hbm{HBM_IDX}_reader.arprot
     output bool[4]                                  maxi_hbm{HBM_IDX}_arcache  = hbm{HBM_IDX}_reader.arcache
-    output int#(FROM: 0, TO: 16)                    maxi_hbm{HBM_IDX}_arqos    = hbm{HBM_IDX}_reader.arqos
-    output bool                                     maxi_hbm{HBM_IDX}_arlock   = hbm{HBM_IDX}_reader.arlock
-    output int#(FROM: 0, TO: 16)                    maxi_hbm{HBM_IDX}_arregion = hbm{HBM_IDX}_reader.arregion
+    output bool[2]                                  maxi_hbm{HBM_IDX}_arlock   = hbm{HBM_IDX}_reader.arlock
     output bool                                     maxi_hbm{HBM_IDX}_rready   = hbm{HBM_IDX}_reader.rready
-    input  bool                                     maxi_hbm{HBM_IDX}_arready'0
+    input  bool                                     maxi_hbm{HBM_IDX}_arready
     input  bool                                     maxi_hbm{HBM_IDX}_rvalid
     input  bool[HBM_AXI_WIDTH]                      maxi_hbm{HBM_IDX}_rdata
     input  bool[2]                                  maxi_hbm{HBM_IDX}_rresp

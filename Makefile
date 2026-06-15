@@ -10,7 +10,7 @@ FILES += suspmv.sus
 FILES += suspmv_io.sus
 FILES += slr_crossing.sus
 FILES += sus-float/fp_custom.sus
-FILES += sus-xrt/axi.sus
+FILES += sus-xrt/axi_memory.sus
 FILES += sus-tapasco/sus/tapasco_ctrl_slave.sus
 
 # Configurations that change based on the platform
