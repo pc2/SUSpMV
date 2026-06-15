@@ -459,35 +459,6 @@ module WideFanout#(T, int SIZE, int DEPTH) {
     }
 }
 
-module LineBusDistributor#(int AXI_WIDTH, int NUM_OUTPUTS, int IDX_TO) {
-    output bool[NUM_OUTPUTS] valids'NUM_OUTPUTS
-    output int#(FROM: 0, TO: IDX_TO)[NUM_OUTPUTS] idxes'NUM_OUTPUTS
-    output bool[AXI_WIDTH][NUM_OUTPUTS] datas'NUM_OUTPUTS+1
-
-    split bool[NUM_OUTPUTS] pipeline_valids
-    split int#(FROM: 0, TO: IDX_TO)[NUM_OUTPUTS] pipeline_idxes
-    split bool[AXI_WIDTH][NUM_OUTPUTS] pipeline_datas
-
-    for int I in 1..NUM_OUTPUTS {
-        reg pipeline_valids[I] = pipeline_valids[I - 1]
-        reg pipeline_idxes[I] = pipeline_idxes[I - 1]
-        reg pipeline_datas[I] = pipeline_datas[I - 1]
-    }
-    for int I in 0..NUM_OUTPUTS {
-        valids[I] = LatencyOffset#(OFFSET: NUM_OUTPUTS - 1 - I)(pipeline_valids[I])
-        idxes[I] = LatencyOffset#(OFFSET: NUM_OUTPUTS - 1 - I)(pipeline_idxes[I])
-        datas[I] = LatencyOffset#(OFFSET: NUM_OUTPUTS - 1 - I)(pipeline_datas[I])
-    }
-
-    action write'0 : int#(FROM: 0, TO: IDX_TO) idx'0, bool[AXI_WIDTH] data'1 {
-        reg pipeline_valids[0] = true
-        reg pipeline_idxes[0] = idx
-        reg pipeline_datas[0] = data
-    } else {
-        reg pipeline_valids[0] = false
-    }
-}
-
 module HBMReader#(int START_REG, int ADDR_REG, int COUNT_REG) {
     gen int HBM_AXI_WIDTH = 256
     gen int MEM_ADDR_WIDTH = 64

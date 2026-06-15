@@ -178,3 +178,39 @@ always_ff @(posedge clk) begin
 	may_push <= space_remaining > MAY_PUSH_LATENCY - 2;
 end
 endmodule
+
+module LineBusDistributor #(
+    parameter integer AXI_WIDTH,
+    parameter integer NUM_OUTPUTS,
+    parameter integer IDX_TO
+)(
+	input clk,
+    (* keep = "true" *)
+    (* equivalent_register_removal = "no" *)
+    (* shreg_extract = "no" *)
+	output logic[NUM_OUTPUTS-1:0] valids,
+    (* keep = "true" *)
+    (* equivalent_register_removal = "no" *)
+    (* shreg_extract = "no" *)
+	output logic[$clog2(IDX_TO) - 1:0] idxes[0:NUM_OUTPUTS-1],
+    (* keep = "true" *)
+    (* equivalent_register_removal = "no" *)
+    (* shreg_extract = "no" *)
+	output logic[AXI_WIDTH-1:0] datas[0:NUM_OUTPUTS-1],
+	input wire write,
+	input wire[$clog2(IDX_TO) - 1:0] idx,
+	input wire[AXI_WIDTH-1:0] data
+);
+
+always_ff @(posedge clk) begin
+    valids[0] <= write;
+    idxes[0] <= idx;
+    datas[0] <= data;
+    for(int i = 1; i < NUM_OUTPUTS; i++) begin
+        valids[i] <= valids[i-1];
+        idxes[i] <= idxes[i-1];
+        datas[i] <= datas[i-1];
+    end
+end
+
+endmodule

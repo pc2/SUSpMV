@@ -122,3 +122,11 @@ extern module LUTRAM_FWFT #(int WIDTH, int DEPTH, int MAY_PUSH_LATENCY) {
     domain reset
     action rst'0 {}
 }
+
+extern module LineBusDistributor#(int AXI_WIDTH, int NUM_OUTPUTS, int IDX_TO) {
+    output bool[NUM_OUTPUTS] valids'NUM_OUTPUTS
+    output int#(FROM: 0, TO: IDX_TO)[NUM_OUTPUTS] idxes'NUM_OUTPUTS
+    output bool[AXI_WIDTH][NUM_OUTPUTS] datas'NUM_OUTPUTS+1
+
+    action write'0 : int#(FROM: 0, TO: IDX_TO) idx'0, bool[AXI_WIDTH] data'1 {}
+}
