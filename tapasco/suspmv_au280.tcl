@@ -79,28 +79,30 @@ namespace eval suspmv {
         set aresetn [get_bd_pins design_interconnect_aresetn]
         save_bd_design
 
-        # connect PE hmb00-30
-        for {set i 0} {$i < 31} {incr i} {
+        # connect PE hmb00-31
+        set hbm_dma_index 20
+        for {set i 0} {$i < 32} {incr i} {
             set master [lindex $hbmports $i]
             set hbm_index [format %02s $i]
-            connect_bd_net $aclk [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
-            connect_bd_net $aresetn [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
-            connect_bd_intf_net $master [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
+            if { $i != $hbm_dma_index } {
+                # connect PE and hmb
+                connect_bd_net $aclk [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
+                connect_bd_net $aresetn [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
+                connect_bd_intf_net $master [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
+            } else {
+                # connect PE, hmb and dma
+                set converter [tapasco::ip::create_axi_ic converter_ic_dma 2 1]
+                set dma_slave [get_bd_intf_pins $converter/S00_AXI]
+                set dma_slave_clk [get_bd_pins $converter/S00_ACLK]
+                set dma_slave_rst [get_bd_pins $converter/S00_ARESETN]
+                connect_bd_net $aclk [get_bd_pins $converter/ACLK] [get_bd_pins $converter/M00_ACLK] [get_bd_pins $converter/S01_ACLK] [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
+                connect_bd_net $aresetn [get_bd_pins $converter/ARESETN] [get_bd_pins $converter/M00_ARESETN] [get_bd_pins $converter/S01_ARESETN] [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
+                connect_bd_intf_net [get_bd_intf_pins $converter/M00_AXI] [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
+                connect_bd_intf_net $master [get_bd_intf_pins $converter/S01_AXI]
+            }
         }
-        
-        # connect PE hmb31 and dma
-        set master [lindex $hbmports 31]
-        set converter [tapasco::ip::create_axi_ic converter_ic_31 2 1]
-        set dma_slave [get_bd_intf_pins $converter/S00_AXI]
-        set dma_slave_clk [get_bd_pins $converter/S00_ACLK]
-        set dma_slave_rst [get_bd_pins $converter/S00_ARESETN]
-        connect_bd_net $aclk [get_bd_pins $converter/ACLK] [get_bd_pins $converter/M00_ACLK] [get_bd_pins $converter/S01_ACLK] [get_bd_pins $hbm/AXI_31_ACLK]
-        connect_bd_net $aresetn [get_bd_pins $converter/ARESETN] [get_bd_pins $converter/M00_ARESETN] [get_bd_pins $converter/S01_ARESETN] [get_bd_pins $hbm/AXI_31_ARESET_N]
-        connect_bd_intf_net [get_bd_intf_pins $converter/M00_AXI] [get_bd_intf_pins $hbm/SAXI_31]
-        connect_bd_intf_net $master [get_bd_intf_pins $converter/S01_AXI]
-
         save_bd_design
-        
+
         ####################
         # connect DMA engine
 
