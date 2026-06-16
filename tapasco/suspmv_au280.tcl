@@ -94,8 +94,8 @@ namespace eval suspmv {
         set dma_slave [get_bd_intf_pins $converter/S00_AXI]
         set dma_slave_clk [get_bd_pins $converter/S00_ACLK]
         set dma_slave_rst [get_bd_pins $converter/S00_ARESETN]
-        connect_bd_net $aclk [get_bd_pins $converter/ACLK] [get_bd_pins $converter/M00_ACLK] [get_bd_pins $hbm/AXI_31_ACLK]
-        connect_bd_net $aresetn [get_bd_pins $converter/ARESETN] [get_bd_pins $converter/M00_ARESETN] [get_bd_pins $hbm/AXI_31_ARESET_N]
+        connect_bd_net $aclk [get_bd_pins $converter/ACLK] [get_bd_pins $converter/M00_ACLK] [get_bd_pins $converter/S01_ACLK] [get_bd_pins $hbm/AXI_31_ACLK]
+        connect_bd_net $aresetn [get_bd_pins $converter/ARESETN] [get_bd_pins $converter/M00_ARESETN] [get_bd_pins $converter/S01_ARESETN] [get_bd_pins $hbm/AXI_31_ARESET_N]
         connect_bd_intf_net [get_bd_intf_pins $converter/M00_AXI] [get_bd_intf_pins $hbm/SAXI_31]
         connect_bd_intf_net $master [get_bd_intf_pins $converter/S01_AXI]
 
