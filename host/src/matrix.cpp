@@ -583,7 +583,7 @@ bool Matrix::compare(Matrix &m) {
 
 std::vector<float> Matrix::mul(std::vector<float>& v) {
     assert(v.size() == width);
-    std::vector<double> r(height, 0.0);
+    std::vector<float> r(height, 0.0);
 
     for (Entry &entry : this->entries) {
         r[entry.y] += entry.val * v[entry.x];
@@ -601,11 +601,11 @@ std::vector<float> ComputeUnitData::mul(std::vector<float>& x_vec) {
 
     for(size_t compute_unit = 0; compute_unit < COMPUTE_UNITS; compute_unit++) {
         float cur_x_tile[TILE_X_WIDTH];
-        double cur_y_tile[MAX_TILE_Y_HEIGHT];
+        float cur_y_tile[MAX_TILE_Y_HEIGHT];
         uint64_t cur_x = 0;
         uint64_t cur_y = 0;
         uint64_t cur_y_repeat = 0;
-        double cur_accumulator = 0.0;
+        float cur_accumulator = 0.0;
         for(size_t i = 0; i < TILE_X_WIDTH; i++) {
             cur_x_tile[i] = 0.0;
         }
@@ -635,10 +635,10 @@ std::vector<float> ComputeUnitData::mul(std::vector<float>& x_vec) {
                     elem.float5.y_delta4
                 };
                 // To more closely match hardware behavior, use sub accumulator
-                double cur_subaccum = 0.0;
+                float cur_subaccum = 0.0;
                 for(int i = 0; i < 5; i++) {
                     float term = elem.float5.weights[i] * cur_x_tile[x_indices[i]];
-                    cur_subaccum += static_cast<double>(term);
+                    cur_subaccum += static_cast<float>(term);
 
                     if(dys[i] != 0) {
                         cur_y_tile[cur_y] += cur_accumulator + cur_subaccum;
@@ -698,11 +698,11 @@ std::vector<float> ComputeUnitData::mul(std::vector<float>& x_vec) {
                     }
                 }
 
-                double cur_subaccum = 0.0;
+                float cur_subaccum = 0.0;
                 for(int i = 0; i < 6; i++) {
                     float term = elem.float6.weights[i] * cur_x_tile[x_indices[i]];
 
-                    cur_subaccum += static_cast<double>(term);
+                    cur_subaccum += static_cast<float>(term);
 
                     if(lasts[i]) {
                         cur_y_tile[cur_y] += cur_accumulator + cur_subaccum;
