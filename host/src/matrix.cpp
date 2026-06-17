@@ -851,7 +851,11 @@ Matrix ComputeUnitData::convert() {
                     cur_y = 0;
                 }
                 if(elem.float5.last_in_y) {
-                    assert(y_max == y_end - y_start - 1);
+                    if (y_end == y_start) {
+                        assert(y_max == 0 && cur_y == 0);
+                    } else {
+                        assert(y_max == y_end - y_start - 1);
+                    }
                     y_max = 0;
                     cur_x = 0;
                     cur_y = 0;
@@ -934,7 +938,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
     while (base_y < height) {
         uint64_t initial_height = (initial_height_max + initial_height_min + 1) / 2;
         //std::cout << "reapeat = " << repeats+1 << "  " << initial_height << std::endl;
-        uint64_t y_end = std::min(base_y + initial_height, height - (COMPUTE_UNITS-1));
+        uint64_t y_end = std::max(base_y + 1, std::min(base_y + initial_height, height - (COMPUTE_UNITS-1)));
         // std::cout << "y_end " << y_end << std::endl;
         // std::cout << "base_y " << base_y << std::endl;
         uint64_t base_cost = y_sum_count[y_end] - y_sum_count[base_y] + tiles_per_row;
@@ -944,7 +948,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
 
         for (uint64_t c = 1; c < COMPUTE_UNITS; c++) {
             uint64_t y_start = y_end;
-            y_end = std::min(y_start + MAX_TILE_Y_HEIGHT, height - (COMPUTE_UNITS-1-c));
+            y_end = std::max(y_start + 1, std::min(y_start + MAX_TILE_Y_HEIGHT, height - (COMPUTE_UNITS-1-c)));
             // std::cout << "y_end " << y_end << std::endl;
             // std::cout << "y_start " << y_start << std::endl;
             uint64_t max_cost = y_sum_count[y_end] - y_sum_count[y_start] + tiles_per_row;
@@ -973,6 +977,10 @@ ComputeUnitData Matrix::get_compute_unit_data() {
                 }
                 max_cost = y_sum_count[y_end] - y_sum_count[y_start] + tiles_per_row;
             }
+            // make absolutely sure that this tile has a valid height
+            // - (1 <= tile_height < MAX_TILE_Y_HEIGHT)
+            // - 0 if that would extend beyond matrix.height
+            y_end = std::min(std::max(y_start + 1, std::min(y_start + MAX_TILE_Y_HEIGHT, y_end)), height);
             y_froms[repeats*COMPUTE_UNITS+c+1] = y_end;
             //std::cout << " c["<<c<<"].y = " << y_start << "  " << y_end << "  " << max_cost << std::endl;
         }
@@ -1000,8 +1008,8 @@ ComputeUnitData Matrix::get_compute_unit_data() {
     for (uint64_t i = 0; i < y_froms.size(); i++) {
         y_split_points.push_back(y_sum_count[y_froms[i]]);
     }
-    for (uint64_t i = 0; i < y_froms.size(); i++) {
-        size_t ys_in_this_y_tile = y_froms[i+1] - y_froms[i];
+    for (uint64_t i = 0; i < total_y_partitions; i++) {
+        int64_t ys_in_this_y_tile = y_froms[i+1] - y_froms[i];
         if(ys_in_this_y_tile > MAX_TILE_Y_HEIGHT) {
             std::cerr << "Tile " << i << "(" << y_froms[i] << ".." << y_froms[i+1] << ") had more Y values in it than MAX_TILE_Y_HEIGHT: " << ys_in_this_y_tile << ">=MAX_TILE_Y_HEIGHT (" << MAX_TILE_Y_HEIGHT << ")" << std::endl;
             exit(1);
@@ -1023,6 +1031,18 @@ ComputeUnitData Matrix::get_compute_unit_data() {
         std::cout << std::format("Placing Y {}(+{}) (entries {}..{}) in compute unit {}", y_froms[i], y_froms[i+1]-y_froms[i], from, to, cur_hbm);
         uint64_t blocks_before = builders[cur_hbm].blocks.size();
 
+        if (to > this->entries.size()) {
+            // this compute unit has no entries in this y-repeat
+            size_t b = builders[cur_hbm].blocks.size();
+            for(size_t t = 0; t < tiles_per_row; t++, b++) {
+                builders[cur_hbm].build_block();
+                builders[cur_hbm].blocks[b].float5.last_in_x = 1;
+                if (t == tiles_per_row-1) {
+                    builders[cur_hbm].blocks[b].float5.last_in_y = 1;
+                }
+            }
+            continue;
+        }
         assert(from <= to);
         assert(to <= this->entries.size());
         std::span<Entry> entries_here = std::span(this->entries).subspan(from, to - from);
