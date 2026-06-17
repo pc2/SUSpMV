@@ -69,8 +69,8 @@ int main(int argc, char **argv) {
     std::cout << "ComputeUnitData done" << std::endl;
 
     if(iterations == 0) {
-        std::vector<float> x_vec = random_x_vec(m.width);
-        //std::vector<float> x_vec(m.width, 1.0);
+        //std::vector<float> x_vec = random_x_vec(m.width);
+        std::vector<float> x_vec(m.width, 1.0);
         std::cout << "check mul" << std::endl;
         check_mul(m, data, x_vec);
         std::cout << "convert back" << std::endl;
