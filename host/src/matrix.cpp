@@ -1046,7 +1046,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
         for(std::vector<Entry>& tile : current_x_tile_split) {
             for(Entry& e : tile) {
                 assert(e.x < TILE_X_WIDTH);
-                std::cout << e.y << std::endl;
+                //std::cout << e.y << std::endl;
                 assert(e.y < MAX_TILE_Y_HEIGHT);
             }
         }
