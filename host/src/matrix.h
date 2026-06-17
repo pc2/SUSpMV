@@ -103,6 +103,7 @@ struct Matrix {
     std::vector<size_t> y_froms;
 
     static Matrix load(std::string path);
+    static Matrix load2(std::string path);
     void shuffle_random();
     void shuffle();
     std::vector<float> mul(std::vector<float>& v);

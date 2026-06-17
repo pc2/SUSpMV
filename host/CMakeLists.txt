@@ -13,6 +13,8 @@ endif()
 
 find_package(Threads)
 
+include_directories(include/)
+
 add_executable(suspmv src/main.cpp src/dump_hex.cpp src/matrix.cpp)
 set_tapasco_defaults(suspmv)
 target_link_libraries(suspmv PRIVATE tapasco)

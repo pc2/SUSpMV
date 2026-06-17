@@ -38,16 +38,17 @@ void check_mul(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec) {
 
     assert(y_vec_m.size() == y_vec_data.size());
 
-    bool any_error = false;
+	uint64_t errors = 0;
     for(size_t i = 0; i < y_vec_m.size(); i++) {
         if(!are_equalish(y_vec_m[i], y_vec_data[i])) {
-            any_error = true;
-	        std::cout << std::format("Y: {}, Mat.mul: {}\tData.mul: {}", i, y_vec_m[i], y_vec_data[i]) << std::endl;
+            errors++;
+            if (errors < 16) {
+	            std::cout << std::format("Y: {}, Mat.mul: {}\tData.mul: {}", i, y_vec_m[i], y_vec_data[i]) << std::endl;
+            }        
         }
     }
-    if(any_error) {
-        std::cout << "DISCREPANCY BETWEEN Mat.mul and Data.mul FOUND!" << std::endl;
-        //exit(1);
+    if(errors) {
+        std::cout << "DISCREPANCY BETWEEN Mat.mul and Data.mul FOUND! Errors: " << errors << std::endl;
     }
 }
 

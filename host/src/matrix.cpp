@@ -13,6 +13,7 @@
 #include <cstring>
 #include <cassert>
 #include <random>
+#include <fast_matrix_market/fast_matrix_market.hpp>
 
 static_assert(sizeof(MatrixDataBlock) == 256 / 8);
 
@@ -99,6 +100,50 @@ std::ostream& operator<<(std::ostream& ostr, MatrixDataBlock m_data) {
 }
 
 Matrix Matrix::load(std::string path) {
+    std::ifstream file(path);
+    if (!file) {
+        throw std::runtime_error("Failed to open file");
+    }
+    
+    struct triplet_matrix {
+		int64_t nrows = 0, ncols = 0;
+		std::vector<int64_t> rows, cols;
+		std::vector<double> vals;       // or int64_t, float, std::complex<double>, etc.
+	} fmm;
+
+	fast_matrix_market::read_matrix_market_triplet(
+		file,
+		fmm.nrows, fmm.ncols,
+        fmm.rows, fmm.cols, fmm.vals
+    );
+    
+    Matrix m = Matrix{
+        width: (uint64_t) fmm.ncols,
+        height: (uint64_t) fmm.nrows,
+        entries: std::vector<Entry>()
+    };
+    m.entries.reserve(fmm.vals.size());
+	for (uint64_t i = 0; i < fmm.vals.size(); i++) {
+		if (fmm.vals[i] != 0) {
+			m.entries.push_back(Entry{x: (uint64_t) fmm.cols[i], y: (uint64_t) fmm.rows[i], val: (float) fmm.vals[i]});
+		}
+	}
+    
+    // sort entries in ascending y, then x coordinate
+    std::cout << "sorting..." << std::endl;
+    std::sort(m.entries.begin(), m.entries.end(), [](const Entry &a, const Entry &b) {
+        if (a.y == b.y) {
+            return a.x < b.x;
+        } else {
+            return a.y < b.y;
+        }
+    });
+
+    std::cout << "Matrix(w: " << m.width << ", h: " << m.height << ", nz: " << m.entries.size() << ")" << std::endl;
+    return m;
+}
+
+Matrix Matrix::load2(std::string path) {
     std::ifstream file(path);
     if (!file) {
         throw std::runtime_error("Failed to open file");
