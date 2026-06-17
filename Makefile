@@ -197,6 +197,9 @@ tests/IO/test_data_bcsstk16: #host/suspmv
 tests/IO/test_data_ASIC_680k_modified: #host/suspmv
 	cd tests/IO/ && ../../host/suspmv ../../host/test/ASIC_680k_modified/ASIC_680k_modified.mtx 0
 
+tests/IO/test_data_analytics: #host/suspmv
+	cd tests/IO/ && ../../host/suspmv ../../host/test/analytics/analytics.mtx 0
+
 tests/IO/test_data_human_gene1: #host/suspmv
 	cd tests/IO/ && ../../host/suspmv ../../host/test/Belcastro/human_gene1/human_gene1.mtx 0
 
