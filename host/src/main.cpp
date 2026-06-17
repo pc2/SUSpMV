@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
 
         // reference CPU implementation
         auto cpu_start = std::chrono::steady_clock::now();
-        std::vector<float> reference = m.mul(x_vec);
+        std::vector<float> reference = data.mul(x_vec);
         auto cpu_end = std::chrono::steady_clock::now();
         auto cpu_duration = std::chrono::duration_cast<std::chrono::microseconds>(cpu_end - cpu_start);
 

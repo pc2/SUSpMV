@@ -709,7 +709,7 @@ std::vector<float> ComputeUnitData::mul(std::vector<float>& x_vec) {
                 }
 
                 if(elem.float5.last_in_y) {
-                    size_t section = cur_y_repeat * this->hbm_buffers.size() + compute_unit;
+                    size_t section = cur_y_repeat * COMPUTE_UNITS + compute_unit;
                     uint64_t y_from = this->y_froms[section];
                     uint64_t y_to = this->y_froms[section+1];
                     for(size_t y = y_from; y < y_to; y++) {
