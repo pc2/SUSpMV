@@ -4841,8 +4841,10 @@ module simple_axi3_mem #(
 	assign arready = !rd_active & aresetn;
 	assign awready = !wr_active & !bvalid & aresetn;
 
-	assign rvalid = rd_active & aresetn;
-	assign wready = wr_active & aresetn;
+	logic nope = 0;
+	always_ff@(posedge aclk) nope <= !nope;
+	assign rvalid = rd_active & nope & aresetn;
+	assign wready = wr_active & nope & aresetn;
 
 	always_comb begin
 		if(rvalid) begin
@@ -5034,8 +5036,10 @@ module simple_axi4_mem #(
 	assign arready = !rd_active & aresetn;
 	assign awready = !wr_active & !bvalid & aresetn;
 
-	assign rvalid = rd_active & aresetn;
-	assign wready = wr_active & aresetn;
+	logic nope = 0;
+	always_ff@(posedge aclk) nope <= !nope;
+	assign rvalid = rd_active & nope & aresetn;
+	assign wready = wr_active & nope & aresetn;
 
 	always_comb begin
 		if(rvalid) begin

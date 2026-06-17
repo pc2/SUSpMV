@@ -9,7 +9,7 @@ const size_t NUM_Y_BANKS = 16;
 // accelerator config
 const uint64_t COMPUTE_UNITS = 32;
 const uint64_t HW_COMPUTE_UNITS = 32;
-const uint64_t MAX_TILE_Y_HEIGHT = 1; // 2048 * NUM_Y_BANKS;
+const uint64_t MAX_TILE_Y_HEIGHT = 2048 * NUM_Y_BANKS;
 
 // benchmark config
 const bool ENABLE_FLOAT6 = true;

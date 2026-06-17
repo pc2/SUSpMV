@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
         m = make_chunky_nasty_matrix();
     } else {
         m = Matrix::load(path);
-        m.cut_to_range(0, 100000000, 667993, 10000000);
+        //m.cut_to_range(0, 100000000, 000000, 100000000);
     }
     std::cout << "Shuffle" << std::endl;
 //    m.shuffle_random();
@@ -145,7 +145,8 @@ int main(int argc, char **argv) {
     auto cpu_start = std::chrono::steady_clock::now();
     std::vector<float> reference = data.mul(x_vec);
     auto cpu_end = std::chrono::steady_clock::now();
-    
+    auto cpu_duration = std::chrono::duration_cast<std::chrono::microseconds>(cpu_end - cpu_start);
+
     std::cout << "start runs" << std::endl;
     for (uint64_t iter = 0; iter < iterations; iter++) {
         // generate & upload test vector
@@ -182,17 +183,14 @@ int main(int argc, char **argv) {
         job();
 	    //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         auto tapasco_end = std::chrono::steady_clock::now();
-	tapasco.copy_from(0x10000000, (uint8_t*)y_vec.data(), y_vec.size() * sizeof(float));
-
-
-//        auto tapasco_end = std::chrono::steady_clock::now();
         auto tapasco_duration = std::chrono::duration_cast<std::chrono::microseconds>(tapasco_end - tapasco_start);
-        std::cout << "Cycles: " << cycles << std::endl;
-
-        auto cpu_duration = std::chrono::duration_cast<std::chrono::microseconds>(cpu_end - cpu_start);
-
+        std::cout << "Done. Cycles: " << cycles << std::endl;
         std::cout << "SUSpMV: " << tapasco_duration << ", CPU: " << cpu_duration << std::endl;
         
+	    tapasco.copy_from(0x10000000, (uint8_t*)y_vec.data(), y_vec.size() * sizeof(float));
+
+//        auto tapasco_end = std::chrono::steady_clock::now();
+
         for (int64_t i = m.height-1; i >= 0; i--) {
             if (y_vec[i] != 10.0) {
                 if(i == m.height-1) {
