@@ -1089,7 +1089,11 @@ ComputeUnitData Matrix::get_compute_unit_data() {
         float6_count += builder.float6_count;
         failed_float6_due_to_last_map += builder.failed_float6_due_to_last_map;
     }
-    std::cout << " blocks: " << blocks << " float6: " << float6_count << " float6lastfail: " << failed_float6_due_to_last_map << std::endl;
+    uint64_t float5_count = blocks - float6_count;
+    std::cout << "blocks: " << blocks << " float5: " << float5_count << " float6: " << float6_count
+              << " float6lastfail: " << failed_float6_due_to_last_map
+              << " dummyzeroes: " << float5_count * 5 + float6_count * 6 - entries.size()
+              << std::endl;
 
     return ComputeUnitData{
         hbm_buffers: hbm_buffers,
@@ -1245,7 +1249,7 @@ void Builder::build_block() {
     }
     
     // check if we can use a `Float6` block here
-    bool use_float6 = true;
+    bool use_float6 = ENABLE_FLOAT6;
     // only use Float6 iff
     // - we actually have six values
     // - it is not the last block of the tile (must be Float5)
