@@ -64,15 +64,19 @@ namespace eval suspmv {
         connect_bd_intf_net [get_bd_intf_ports /hbm_ref_clk] [get_bd_intf_pins $ibuf/CLK_IN_D]
 
         # clocking left stack
+		set hbmrst [create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 proc_sys_reset_0]
         connect_bd_net [get_bd_pins $ibuf/IBUF_OUT] [get_bd_pins $hbm/HBM_REF_CLK_0]
-        connect_bd_net [get_bd_pins $ibuf/IBUF_OUT] [get_bd_pins $hbm/APB_0_PCLK]
-        connect_bd_net [get_bd_pins /host/axi_pcie3_0/user_lnk_up] [get_bd_pins $hbm/APB_0_PRESET_N]
-
+        connect_bd_net [get_bd_pins $ibuf/IBUF_OUT] [get_bd_pins $hbm/APB_0_PCLK] [get_bd_pins $hbmrst/slowest_sync_clk]
+        connect_bd_net [get_bd_pins /host/axi_pcie3_0/user_lnk_up] [get_bd_pins $hbmrst/ext_reset_in]
+		connect_bd_net [get_bd_pins $hbmrst/peripheral_aresetn] [get_bd_pins $hbm/APB_0_PRESET_N]
+        
         if {$bothStacks} {
             # clocking right stack
+			set hbmrst [create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 proc_sys_reset_1]
             connect_bd_net [get_bd_pins $ibuf/IBUF_OUT] [get_bd_pins $hbm/HBM_REF_CLK_1]
-            connect_bd_net [get_bd_pins $ibuf/IBUF_OUT] [get_bd_pins $hbm/APB_1_PCLK]
-            connect_bd_net [get_bd_pins /host/axi_pcie3_0/user_lnk_up] [get_bd_pins $hbm/APB_1_PRESET_N]
+            connect_bd_net [get_bd_pins $ibuf/IBUF_OUT] [get_bd_pins $hbm/APB_1_PCLK] [get_bd_pins $hbmrst/slowest_sync_clk]
+            connect_bd_net [get_bd_pins /host/axi_pcie3_0/user_lnk_up] [get_bd_pins $hbmrst/ext_reset_in]
+			connect_bd_net [get_bd_pins $hbmrst/peripheral_aresetn] [get_bd_pins $hbm/APB_1_PRESET_N]
         }
 
         set aclk [get_bd_pins design_clk]
