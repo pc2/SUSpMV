@@ -52,6 +52,34 @@ void check_mul(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec) {
     }
 }
 
+Matrix make_chunky_nasty_matrix() {
+    size_t num_chunks = 1;
+    size_t chunk_width = 1;
+    size_t chunk_height = 1000*100;
+    size_t chunk_x_offset = 1024*7*100;
+
+    Matrix result {
+        .width = chunk_x_offset * num_chunks,
+        .height = chunk_height * num_chunks
+    };
+
+    float val = 1.0;
+    for(size_t chunk_i = 0; chunk_i < num_chunks; chunk_i++) {
+        for(size_t y = 0; y < chunk_height; y++) {
+            for(size_t x = 0; x < chunk_width; x++) {
+                result.entries.push_back(Entry{
+                    .x = chunk_i * chunk_x_offset + x,
+                    .y = chunk_i * chunk_height + y,
+                    val: val
+                });
+                val += 1.0;
+            }
+        }
+    }
+
+    return result;
+}
+
 int main(int argc, char **argv) {
     if (argc != 3) {
         std::cout << "usage: ./suspmv <path to .mtx> <iterations>\nSet <iterations> to 0 for simulation hex dump" << std::endl;
@@ -62,7 +90,12 @@ int main(int argc, char **argv) {
 
     // load matrix from file
     std::cout << "Loading " << path << std::endl;
-    Matrix m = Matrix::load(path);
+    Matrix m;
+    if(path == "_") {
+        m = make_chunky_nasty_matrix();
+    } else {
+        m = Matrix::load(path);
+    }
     std::cout << "Shuffle" << std::endl;
 //    m.shuffle_random();
     std::cout << "Constructing ComputeUnitData..." << std::endl;
@@ -118,7 +151,7 @@ int main(int argc, char **argv) {
 	std::cout << "copy x_vec" << std::endl;
 	tapasco.copy_to((uint8_t*)extended_x_vec.data(), 0, extended_x_vec.size() * sizeof(float));
 	tapasco.copy_to((uint8_t*)y_vec.data(), 0x10000000, y_vec.size() * sizeof(float));
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	//std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	std::cout << "launch: " << iter << std::endl;
         auto tapasco_start = std::chrono::steady_clock::now();
 
@@ -140,7 +173,7 @@ int main(int argc, char **argv) {
             HBM_ARG(24), HBM_ARG(25), HBM_ARG(26), HBM_ARG(27), HBM_ARG(28), HBM_ARG(29), HBM_ARG(30), HBM_ARG(31)
         );
         job();
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	    //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         auto tapasco_end = std::chrono::steady_clock::now();
 	tapasco.copy_from(0x10000000, (uint8_t*)y_vec.data(), y_vec.size() * sizeof(float));
 

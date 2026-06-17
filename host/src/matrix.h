@@ -111,6 +111,8 @@ struct Matrix {
     std::vector<float> mul(std::vector<float>& v);
     bool compare(Matrix &m);
     ComputeUnitData get_compute_unit_data();
+    std::vector<size_t> get_count_per_col();
+    std::vector<size_t> get_count_per_row();
 };
 
 struct Shuffler {

@@ -24,4 +24,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-target_compile_options(suspmv PRIVATE -std=c++20 -O3)
+target_compile_options(suspmv PRIVATE
+    $<$<CONFIG:Debug>:-g3 -O0 -std=c++20>
+    $<$<CONFIG:Release>:-O3 -std=c++20>
+)

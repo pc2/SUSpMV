@@ -604,6 +604,25 @@ void Shuffler::swap_cols(uint64_t a, uint64_t b, std::vector<int64_t> &delta) {
     }
 }
 
+std::vector<size_t> Matrix::get_count_per_col() {
+    std::vector<size_t> result(this->width, 0);
+
+    for(Entry e : this->entries) {
+        result[e.x]++;
+    }
+
+    return result;
+}
+std::vector<size_t> Matrix::get_count_per_row() {
+    std::vector<size_t> result(this->height, 0);
+    
+    for(Entry e : this->entries) {
+        result[e.y]++;
+    }
+
+    return result;
+}
+
 bool Matrix::compare(Matrix &m) {
 	bool equal = true;
 	if (entries.size() != m.entries.size()) {
@@ -862,6 +881,11 @@ Matrix ComputeUnitData::convert() {
 }
 
 ComputeUnitData Matrix::get_compute_unit_data() {
+    if(this->height < COMPUTE_UNITS) {
+        std::cerr << "Must have at least " << COMPUTE_UNITS << " Y values!" << std::endl;
+        exit(1);
+    }
+
     uint64_t tiles_per_row = (width + TILE_X_WIDTH - 1) / TILE_X_WIDTH;
 	std::cout << "Compute Y Count Prefix Sum" << std::endl;
 	// compute prefix sum for entry count per row
@@ -889,6 +913,8 @@ ComputeUnitData Matrix::get_compute_unit_data() {
         uint64_t initial_height = (initial_height_max + initial_height_min + 1) / 2;
         //std::cout << "reapeat = " << repeats+1 << "  " << initial_height << std::endl;
         uint64_t y_end = std::min(base_y + initial_height, height - (COMPUTE_UNITS-1));
+        // std::cout << "y_end " << y_end << std::endl;
+        // std::cout << "base_y " << base_y << std::endl;
         uint64_t base_cost = y_sum_count[y_end] - y_sum_count[base_y] + tiles_per_row;
         bool retry_with_smaller_initial_height = false;
         //std::cout << " c[0].y = " << base_y << "  " << y_end << "  " << base_cost << std::endl;
@@ -897,6 +923,8 @@ ComputeUnitData Matrix::get_compute_unit_data() {
         for (uint64_t c = 1; c < COMPUTE_UNITS; c++) {
             uint64_t y_start = y_end;
             y_end = std::min(y_start + MAX_TILE_Y_HEIGHT, height - (COMPUTE_UNITS-1-c));
+            // std::cout << "y_end " << y_end << std::endl;
+            // std::cout << "y_start " << y_start << std::endl;
             uint64_t max_cost = y_sum_count[y_end] - y_sum_count[y_start] + tiles_per_row;
             if (max_cost < base_cost * equality_threshold_min && max_cost < base_cost - equality_threshold_diff && initial_height > 1) {
                 // too few entries in this tile causes imbalance
