@@ -911,7 +911,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
                 y_end -= 1;
                 max_cost = y_sum_count[y_end] - y_sum_count[y_start] + tiles_per_row;
             }
-            if (c == COMPUTE_UNITS-1 && y_end >= height-COMPUTE_UNITS) {
+            if (c == COMPUTE_UNITS-1 && y_end >= height-COMPUTE_UNITS*2.5) {
                 // edge case
                 // => the last compute unit in this repeat did just barely not fill up the entire height
                 if (y_start + MAX_TILE_Y_HEIGHT >= height) {
@@ -1020,9 +1020,18 @@ ComputeUnitData Matrix::get_compute_unit_data() {
             }
         }
     }
+
+    uint64_t blocks = 0;
+    uint64_t float6_count = 0;
+    uint64_t failed_float6_due_to_last_map = 0;
     for(size_t i = 0; i < HW_COMPUTE_UNITS; i++) {
-    	hbm_buffers[i] = builders[i].blocks;
+        Builder &builder = builders[i];
+        hbm_buffers[i] = builder.blocks;
+        blocks += builder.blocks.size();
+        float6_count += builder.float6_count;
+        failed_float6_due_to_last_map += builder.failed_float6_due_to_last_map;
     }
+    std::cout << " blocks: " << blocks << " float6: " << float6_count << " float6lastfail: " << failed_float6_due_to_last_map << std::endl;
 
     return ComputeUnitData{
         hbm_buffers: hbm_buffers,
@@ -1035,6 +1044,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
 }
 
 Builder::Builder() {
+    unit = 0;
     first_entry_in_tile = true;
     x_tile = 0;
     y_pos = 0;
@@ -1042,6 +1052,8 @@ Builder::Builder() {
     y_max_tile_idx = 0;
     y_max_added = false;
     accumulator_zero = true;
+    failed_float6_due_to_last_map = 0;
+    float6_count = 0;
 }
 
 bool Builder::has_bank_conflict(uint64_t *y, uint64_t len, uint64_t new_y) {
@@ -1134,6 +1146,7 @@ void Builder::build_block() {
     uint8_t  dy[6]  = {0, 0, 0, 0, 0, 0};
     uint64_t count = 0;
     bool is_last = false;
+    uint64_t rows = 0;
     for (uint64_t i = 0; i < 6; i++) {
         if (i >= entries.size()) {
             break;
@@ -1164,6 +1177,12 @@ void Builder::build_block() {
         if (entries[i].last_in_x) {
 	        is_last = true;
             break;
+        }
+        if (dy[i] > 0) {
+            rows++;
+            if (rows == ACC_ROWS) {
+                break;
+            }
         }
     }
     
@@ -1211,7 +1230,8 @@ void Builder::build_block() {
             break;
         }
     }
-    if (mode == 0b1111) {
+    if (mode == 0b1111 && use_float6) {
+        failed_float6_due_to_last_map += 1;
         use_float6 = false;
     }
 
@@ -1248,6 +1268,7 @@ void Builder::build_block() {
         }
         entries.erase(entries.begin(), entries.begin() + 6);
         //std::cout << block << std::endl;
+        float6_count += 1;
     } else {
         if(count > 5) {
             count = 5; // Float5 can only send 5 floats.

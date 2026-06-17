@@ -11,6 +11,10 @@ const uint64_t COMPUTE_UNITS = 32;
 const uint64_t HW_COMPUTE_UNITS = 32;
 const uint64_t MAX_TILE_Y_HEIGHT = 2048 * NUM_Y_BANKS;
 
+// benchmark config
+const bool ENABLE_FLOAT6 = true;
+const uint64_t ACC_ROWS = 6;
+
 // memory layout
 const uint64_t HBM_BASE   = 0x400000000;
 const uint64_t HBM_STRIDE =  0x10000000;

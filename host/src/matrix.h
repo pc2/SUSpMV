@@ -69,6 +69,8 @@ struct Builder {
     uint64_t y_pos;
     uint64_t y_max;
     uint64_t y_max_tile_idx;
+    uint64_t failed_float6_due_to_last_map;
+    uint64_t float6_count;
 
     Builder();
     void add(Entry entry, bool last_in_tile, bool last_in_y);
