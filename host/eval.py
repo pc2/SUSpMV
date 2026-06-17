@@ -13,11 +13,6 @@ with open('bench_hihispmv.txt', 'r') as file, open('bench_hihispmv.csv', 'w') as
     csv.write(f'mtx; width; height; nnz; density; cycles; time; 300MHz GFLOPS; 450MHz GFLOPS; HiHiSpMV;\n')
     for line in file:
         if line.startswith('## Test'):
-            if valid:
-                cycles /= 5
-                time = cycles / 300000000
-                table[mtx] = f'{mtx}; {width}; {height}; {nnz}; {nnz/(width*height)}; {cycles}; {time}; {int(2*nnz/time/100000000)/10}; {int(450/300*2*nnz/time/100000000)/10}; {gflops[order.index(mtx)]};'
-                cycles = 0
             mtx = line.split(' ')[-1][0:-1]
             valid = True
         if line.startswith('Matrix'):
@@ -28,9 +23,11 @@ with open('bench_hihispmv.txt', 'r') as file, open('bench_hihispmv.csv', 'w') as
             time = (int(line.split(' ')[1][0:-3])) / 1000000
         if line.startswith('Cycles:'):
             cycles += int(line.split(' ')[1])
-    cycles /= 5
-    time = cycles / 300000000
-    table[mtx] = f'{mtx}; {width}; {height}; {nnz}; {nnz/(width*height)}; {cycles}; {time};  {int(2*nnz/time/100000000)/10}; {int(450/300*2*nnz/time/100000000)/10}; {gflops[order.index(mtx)]};'
+        if line.startswith('Endtest'):
+            cycles /= 5
+            time = cycles / 300000000
+            table[mtx] = f'{mtx}; {width}; {height}; {nnz}; {nnz/(width*height)}; {cycles}; {time}; {int(2*nnz/time/100000000)/10}; {int(450/300*2*nnz/time/100000000)/10}; {gflops[order.index(mtx)]};'
+            cycles = 0
 
     for mtx in order:
         csv.write(table[mtx]+'\n')

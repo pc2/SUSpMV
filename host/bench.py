@@ -17,6 +17,7 @@ for mtx in os.listdir('test/hihispmv'):
     p = subprocess.Popen(f'build/suspmv {path} {iter}', shell=True, stdout=subprocess.PIPE)
     stdout, stderr = p.communicate()
     text += stdout.decode("utf-8")
+    text += "\nEndtest\n"
 
 with open('bench_hihispmv.txt', 'w') as file:
     file.write(text)
@@ -33,6 +34,7 @@ for mtx in os.listdir('test/hispmv'):
     p = subprocess.Popen(f'build/suspmv {path} {iter}', shell=True, stdout=subprocess.PIPE)
     stdout, stderr = p.communicate()
     text += stdout.decode("utf-8")
+    text += "\nEndtest\n"
 
 with open('bench_hispmv.txt', 'w') as file:
     file.write(text)
