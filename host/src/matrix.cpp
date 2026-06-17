@@ -28,6 +28,7 @@ void split_region_tiles_x_axis(std::span<Entry> entry_span, std::vector<std::vec
     }
     for(Entry e : entry_span) {
         assert(e.y >= y_base);
+        assert(e.y - y_base < MAX_TILE_Y_HEIGHT);
         x_tiles[e.x / TILE_X_WIDTH].push_back(Entry{
             x: e.x % TILE_X_WIDTH,
             y: e.y - y_base,
@@ -623,6 +624,27 @@ std::vector<size_t> Matrix::get_count_per_row() {
     return result;
 }
 
+void Matrix::cut_to_range(size_t from_x, size_t to_x, size_t from_y, size_t to_y) {
+    if(to_x > this->width) {
+        to_x = this->width;
+    }
+    if(to_y > this->height) {
+        to_y = this->height;
+    }
+    std::cout << "Cutting the matrix to X width " << from_x << ".." << to_x << "; Y height " << from_y << ".." << to_y << std::endl;
+    size_t new_size = 0;
+    for(size_t i = 0; i < this->entries.size(); i++) {
+        Entry e = this->entries[i];
+        if(e.x >= from_x && e.x < to_x && e.y >= from_y && e.y < to_y) {
+            this->entries[new_size++] = Entry{x: e.x - from_x, y: e.y - from_y, val: e.val};
+        }
+    }
+    std::cout << "Old size: " << this->entries.size() << ", new size: " << new_size << std::endl;
+    this->entries.resize(new_size);
+    this->width = to_x - from_x;
+    this->height = to_y - from_y;
+}
+
 bool Matrix::compare(Matrix &m) {
 	bool equal = true;
 	if (entries.size() != m.entries.size()) {
@@ -978,6 +1000,13 @@ ComputeUnitData Matrix::get_compute_unit_data() {
     for (uint64_t i = 0; i < y_froms.size(); i++) {
         y_split_points.push_back(y_sum_count[y_froms[i]]);
     }
+    for (uint64_t i = 0; i < y_froms.size(); i++) {
+        size_t ys_in_this_y_tile = y_froms[i+1] - y_froms[i];
+        if(ys_in_this_y_tile > MAX_TILE_Y_HEIGHT) {
+            std::cerr << "Tile " << i << "(" << y_froms[i] << ".." << y_froms[i+1] << ") had more Y values in it than MAX_TILE_Y_HEIGHT: " << ys_in_this_y_tile << ">=MAX_TILE_Y_HEIGHT (" << MAX_TILE_Y_HEIGHT << ")" << std::endl;
+            exit(1);
+        }
+    }
 
     // Temporary memory to split a single rows block into its constituent tiles.
     std::vector<std::vector<Entry>> current_x_tile_split(tiles_per_row);
@@ -1017,6 +1046,7 @@ ComputeUnitData Matrix::get_compute_unit_data() {
         for(std::vector<Entry>& tile : current_x_tile_split) {
             for(Entry& e : tile) {
                 assert(e.x < TILE_X_WIDTH);
+                std::cout << e.y << std::endl;
                 assert(e.y < MAX_TILE_Y_HEIGHT);
             }
         }

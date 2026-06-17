@@ -113,6 +113,7 @@ struct Matrix {
     ComputeUnitData get_compute_unit_data();
     std::vector<size_t> get_count_per_col();
     std::vector<size_t> get_count_per_row();
+    void cut_to_range(size_t from_x, size_t from_y, size_t to_x, size_t to_y);
 };
 
 struct Shuffler {

@@ -53,10 +53,10 @@ void check_mul(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec) {
 }
 
 Matrix make_chunky_nasty_matrix() {
-    size_t num_chunks = 1;
-    size_t chunk_width = 1;
-    size_t chunk_height = 1000*100;
-    size_t chunk_x_offset = 1024*7*100;
+    size_t num_chunks = 128;
+    size_t chunk_width = 100;
+    size_t chunk_height = 100;
+    size_t chunk_x_offset = 1024*7;
 
     Matrix result {
         .width = chunk_x_offset * num_chunks,
@@ -95,6 +95,7 @@ int main(int argc, char **argv) {
         m = make_chunky_nasty_matrix();
     } else {
         m = Matrix::load(path);
+        m.cut_to_range(0, 100000000, 667993, 10000000);
     }
     std::cout << "Shuffle" << std::endl;
 //    m.shuffle_random();
@@ -133,15 +134,21 @@ int main(int argc, char **argv) {
 	}
     }
 
+//  std::vector<float> x_vec = random_x_vec(m.width);
+    std::vector<float> x_vec(m.width, 1.0);
+    std::vector<float> extended_x_vec(((x_vec.size() + 4095) / 4096) * 4096, 0.0);
+    for (uint64_t i = 0; i < m.width; i++) {
+        extended_x_vec[i] = x_vec[i];
+    }
+    
+    // reference CPU implementation
+    auto cpu_start = std::chrono::steady_clock::now();
+    std::vector<float> reference = data.mul(x_vec);
+    auto cpu_end = std::chrono::steady_clock::now();
+    
     std::cout << "start runs" << std::endl;
     for (uint64_t iter = 0; iter < iterations; iter++) {
         // generate & upload test vector
-//        std::vector<float> x_vec = random_x_vec(m.width);
-        std::vector<float> x_vec(m.width, 1.0);
-        std::vector<float> extended_x_vec(((x_vec.size() + 4095) / 4096) * 4096, 0.0);
-        for (uint64_t i = 0; i < m.width; i++) {
-            extended_x_vec[i] = x_vec[i];
-        }
         std::vector<float> y_vec(m.height, 10.0);
 
 //        auto tapasco_start = std::chrono::steady_clock::now();
@@ -182,13 +189,25 @@ int main(int argc, char **argv) {
         auto tapasco_duration = std::chrono::duration_cast<std::chrono::microseconds>(tapasco_end - tapasco_start);
         std::cout << "Cycles: " << cycles << std::endl;
 
-        // reference CPU implementation
-        auto cpu_start = std::chrono::steady_clock::now();
-        std::vector<float> reference = data.mul(x_vec);
-        auto cpu_end = std::chrono::steady_clock::now();
         auto cpu_duration = std::chrono::duration_cast<std::chrono::microseconds>(cpu_end - cpu_start);
 
         std::cout << "SUSpMV: " << tapasco_duration << ", CPU: " << cpu_duration << std::endl;
+        
+        for (int64_t i = m.height-1; i >= 0; i--) {
+            if (y_vec[i] != 10.0) {
+                if(i == m.height-1) {
+                    break;
+                }
+                std::cout << "Written to data ends prematurely at Y " << i << std::endl;
+                int64_t from = std::max(int64_t(0), i - 16);
+                int64_t to = std::min(i + 16, int64_t(m.height) - 1);
+
+                for(int64_t j = from; j <= to; j++) {
+                    std::cout << "Y " << j << ": " << y_vec[j] << std::endl;
+                }
+                break;
+            }
+        }
 
         // check result integrity
         uint64_t errors = 0;
