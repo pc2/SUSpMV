@@ -102,58 +102,57 @@ add_cells_to_pblock [get_pblocks slr0_right] [get_cells ctrl]
 # Individual Unit PBlocks #
 # ======================= #
 
-# 4 divisions left SLR0
-create_pblock slr0_left_0_pblock
-resize_pblock [get_pblocks slr0_left_0_pblock] -add {CLOCKREGION_X0Y0:CLOCKREGION_X1Y0}
-set_property PARENT slr0_left [get_pblocks slr0_left_0_pblock]
-set_property IS_SOFT FALSE [get_pblocks slr0_left_0_pblock]
-add_cells_to_pblock [get_pblocks slr0_left_0_pblock] [get_cells suspmv_slr0/left_half/unit]
+# 6 divisions left SLR0
+# create_pblock slr0_left_0_pblock
+# resize_pblock [get_pblocks slr0_left_0_pblock] -add {CLOCKREGION_X0Y0:CLOCKREGION_X1Y0}
+# set_property PARENT slr0_left [get_pblocks slr0_left_0_pblock]
+# set_property IS_SOFT FALSE [get_pblocks slr0_left_0_pblock]
+# add_cells_to_pblock [get_pblocks slr0_left_0_pblock] [get_cells suspmv_slr0/left_half/unit]
 
 create_pblock slr0_left_1_pblock
 resize_pblock [get_pblocks slr0_left_1_pblock] -add {CLOCKREGION_X0Y1:CLOCKREGION_X1Y1}
 set_property PARENT slr0_left [get_pblocks slr0_left_1_pblock]
 set_property IS_SOFT FALSE [get_pblocks slr0_left_1_pblock]
-add_cells_to_pblock [get_pblocks slr0_left_1_pblock] [get_cells suspmv_slr0/left_half/unit_2]
+add_cells_to_pblock [get_pblocks slr0_left_1_pblock] [get_cells suspmv_slr0/left_half/unit]
 
 create_pblock slr0_left_2_pblock
 resize_pblock [get_pblocks slr0_left_2_pblock] -add {CLOCKREGION_X0Y2:CLOCKREGION_X1Y2}
 set_property PARENT slr0_left [get_pblocks slr0_left_2_pblock]
 set_property IS_SOFT FALSE [get_pblocks slr0_left_2_pblock]
-add_cells_to_pblock [get_pblocks slr0_left_2_pblock] [get_cells suspmv_slr0/left_half/unit_3]
+add_cells_to_pblock [get_pblocks slr0_left_2_pblock] [get_cells suspmv_slr0/left_half/unit_2]
 
 create_pblock slr0_left_3_pblock
 resize_pblock [get_pblocks slr0_left_3_pblock] -add {CLOCKREGION_X0Y3:CLOCKREGION_X1Y3}
 set_property PARENT slr0_left [get_pblocks slr0_left_3_pblock]
 set_property IS_SOFT FALSE [get_pblocks slr0_left_3_pblock]
-add_cells_to_pblock [get_pblocks slr0_left_3_pblock] [get_cells suspmv_slr0/left_half/unit_4]
+add_cells_to_pblock [get_pblocks slr0_left_3_pblock] [get_cells suspmv_slr0/left_half/unit_3]
 
-# 4 divisions left SLR0
-create_pblock slr0_left_4_pblock
-resize_pblock [get_pblocks slr0_left_4_pblock] -add {CLOCKREGION_X2Y0:CLOCKREGION_X3Y0}
-set_property PARENT slr0_left [get_pblocks slr0_left_4_pblock]
-set_property IS_SOFT FALSE [get_pblocks slr0_left_4_pblock]
-add_cells_to_pblock [get_pblocks slr0_left_4_pblock] [get_cells suspmv_slr0/left_half/unit_5]
+# create_pblock slr0_left_4_pblock
+# resize_pblock [get_pblocks slr0_left_4_pblock] -add {CLOCKREGION_X2Y0:CLOCKREGION_X3Y0}
+# set_property PARENT slr0_left [get_pblocks slr0_left_4_pblock]
+# set_property IS_SOFT FALSE [get_pblocks slr0_left_4_pblock]
+# add_cells_to_pblock [get_pblocks slr0_left_4_pblock] [get_cells suspmv_slr0/left_half/unit_5]
 
 create_pblock slr0_left_5_pblock
 resize_pblock [get_pblocks slr0_left_5_pblock] -add {CLOCKREGION_X2Y1:CLOCKREGION_X3Y1}
 set_property PARENT slr0_left [get_pblocks slr0_left_5_pblock]
 set_property IS_SOFT FALSE [get_pblocks slr0_left_5_pblock]
-add_cells_to_pblock [get_pblocks slr0_left_5_pblock] [get_cells suspmv_slr0/left_half/unit_6]
+add_cells_to_pblock [get_pblocks slr0_left_5_pblock] [get_cells suspmv_slr0/left_half/unit_4]
 
 create_pblock slr0_left_6_pblock
 resize_pblock [get_pblocks slr0_left_6_pblock] -add {CLOCKREGION_X2Y2:CLOCKREGION_X3Y2}
 set_property PARENT slr0_left [get_pblocks slr0_left_6_pblock]
 set_property IS_SOFT FALSE [get_pblocks slr0_left_6_pblock]
-add_cells_to_pblock [get_pblocks slr0_left_6_pblock] [get_cells suspmv_slr0/left_half/unit_7]
+add_cells_to_pblock [get_pblocks slr0_left_6_pblock] [get_cells suspmv_slr0/left_half/unit_5]
 
 create_pblock slr0_left_7_pblock
 resize_pblock [get_pblocks slr0_left_7_pblock] -add {CLOCKREGION_X2Y3:CLOCKREGION_X3Y3}
 set_property PARENT slr0_left [get_pblocks slr0_left_7_pblock]
 set_property IS_SOFT FALSE [get_pblocks slr0_left_7_pblock]
-add_cells_to_pblock [get_pblocks slr0_left_7_pblock] [get_cells suspmv_slr0/left_half/unit_8]
+add_cells_to_pblock [get_pblocks slr0_left_7_pblock] [get_cells suspmv_slr0/left_half/unit_6]
 
 
-# 4 divisions left SLR1
+# 8 divisions left SLR1
 create_pblock slr1_left_0_pblock
 resize_pblock [get_pblocks slr1_left_0_pblock] -add {CLOCKREGION_X0Y4:CLOCKREGION_X1Y4}
 set_property PARENT slr1_left [get_pblocks slr1_left_0_pblock]
@@ -178,7 +177,6 @@ set_property PARENT slr1_left [get_pblocks slr1_left_3_pblock]
 set_property IS_SOFT FALSE [get_pblocks slr1_left_3_pblock]
 add_cells_to_pblock [get_pblocks slr1_left_3_pblock] [get_cells suspmv_slr1/left_half/unit_4]
 
-# 4 divisions left SLR1
 create_pblock slr1_left_4_pblock
 resize_pblock [get_pblocks slr1_left_4_pblock] -add {CLOCKREGION_X2Y4:CLOCKREGION_X3Y4}
 set_property PARENT slr1_left [get_pblocks slr1_left_4_pblock]
@@ -204,7 +202,7 @@ set_property IS_SOFT FALSE [get_pblocks slr1_left_7_pblock]
 add_cells_to_pblock [get_pblocks slr1_left_7_pblock] [get_cells suspmv_slr1/left_half/unit_8]
 
 
-# 4 divisions left SLR2
+# 8 divisions left SLR2
 create_pblock slr2_left_0_pblock
 resize_pblock [get_pblocks slr2_left_0_pblock] -add {CLOCKREGION_X0Y8:CLOCKREGION_X1Y8}
 set_property PARENT slr2_left [get_pblocks slr2_left_0_pblock]
@@ -229,7 +227,6 @@ set_property PARENT slr2_left [get_pblocks slr2_left_3_pblock]
 set_property IS_SOFT FALSE [get_pblocks slr2_left_3_pblock]
 add_cells_to_pblock [get_pblocks slr2_left_3_pblock] [get_cells suspmv_slr2/left_half/unit_4]
 
-# 4 divisions left SLR2
 create_pblock slr2_left_4_pblock
 resize_pblock [get_pblocks slr2_left_4_pblock] -add {CLOCKREGION_X2Y8:CLOCKREGION_X3Y8}
 set_property PARENT slr2_left [get_pblocks slr2_left_4_pblock]
@@ -255,16 +252,21 @@ set_property IS_SOFT FALSE [get_pblocks slr2_left_7_pblock]
 add_cells_to_pblock [get_pblocks slr2_left_7_pblock] [get_cells suspmv_slr2/left_half/unit_8]
 
 
-# 1 division right SLR0
-# As opposed to the others, we create this pblock much smaller, since it only has to contain one unit
-# create_pblock slr0_right_single_unit
-# resize_pblock [get_pblocks slr0_right_single_unit] -add {CLOCKREGION_X5Y3:CLOCKREGION_X7Y3}
-# set_property PARENT slr0_right [get_pblocks slr0_right_single_unit]
-# set_property IS_SOFT FALSE [get_pblocks slr0_right_single_unit]
-# add_cells_to_pblock [get_pblocks slr0_right_single_unit] [get_cells suspmv_slr0/right_half]
+# 2 divisions right SLR0
+create_pblock slr0_right_0_pblock
+resize_pblock [get_pblocks slr0_right_0_pblock] -add {CLOCKREGION_X4Y0:CLOCKREGION_X4Y1}
+set_property PARENT slr0_right [get_pblocks slr0_right_0_pblock]
+set_property IS_SOFT FALSE [get_pblocks slr0_right_0_pblock]
+add_cells_to_pblock [get_pblocks slr0_right_0_pblock] [get_cells suspmv_slr0/right_half/unit]
+
+create_pblock slr0_right_1_pblock
+resize_pblock [get_pblocks slr0_right_1_pblock] -add {CLOCKREGION_X4Y2:CLOCKREGION_X4Y3}
+set_property PARENT slr0_right [get_pblocks slr0_right_1_pblock]
+set_property IS_SOFT FALSE [get_pblocks slr0_right_1_pblock]
+add_cells_to_pblock [get_pblocks slr0_right_1_pblock] [get_cells suspmv_slr0/right_half/unit_2]
 
 
-# 4 divisions right SLR1
+# 2 divisions right SLR1
 # create_pblock slr1_right_0_pblock
 # resize_pblock [get_pblocks slr1_right_0_pblock] -add {CLOCKREGION_X5Y4:CLOCKREGION_X7Y4}
 # set_property PARENT slr1_right [get_pblocks slr1_right_0_pblock]
@@ -289,15 +291,7 @@ set_property PARENT slr1_right [get_pblocks slr1_right_3_pblock]
 set_property IS_SOFT FALSE [get_pblocks slr1_right_3_pblock]
 add_cells_to_pblock [get_pblocks slr1_right_3_pblock] [get_cells suspmv_slr1/right_half/unit_2]
 
-# 1 division right SLR1
-# create_pblock slr1_right_4_pblock
-# resize_pblock [get_pblocks slr1_right_4_pblock] -add {CLOCKREGION_X4Y6:CLOCKREGION_X4Y7}
-# set_property PARENT slr1_right [get_pblocks slr1_right_4_pblock]
-# set_property IS_SOFT FALSE [get_pblocks slr1_right_4_pblock]
-# add_cells_to_pblock [get_pblocks slr1_right_4_pblock] [get_cells suspmv_slr1/right_half/unit_5]
-
-
-# 4 divisions right SLR2
+# 6 divisions right SLR2
 create_pblock slr2_right_0_pblock
 resize_pblock [get_pblocks slr2_right_0_pblock] -add {CLOCKREGION_X5Y8:CLOCKREGION_X7Y8}
 set_property PARENT slr2_right [get_pblocks slr2_right_0_pblock]
@@ -322,7 +316,6 @@ set_property PARENT slr2_right [get_pblocks slr2_right_3_pblock]
 set_property IS_SOFT FALSE [get_pblocks slr2_right_3_pblock]
 add_cells_to_pblock [get_pblocks slr2_right_3_pblock] [get_cells suspmv_slr2/right_half/unit_4]
 
-# 2 divisions right SLR2
 create_pblock slr2_right_4_pblock
 resize_pblock [get_pblocks slr2_right_4_pblock] -add {CLOCKREGION_X4Y8:CLOCKREGION_X4Y9}
 set_property PARENT slr2_right [get_pblocks slr2_right_4_pblock]
@@ -369,15 +362,10 @@ set_property PARENT slr0_right [get_pblocks hbm_right]
 resize_pblock [get_pblocks hbm_right] -add {CLOCKREGION_X4Y0:CLOCKREGION_X7Y3}
 set_property IS_SOFT TRUE [get_pblocks hbm_right]
 
-create_pblock hbm_16_19
-resize_pblock [get_pblocks hbm_16_19] -add {CLOCKREGION_X4Y0:CLOCKREGION_X4Y0}
-set_property PARENT hbm_right [get_pblocks hbm_16_19]
-set_property IS_SOFT TRUE [get_pblocks hbm_16_19]
-
-create_pblock hbm_20_31
-resize_pblock [get_pblocks hbm_20_31] -add {CLOCKREGION_X5Y0:CLOCKREGION_X7Y0}
-set_property PARENT hbm_right [get_pblocks hbm_20_31]
-set_property IS_SOFT TRUE [get_pblocks hbm_20_31]
+create_pblock hbm_16_31
+resize_pblock [get_pblocks hbm_16_31] -add {CLOCKREGION_X4Y0:CLOCKREGION_X7Y0}
+set_property PARENT hbm_right [get_pblocks hbm_16_31]
+set_property IS_SOFT TRUE [get_pblocks hbm_16_31]
 
 add_cells_to_pblock [get_pblocks hbm_00_03] [get_cells -quiet [list \
     hbm00_reader \
@@ -404,14 +392,13 @@ add_cells_to_pblock [get_pblocks hbm_12_15] [get_cells -quiet [list \
     hbm15_reader \
 ]]
 
-add_cells_to_pblock [get_pblocks hbm_16_19] [get_cells -quiet [list \
+# clock regions on the right side are weird & have differing number of HBM interfaces - 4, 5, 5, 2. Bundle all together
+# Also, now there's a unit sticking in X4Y0, so give the HBM readers a little more breathing room
+add_cells_to_pblock [get_pblocks hbm_16_31] [get_cells -quiet [list \
     hbm16_reader \
     hbm17_reader \
     hbm18_reader \
     hbm19_reader \
-]]
-# clock regions on the right side are weird & have differing number of HBM interfaces - 4, 5, 5, 2. Bundle all together
-add_cells_to_pblock [get_pblocks hbm_20_31] [get_cells -quiet [list \
     hbm20_reader \
     hbm21_reader \
     hbm22_reader \
