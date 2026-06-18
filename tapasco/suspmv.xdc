@@ -24,7 +24,7 @@ add_cells_to_pblock [get_pblocks pblock_tapasco_memory_slr1] [get_cells -quiet [
 ]]
 
 create_pblock pblock_tapasco_hbm_left
-resize_pblock [get_pblocks pblock_tapasco_hbm_left] -add {CLOCKREGION_X0Y0:CLOCKREGION_X3Y3}
+resize_pblock [get_pblocks pblock_tapasco_hbm_left] -add {CLOCKREGION_X0Y0:CLOCKREGION_X3Y0}
 # resize_pblock [get_pblocks pblock_tapasco_memory_slr1] -add {CLOCKREGION_X4Y4:CLOCKREGION_X4Y7}
 set_property IS_SOFT FALSE [get_pblocks pblock_tapasco_hbm_left]
 add_cells_to_pblock [get_pblocks pblock_tapasco_hbm_left] [get_cells -quiet [list \
@@ -47,7 +47,7 @@ add_cells_to_pblock [get_pblocks pblock_tapasco_hbm_left] [get_cells -quiet [lis
 ]]
 
 create_pblock pblock_tapasco_hbm_right
-resize_pblock [get_pblocks pblock_tapasco_hbm_right] -add {CLOCKREGION_X4Y0:CLOCKREGION_X7Y3}
+resize_pblock [get_pblocks pblock_tapasco_hbm_right] -add {CLOCKREGION_X4Y0:CLOCKREGION_X7Y0}
 # resize_pblock [get_pblocks pblock_tapasco_memory_slr1] -add {CLOCKREGION_X4Y4:CLOCKREGION_X4Y7}
 set_property IS_SOFT FALSE [get_pblocks pblock_tapasco_hbm_right]
 add_cells_to_pblock [get_pblocks pblock_tapasco_hbm_right] [get_cells -quiet [list \
