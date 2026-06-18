@@ -465,16 +465,18 @@ module HBMReader#(int START_REG, int ADDR_REG, int COUNT_REG) {
     gen int NUM_CTRL_REGS = 256
 
     domain axi4
-    axi3_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) reader
-    axi3_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) writer_tie_off
+    axi4_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) reader
+    axi4_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) writer_tie_off
     output bool                                     awvalid  = writer_tie_off.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   awaddr   = writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 16)                    awlen    = writer_tie_off.awlen
+    output int#(FROM: 0, TO: 256)                   awlen    = writer_tie_off.awlen
     output int#(FROM: 0, TO: 8)                     awsize   = writer_tie_off.awsize
     output bool[2]                                  awburst  = writer_tie_off.awburst
     output bool[3]                                  awprot   = writer_tie_off.awprot
     output bool[4]                                  awcache  = writer_tie_off.awcache
-    output bool[2]                                  awlock   = writer_tie_off.awlock
+    output int#(FROM: 0, TO: 16)                    awqos    = writer_tie_off.awqos
+    output bool                                     awlock   = writer_tie_off.awlock
+    output int#(FROM: 0, TO: 16)                    awregion = writer_tie_off.awregion
     output bool                                     wvalid   = writer_tie_off.wvalid
     output bool[HBM_AXI_WIDTH]                      wdata    = writer_tie_off.wdata
     output bool[HBM_AXI_WIDTH / 8]                  wstrb    = writer_tie_off.wstrb
@@ -490,12 +492,14 @@ module HBMReader#(int START_REG, int ADDR_REG, int COUNT_REG) {
     writer_tie_off.bresp =                          bresp
     output bool                                     arvalid  = reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   araddr   = reader.araddr
-    output int#(FROM: 0, TO: 16)                    arlen    = reader.arlen
+    output int#(FROM: 0, TO: 256)                   arlen    = reader.arlen
     output int#(FROM: 0, TO: 8)                     arsize   = reader.arsize
     output bool[2]                                  arburst  = reader.arburst
     output bool[3]                                  arprot   = reader.arprot
     output bool[4]                                  arcache  = reader.arcache
-    output bool[2]                                  arlock   = reader.arlock
+    output int#(FROM: 0, TO: 16)                    arqos    = reader.arqos
+    output bool                                     arlock   = reader.arlock
+    output int#(FROM: 0, TO: 16)                    arregion = reader.arregion
     output bool                                     rready   = reader.rready
     input  bool                                     arready'0
     input  bool                                     rvalid

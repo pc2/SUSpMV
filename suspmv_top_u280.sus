@@ -481,7 +481,7 @@ module SUSpMV_Full {
 
 
     // ====================================================== //
-    //  AXI3-Full HBM Readers for the Sparse Matrix Elements  //
+    //  AXI4-Full HBM Readers for the Sparse Matrix Elements  //
     //          WARNING: This bit we re-generate with         //
     //            suspmv_io_hbm_snippet.sus_snippet           //
     //                        DON'T EDIT                      //
@@ -491,12 +491,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[00], COUNT_REG: HBM_COUNT_REGS[00]) hbm00_reader
     output bool                                     maxi_hbm00_awvalid  = hbm00_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm00_awaddr   = hbm00_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm00_awlen    = hbm00_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm00_awlen    = hbm00_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm00_awsize   = hbm00_reader.awsize
     output bool[2]                                  maxi_hbm00_awburst  = hbm00_reader.awburst
     output bool[3]                                  maxi_hbm00_awprot   = hbm00_reader.awprot
     output bool[4]                                  maxi_hbm00_awcache  = hbm00_reader.awcache
-    output bool[2]                                  maxi_hbm00_awlock   = hbm00_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm00_awqos    = hbm00_reader.awqos
+    output bool                                     maxi_hbm00_awlock   = hbm00_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm00_awregion = hbm00_reader.awregion
     output bool                                     maxi_hbm00_wvalid   = hbm00_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm00_wdata    = hbm00_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm00_wstrb    = hbm00_reader.wstrb
@@ -512,12 +514,14 @@ module SUSpMV_Full {
     hbm00_reader.bresp =                            maxi_hbm00_bresp
     output bool                                     maxi_hbm00_arvalid  = hbm00_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm00_araddr   = hbm00_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm00_arlen    = hbm00_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm00_arlen    = hbm00_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm00_arsize   = hbm00_reader.arsize
     output bool[2]                                  maxi_hbm00_arburst  = hbm00_reader.arburst
     output bool[3]                                  maxi_hbm00_arprot   = hbm00_reader.arprot
     output bool[4]                                  maxi_hbm00_arcache  = hbm00_reader.arcache
-    output bool[2]                                  maxi_hbm00_arlock   = hbm00_reader.arlock
+    output bool                                     maxi_hbm00_arlock   = hbm00_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm00_arqos    = hbm00_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm00_arregion = hbm00_reader.arregion
     output bool                                     maxi_hbm00_rready   = hbm00_reader.rready
     input  bool                                     maxi_hbm00_arready
     input  bool                                     maxi_hbm00_rvalid
@@ -547,12 +551,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[01], COUNT_REG: HBM_COUNT_REGS[01]) hbm01_reader
     output bool                                     maxi_hbm01_awvalid  = hbm01_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm01_awaddr   = hbm01_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm01_awlen    = hbm01_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm01_awlen    = hbm01_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm01_awsize   = hbm01_reader.awsize
     output bool[2]                                  maxi_hbm01_awburst  = hbm01_reader.awburst
     output bool[3]                                  maxi_hbm01_awprot   = hbm01_reader.awprot
     output bool[4]                                  maxi_hbm01_awcache  = hbm01_reader.awcache
-    output bool[2]                                  maxi_hbm01_awlock   = hbm01_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm01_awqos    = hbm01_reader.awqos
+    output bool                                     maxi_hbm01_awlock   = hbm01_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm01_awregion = hbm01_reader.awregion
     output bool                                     maxi_hbm01_wvalid   = hbm01_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm01_wdata    = hbm01_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm01_wstrb    = hbm01_reader.wstrb
@@ -568,12 +574,14 @@ module SUSpMV_Full {
     hbm01_reader.bresp =                            maxi_hbm01_bresp
     output bool                                     maxi_hbm01_arvalid  = hbm01_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm01_araddr   = hbm01_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm01_arlen    = hbm01_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm01_arlen    = hbm01_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm01_arsize   = hbm01_reader.arsize
     output bool[2]                                  maxi_hbm01_arburst  = hbm01_reader.arburst
     output bool[3]                                  maxi_hbm01_arprot   = hbm01_reader.arprot
     output bool[4]                                  maxi_hbm01_arcache  = hbm01_reader.arcache
-    output bool[2]                                  maxi_hbm01_arlock   = hbm01_reader.arlock
+    output bool                                     maxi_hbm01_arlock   = hbm01_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm01_arqos    = hbm01_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm01_arregion = hbm01_reader.arregion
     output bool                                     maxi_hbm01_rready   = hbm01_reader.rready
     input  bool                                     maxi_hbm01_arready
     input  bool                                     maxi_hbm01_rvalid
@@ -603,12 +611,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[02], COUNT_REG: HBM_COUNT_REGS[02]) hbm02_reader
     output bool                                     maxi_hbm02_awvalid  = hbm02_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm02_awaddr   = hbm02_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm02_awlen    = hbm02_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm02_awlen    = hbm02_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm02_awsize   = hbm02_reader.awsize
     output bool[2]                                  maxi_hbm02_awburst  = hbm02_reader.awburst
     output bool[3]                                  maxi_hbm02_awprot   = hbm02_reader.awprot
     output bool[4]                                  maxi_hbm02_awcache  = hbm02_reader.awcache
-    output bool[2]                                  maxi_hbm02_awlock   = hbm02_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm02_awqos    = hbm02_reader.awqos
+    output bool                                     maxi_hbm02_awlock   = hbm02_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm02_awregion = hbm02_reader.awregion
     output bool                                     maxi_hbm02_wvalid   = hbm02_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm02_wdata    = hbm02_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm02_wstrb    = hbm02_reader.wstrb
@@ -624,12 +634,14 @@ module SUSpMV_Full {
     hbm02_reader.bresp =                            maxi_hbm02_bresp
     output bool                                     maxi_hbm02_arvalid  = hbm02_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm02_araddr   = hbm02_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm02_arlen    = hbm02_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm02_arlen    = hbm02_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm02_arsize   = hbm02_reader.arsize
     output bool[2]                                  maxi_hbm02_arburst  = hbm02_reader.arburst
     output bool[3]                                  maxi_hbm02_arprot   = hbm02_reader.arprot
     output bool[4]                                  maxi_hbm02_arcache  = hbm02_reader.arcache
-    output bool[2]                                  maxi_hbm02_arlock   = hbm02_reader.arlock
+    output bool                                     maxi_hbm02_arlock   = hbm02_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm02_arqos    = hbm02_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm02_arregion = hbm02_reader.arregion
     output bool                                     maxi_hbm02_rready   = hbm02_reader.rready
     input  bool                                     maxi_hbm02_arready
     input  bool                                     maxi_hbm02_rvalid
@@ -659,12 +671,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[03], COUNT_REG: HBM_COUNT_REGS[03]) hbm03_reader
     output bool                                     maxi_hbm03_awvalid  = hbm03_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm03_awaddr   = hbm03_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm03_awlen    = hbm03_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm03_awlen    = hbm03_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm03_awsize   = hbm03_reader.awsize
     output bool[2]                                  maxi_hbm03_awburst  = hbm03_reader.awburst
     output bool[3]                                  maxi_hbm03_awprot   = hbm03_reader.awprot
     output bool[4]                                  maxi_hbm03_awcache  = hbm03_reader.awcache
-    output bool[2]                                  maxi_hbm03_awlock   = hbm03_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm03_awqos    = hbm03_reader.awqos
+    output bool                                     maxi_hbm03_awlock   = hbm03_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm03_awregion = hbm03_reader.awregion
     output bool                                     maxi_hbm03_wvalid   = hbm03_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm03_wdata    = hbm03_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm03_wstrb    = hbm03_reader.wstrb
@@ -680,12 +694,14 @@ module SUSpMV_Full {
     hbm03_reader.bresp =                            maxi_hbm03_bresp
     output bool                                     maxi_hbm03_arvalid  = hbm03_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm03_araddr   = hbm03_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm03_arlen    = hbm03_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm03_arlen    = hbm03_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm03_arsize   = hbm03_reader.arsize
     output bool[2]                                  maxi_hbm03_arburst  = hbm03_reader.arburst
     output bool[3]                                  maxi_hbm03_arprot   = hbm03_reader.arprot
     output bool[4]                                  maxi_hbm03_arcache  = hbm03_reader.arcache
-    output bool[2]                                  maxi_hbm03_arlock   = hbm03_reader.arlock
+    output bool                                     maxi_hbm03_arlock   = hbm03_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm03_arqos    = hbm03_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm03_arregion = hbm03_reader.arregion
     output bool                                     maxi_hbm03_rready   = hbm03_reader.rready
     input  bool                                     maxi_hbm03_arready
     input  bool                                     maxi_hbm03_rvalid
@@ -715,12 +731,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[04], COUNT_REG: HBM_COUNT_REGS[04]) hbm04_reader
     output bool                                     maxi_hbm04_awvalid  = hbm04_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm04_awaddr   = hbm04_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm04_awlen    = hbm04_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm04_awlen    = hbm04_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm04_awsize   = hbm04_reader.awsize
     output bool[2]                                  maxi_hbm04_awburst  = hbm04_reader.awburst
     output bool[3]                                  maxi_hbm04_awprot   = hbm04_reader.awprot
     output bool[4]                                  maxi_hbm04_awcache  = hbm04_reader.awcache
-    output bool[2]                                  maxi_hbm04_awlock   = hbm04_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm04_awqos    = hbm04_reader.awqos
+    output bool                                     maxi_hbm04_awlock   = hbm04_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm04_awregion = hbm04_reader.awregion
     output bool                                     maxi_hbm04_wvalid   = hbm04_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm04_wdata    = hbm04_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm04_wstrb    = hbm04_reader.wstrb
@@ -736,12 +754,14 @@ module SUSpMV_Full {
     hbm04_reader.bresp =                            maxi_hbm04_bresp
     output bool                                     maxi_hbm04_arvalid  = hbm04_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm04_araddr   = hbm04_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm04_arlen    = hbm04_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm04_arlen    = hbm04_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm04_arsize   = hbm04_reader.arsize
     output bool[2]                                  maxi_hbm04_arburst  = hbm04_reader.arburst
     output bool[3]                                  maxi_hbm04_arprot   = hbm04_reader.arprot
     output bool[4]                                  maxi_hbm04_arcache  = hbm04_reader.arcache
-    output bool[2]                                  maxi_hbm04_arlock   = hbm04_reader.arlock
+    output bool                                     maxi_hbm04_arlock   = hbm04_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm04_arqos    = hbm04_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm04_arregion = hbm04_reader.arregion
     output bool                                     maxi_hbm04_rready   = hbm04_reader.rready
     input  bool                                     maxi_hbm04_arready
     input  bool                                     maxi_hbm04_rvalid
@@ -771,12 +791,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[05], COUNT_REG: HBM_COUNT_REGS[05]) hbm05_reader
     output bool                                     maxi_hbm05_awvalid  = hbm05_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm05_awaddr   = hbm05_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm05_awlen    = hbm05_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm05_awlen    = hbm05_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm05_awsize   = hbm05_reader.awsize
     output bool[2]                                  maxi_hbm05_awburst  = hbm05_reader.awburst
     output bool[3]                                  maxi_hbm05_awprot   = hbm05_reader.awprot
     output bool[4]                                  maxi_hbm05_awcache  = hbm05_reader.awcache
-    output bool[2]                                  maxi_hbm05_awlock   = hbm05_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm05_awqos    = hbm05_reader.awqos
+    output bool                                     maxi_hbm05_awlock   = hbm05_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm05_awregion = hbm05_reader.awregion
     output bool                                     maxi_hbm05_wvalid   = hbm05_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm05_wdata    = hbm05_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm05_wstrb    = hbm05_reader.wstrb
@@ -792,12 +814,14 @@ module SUSpMV_Full {
     hbm05_reader.bresp =                            maxi_hbm05_bresp
     output bool                                     maxi_hbm05_arvalid  = hbm05_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm05_araddr   = hbm05_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm05_arlen    = hbm05_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm05_arlen    = hbm05_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm05_arsize   = hbm05_reader.arsize
     output bool[2]                                  maxi_hbm05_arburst  = hbm05_reader.arburst
     output bool[3]                                  maxi_hbm05_arprot   = hbm05_reader.arprot
     output bool[4]                                  maxi_hbm05_arcache  = hbm05_reader.arcache
-    output bool[2]                                  maxi_hbm05_arlock   = hbm05_reader.arlock
+    output bool                                     maxi_hbm05_arlock   = hbm05_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm05_arqos    = hbm05_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm05_arregion = hbm05_reader.arregion
     output bool                                     maxi_hbm05_rready   = hbm05_reader.rready
     input  bool                                     maxi_hbm05_arready
     input  bool                                     maxi_hbm05_rvalid
@@ -827,12 +851,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[06], COUNT_REG: HBM_COUNT_REGS[06]) hbm06_reader
     output bool                                     maxi_hbm06_awvalid  = hbm06_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm06_awaddr   = hbm06_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm06_awlen    = hbm06_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm06_awlen    = hbm06_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm06_awsize   = hbm06_reader.awsize
     output bool[2]                                  maxi_hbm06_awburst  = hbm06_reader.awburst
     output bool[3]                                  maxi_hbm06_awprot   = hbm06_reader.awprot
     output bool[4]                                  maxi_hbm06_awcache  = hbm06_reader.awcache
-    output bool[2]                                  maxi_hbm06_awlock   = hbm06_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm06_awqos    = hbm06_reader.awqos
+    output bool                                     maxi_hbm06_awlock   = hbm06_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm06_awregion = hbm06_reader.awregion
     output bool                                     maxi_hbm06_wvalid   = hbm06_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm06_wdata    = hbm06_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm06_wstrb    = hbm06_reader.wstrb
@@ -848,12 +874,14 @@ module SUSpMV_Full {
     hbm06_reader.bresp =                            maxi_hbm06_bresp
     output bool                                     maxi_hbm06_arvalid  = hbm06_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm06_araddr   = hbm06_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm06_arlen    = hbm06_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm06_arlen    = hbm06_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm06_arsize   = hbm06_reader.arsize
     output bool[2]                                  maxi_hbm06_arburst  = hbm06_reader.arburst
     output bool[3]                                  maxi_hbm06_arprot   = hbm06_reader.arprot
     output bool[4]                                  maxi_hbm06_arcache  = hbm06_reader.arcache
-    output bool[2]                                  maxi_hbm06_arlock   = hbm06_reader.arlock
+    output bool                                     maxi_hbm06_arlock   = hbm06_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm06_arqos    = hbm06_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm06_arregion = hbm06_reader.arregion
     output bool                                     maxi_hbm06_rready   = hbm06_reader.rready
     input  bool                                     maxi_hbm06_arready
     input  bool                                     maxi_hbm06_rvalid
@@ -883,12 +911,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[07], COUNT_REG: HBM_COUNT_REGS[07]) hbm07_reader
     output bool                                     maxi_hbm07_awvalid  = hbm07_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm07_awaddr   = hbm07_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm07_awlen    = hbm07_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm07_awlen    = hbm07_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm07_awsize   = hbm07_reader.awsize
     output bool[2]                                  maxi_hbm07_awburst  = hbm07_reader.awburst
     output bool[3]                                  maxi_hbm07_awprot   = hbm07_reader.awprot
     output bool[4]                                  maxi_hbm07_awcache  = hbm07_reader.awcache
-    output bool[2]                                  maxi_hbm07_awlock   = hbm07_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm07_awqos    = hbm07_reader.awqos
+    output bool                                     maxi_hbm07_awlock   = hbm07_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm07_awregion = hbm07_reader.awregion
     output bool                                     maxi_hbm07_wvalid   = hbm07_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm07_wdata    = hbm07_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm07_wstrb    = hbm07_reader.wstrb
@@ -904,12 +934,14 @@ module SUSpMV_Full {
     hbm07_reader.bresp =                            maxi_hbm07_bresp
     output bool                                     maxi_hbm07_arvalid  = hbm07_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm07_araddr   = hbm07_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm07_arlen    = hbm07_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm07_arlen    = hbm07_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm07_arsize   = hbm07_reader.arsize
     output bool[2]                                  maxi_hbm07_arburst  = hbm07_reader.arburst
     output bool[3]                                  maxi_hbm07_arprot   = hbm07_reader.arprot
     output bool[4]                                  maxi_hbm07_arcache  = hbm07_reader.arcache
-    output bool[2]                                  maxi_hbm07_arlock   = hbm07_reader.arlock
+    output bool                                     maxi_hbm07_arlock   = hbm07_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm07_arqos    = hbm07_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm07_arregion = hbm07_reader.arregion
     output bool                                     maxi_hbm07_rready   = hbm07_reader.rready
     input  bool                                     maxi_hbm07_arready
     input  bool                                     maxi_hbm07_rvalid
@@ -939,12 +971,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[08], COUNT_REG: HBM_COUNT_REGS[08]) hbm08_reader
     output bool                                     maxi_hbm08_awvalid  = hbm08_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm08_awaddr   = hbm08_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm08_awlen    = hbm08_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm08_awlen    = hbm08_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm08_awsize   = hbm08_reader.awsize
     output bool[2]                                  maxi_hbm08_awburst  = hbm08_reader.awburst
     output bool[3]                                  maxi_hbm08_awprot   = hbm08_reader.awprot
     output bool[4]                                  maxi_hbm08_awcache  = hbm08_reader.awcache
-    output bool[2]                                  maxi_hbm08_awlock   = hbm08_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm08_awqos    = hbm08_reader.awqos
+    output bool                                     maxi_hbm08_awlock   = hbm08_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm08_awregion = hbm08_reader.awregion
     output bool                                     maxi_hbm08_wvalid   = hbm08_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm08_wdata    = hbm08_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm08_wstrb    = hbm08_reader.wstrb
@@ -960,12 +994,14 @@ module SUSpMV_Full {
     hbm08_reader.bresp =                            maxi_hbm08_bresp
     output bool                                     maxi_hbm08_arvalid  = hbm08_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm08_araddr   = hbm08_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm08_arlen    = hbm08_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm08_arlen    = hbm08_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm08_arsize   = hbm08_reader.arsize
     output bool[2]                                  maxi_hbm08_arburst  = hbm08_reader.arburst
     output bool[3]                                  maxi_hbm08_arprot   = hbm08_reader.arprot
     output bool[4]                                  maxi_hbm08_arcache  = hbm08_reader.arcache
-    output bool[2]                                  maxi_hbm08_arlock   = hbm08_reader.arlock
+    output bool                                     maxi_hbm08_arlock   = hbm08_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm08_arqos    = hbm08_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm08_arregion = hbm08_reader.arregion
     output bool                                     maxi_hbm08_rready   = hbm08_reader.rready
     input  bool                                     maxi_hbm08_arready
     input  bool                                     maxi_hbm08_rvalid
@@ -995,12 +1031,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[09], COUNT_REG: HBM_COUNT_REGS[09]) hbm09_reader
     output bool                                     maxi_hbm09_awvalid  = hbm09_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm09_awaddr   = hbm09_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm09_awlen    = hbm09_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm09_awlen    = hbm09_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm09_awsize   = hbm09_reader.awsize
     output bool[2]                                  maxi_hbm09_awburst  = hbm09_reader.awburst
     output bool[3]                                  maxi_hbm09_awprot   = hbm09_reader.awprot
     output bool[4]                                  maxi_hbm09_awcache  = hbm09_reader.awcache
-    output bool[2]                                  maxi_hbm09_awlock   = hbm09_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm09_awqos    = hbm09_reader.awqos
+    output bool                                     maxi_hbm09_awlock   = hbm09_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm09_awregion = hbm09_reader.awregion
     output bool                                     maxi_hbm09_wvalid   = hbm09_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm09_wdata    = hbm09_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm09_wstrb    = hbm09_reader.wstrb
@@ -1016,12 +1054,14 @@ module SUSpMV_Full {
     hbm09_reader.bresp =                            maxi_hbm09_bresp
     output bool                                     maxi_hbm09_arvalid  = hbm09_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm09_araddr   = hbm09_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm09_arlen    = hbm09_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm09_arlen    = hbm09_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm09_arsize   = hbm09_reader.arsize
     output bool[2]                                  maxi_hbm09_arburst  = hbm09_reader.arburst
     output bool[3]                                  maxi_hbm09_arprot   = hbm09_reader.arprot
     output bool[4]                                  maxi_hbm09_arcache  = hbm09_reader.arcache
-    output bool[2]                                  maxi_hbm09_arlock   = hbm09_reader.arlock
+    output bool                                     maxi_hbm09_arlock   = hbm09_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm09_arqos    = hbm09_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm09_arregion = hbm09_reader.arregion
     output bool                                     maxi_hbm09_rready   = hbm09_reader.rready
     input  bool                                     maxi_hbm09_arready
     input  bool                                     maxi_hbm09_rvalid
@@ -1051,12 +1091,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[10], COUNT_REG: HBM_COUNT_REGS[10]) hbm10_reader
     output bool                                     maxi_hbm10_awvalid  = hbm10_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm10_awaddr   = hbm10_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm10_awlen    = hbm10_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm10_awlen    = hbm10_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm10_awsize   = hbm10_reader.awsize
     output bool[2]                                  maxi_hbm10_awburst  = hbm10_reader.awburst
     output bool[3]                                  maxi_hbm10_awprot   = hbm10_reader.awprot
     output bool[4]                                  maxi_hbm10_awcache  = hbm10_reader.awcache
-    output bool[2]                                  maxi_hbm10_awlock   = hbm10_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm10_awqos    = hbm10_reader.awqos
+    output bool                                     maxi_hbm10_awlock   = hbm10_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm10_awregion = hbm10_reader.awregion
     output bool                                     maxi_hbm10_wvalid   = hbm10_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm10_wdata    = hbm10_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm10_wstrb    = hbm10_reader.wstrb
@@ -1072,12 +1114,14 @@ module SUSpMV_Full {
     hbm10_reader.bresp =                            maxi_hbm10_bresp
     output bool                                     maxi_hbm10_arvalid  = hbm10_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm10_araddr   = hbm10_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm10_arlen    = hbm10_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm10_arlen    = hbm10_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm10_arsize   = hbm10_reader.arsize
     output bool[2]                                  maxi_hbm10_arburst  = hbm10_reader.arburst
     output bool[3]                                  maxi_hbm10_arprot   = hbm10_reader.arprot
     output bool[4]                                  maxi_hbm10_arcache  = hbm10_reader.arcache
-    output bool[2]                                  maxi_hbm10_arlock   = hbm10_reader.arlock
+    output bool                                     maxi_hbm10_arlock   = hbm10_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm10_arqos    = hbm10_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm10_arregion = hbm10_reader.arregion
     output bool                                     maxi_hbm10_rready   = hbm10_reader.rready
     input  bool                                     maxi_hbm10_arready
     input  bool                                     maxi_hbm10_rvalid
@@ -1107,12 +1151,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[11], COUNT_REG: HBM_COUNT_REGS[11]) hbm11_reader
     output bool                                     maxi_hbm11_awvalid  = hbm11_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm11_awaddr   = hbm11_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm11_awlen    = hbm11_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm11_awlen    = hbm11_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm11_awsize   = hbm11_reader.awsize
     output bool[2]                                  maxi_hbm11_awburst  = hbm11_reader.awburst
     output bool[3]                                  maxi_hbm11_awprot   = hbm11_reader.awprot
     output bool[4]                                  maxi_hbm11_awcache  = hbm11_reader.awcache
-    output bool[2]                                  maxi_hbm11_awlock   = hbm11_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm11_awqos    = hbm11_reader.awqos
+    output bool                                     maxi_hbm11_awlock   = hbm11_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm11_awregion = hbm11_reader.awregion
     output bool                                     maxi_hbm11_wvalid   = hbm11_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm11_wdata    = hbm11_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm11_wstrb    = hbm11_reader.wstrb
@@ -1128,12 +1174,14 @@ module SUSpMV_Full {
     hbm11_reader.bresp =                            maxi_hbm11_bresp
     output bool                                     maxi_hbm11_arvalid  = hbm11_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm11_araddr   = hbm11_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm11_arlen    = hbm11_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm11_arlen    = hbm11_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm11_arsize   = hbm11_reader.arsize
     output bool[2]                                  maxi_hbm11_arburst  = hbm11_reader.arburst
     output bool[3]                                  maxi_hbm11_arprot   = hbm11_reader.arprot
     output bool[4]                                  maxi_hbm11_arcache  = hbm11_reader.arcache
-    output bool[2]                                  maxi_hbm11_arlock   = hbm11_reader.arlock
+    output bool                                     maxi_hbm11_arlock   = hbm11_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm11_arqos    = hbm11_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm11_arregion = hbm11_reader.arregion
     output bool                                     maxi_hbm11_rready   = hbm11_reader.rready
     input  bool                                     maxi_hbm11_arready
     input  bool                                     maxi_hbm11_rvalid
@@ -1163,12 +1211,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[12], COUNT_REG: HBM_COUNT_REGS[12]) hbm12_reader
     output bool                                     maxi_hbm12_awvalid  = hbm12_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm12_awaddr   = hbm12_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm12_awlen    = hbm12_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm12_awlen    = hbm12_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm12_awsize   = hbm12_reader.awsize
     output bool[2]                                  maxi_hbm12_awburst  = hbm12_reader.awburst
     output bool[3]                                  maxi_hbm12_awprot   = hbm12_reader.awprot
     output bool[4]                                  maxi_hbm12_awcache  = hbm12_reader.awcache
-    output bool[2]                                  maxi_hbm12_awlock   = hbm12_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm12_awqos    = hbm12_reader.awqos
+    output bool                                     maxi_hbm12_awlock   = hbm12_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm12_awregion = hbm12_reader.awregion
     output bool                                     maxi_hbm12_wvalid   = hbm12_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm12_wdata    = hbm12_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm12_wstrb    = hbm12_reader.wstrb
@@ -1184,12 +1234,14 @@ module SUSpMV_Full {
     hbm12_reader.bresp =                            maxi_hbm12_bresp
     output bool                                     maxi_hbm12_arvalid  = hbm12_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm12_araddr   = hbm12_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm12_arlen    = hbm12_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm12_arlen    = hbm12_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm12_arsize   = hbm12_reader.arsize
     output bool[2]                                  maxi_hbm12_arburst  = hbm12_reader.arburst
     output bool[3]                                  maxi_hbm12_arprot   = hbm12_reader.arprot
     output bool[4]                                  maxi_hbm12_arcache  = hbm12_reader.arcache
-    output bool[2]                                  maxi_hbm12_arlock   = hbm12_reader.arlock
+    output bool                                     maxi_hbm12_arlock   = hbm12_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm12_arqos    = hbm12_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm12_arregion = hbm12_reader.arregion
     output bool                                     maxi_hbm12_rready   = hbm12_reader.rready
     input  bool                                     maxi_hbm12_arready
     input  bool                                     maxi_hbm12_rvalid
@@ -1219,12 +1271,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[13], COUNT_REG: HBM_COUNT_REGS[13]) hbm13_reader
     output bool                                     maxi_hbm13_awvalid  = hbm13_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm13_awaddr   = hbm13_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm13_awlen    = hbm13_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm13_awlen    = hbm13_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm13_awsize   = hbm13_reader.awsize
     output bool[2]                                  maxi_hbm13_awburst  = hbm13_reader.awburst
     output bool[3]                                  maxi_hbm13_awprot   = hbm13_reader.awprot
     output bool[4]                                  maxi_hbm13_awcache  = hbm13_reader.awcache
-    output bool[2]                                  maxi_hbm13_awlock   = hbm13_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm13_awqos    = hbm13_reader.awqos
+    output bool                                     maxi_hbm13_awlock   = hbm13_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm13_awregion = hbm13_reader.awregion
     output bool                                     maxi_hbm13_wvalid   = hbm13_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm13_wdata    = hbm13_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm13_wstrb    = hbm13_reader.wstrb
@@ -1240,12 +1294,14 @@ module SUSpMV_Full {
     hbm13_reader.bresp =                            maxi_hbm13_bresp
     output bool                                     maxi_hbm13_arvalid  = hbm13_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm13_araddr   = hbm13_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm13_arlen    = hbm13_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm13_arlen    = hbm13_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm13_arsize   = hbm13_reader.arsize
     output bool[2]                                  maxi_hbm13_arburst  = hbm13_reader.arburst
     output bool[3]                                  maxi_hbm13_arprot   = hbm13_reader.arprot
     output bool[4]                                  maxi_hbm13_arcache  = hbm13_reader.arcache
-    output bool[2]                                  maxi_hbm13_arlock   = hbm13_reader.arlock
+    output bool                                     maxi_hbm13_arlock   = hbm13_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm13_arqos    = hbm13_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm13_arregion = hbm13_reader.arregion
     output bool                                     maxi_hbm13_rready   = hbm13_reader.rready
     input  bool                                     maxi_hbm13_arready
     input  bool                                     maxi_hbm13_rvalid
@@ -1275,12 +1331,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[14], COUNT_REG: HBM_COUNT_REGS[14]) hbm14_reader
     output bool                                     maxi_hbm14_awvalid  = hbm14_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm14_awaddr   = hbm14_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm14_awlen    = hbm14_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm14_awlen    = hbm14_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm14_awsize   = hbm14_reader.awsize
     output bool[2]                                  maxi_hbm14_awburst  = hbm14_reader.awburst
     output bool[3]                                  maxi_hbm14_awprot   = hbm14_reader.awprot
     output bool[4]                                  maxi_hbm14_awcache  = hbm14_reader.awcache
-    output bool[2]                                  maxi_hbm14_awlock   = hbm14_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm14_awqos    = hbm14_reader.awqos
+    output bool                                     maxi_hbm14_awlock   = hbm14_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm14_awregion = hbm14_reader.awregion
     output bool                                     maxi_hbm14_wvalid   = hbm14_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm14_wdata    = hbm14_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm14_wstrb    = hbm14_reader.wstrb
@@ -1296,12 +1354,14 @@ module SUSpMV_Full {
     hbm14_reader.bresp =                            maxi_hbm14_bresp
     output bool                                     maxi_hbm14_arvalid  = hbm14_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm14_araddr   = hbm14_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm14_arlen    = hbm14_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm14_arlen    = hbm14_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm14_arsize   = hbm14_reader.arsize
     output bool[2]                                  maxi_hbm14_arburst  = hbm14_reader.arburst
     output bool[3]                                  maxi_hbm14_arprot   = hbm14_reader.arprot
     output bool[4]                                  maxi_hbm14_arcache  = hbm14_reader.arcache
-    output bool[2]                                  maxi_hbm14_arlock   = hbm14_reader.arlock
+    output bool                                     maxi_hbm14_arlock   = hbm14_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm14_arqos    = hbm14_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm14_arregion = hbm14_reader.arregion
     output bool                                     maxi_hbm14_rready   = hbm14_reader.rready
     input  bool                                     maxi_hbm14_arready
     input  bool                                     maxi_hbm14_rvalid
@@ -1331,12 +1391,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[15], COUNT_REG: HBM_COUNT_REGS[15]) hbm15_reader
     output bool                                     maxi_hbm15_awvalid  = hbm15_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm15_awaddr   = hbm15_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm15_awlen    = hbm15_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm15_awlen    = hbm15_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm15_awsize   = hbm15_reader.awsize
     output bool[2]                                  maxi_hbm15_awburst  = hbm15_reader.awburst
     output bool[3]                                  maxi_hbm15_awprot   = hbm15_reader.awprot
     output bool[4]                                  maxi_hbm15_awcache  = hbm15_reader.awcache
-    output bool[2]                                  maxi_hbm15_awlock   = hbm15_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm15_awqos    = hbm15_reader.awqos
+    output bool                                     maxi_hbm15_awlock   = hbm15_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm15_awregion = hbm15_reader.awregion
     output bool                                     maxi_hbm15_wvalid   = hbm15_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm15_wdata    = hbm15_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm15_wstrb    = hbm15_reader.wstrb
@@ -1352,12 +1414,14 @@ module SUSpMV_Full {
     hbm15_reader.bresp =                            maxi_hbm15_bresp
     output bool                                     maxi_hbm15_arvalid  = hbm15_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm15_araddr   = hbm15_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm15_arlen    = hbm15_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm15_arlen    = hbm15_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm15_arsize   = hbm15_reader.arsize
     output bool[2]                                  maxi_hbm15_arburst  = hbm15_reader.arburst
     output bool[3]                                  maxi_hbm15_arprot   = hbm15_reader.arprot
     output bool[4]                                  maxi_hbm15_arcache  = hbm15_reader.arcache
-    output bool[2]                                  maxi_hbm15_arlock   = hbm15_reader.arlock
+    output bool                                     maxi_hbm15_arlock   = hbm15_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm15_arqos    = hbm15_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm15_arregion = hbm15_reader.arregion
     output bool                                     maxi_hbm15_rready   = hbm15_reader.rready
     input  bool                                     maxi_hbm15_arready
     input  bool                                     maxi_hbm15_rvalid
@@ -1387,12 +1451,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[16], COUNT_REG: HBM_COUNT_REGS[16]) hbm16_reader
     output bool                                     maxi_hbm16_awvalid  = hbm16_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm16_awaddr   = hbm16_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm16_awlen    = hbm16_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm16_awlen    = hbm16_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm16_awsize   = hbm16_reader.awsize
     output bool[2]                                  maxi_hbm16_awburst  = hbm16_reader.awburst
     output bool[3]                                  maxi_hbm16_awprot   = hbm16_reader.awprot
     output bool[4]                                  maxi_hbm16_awcache  = hbm16_reader.awcache
-    output bool[2]                                  maxi_hbm16_awlock   = hbm16_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm16_awqos    = hbm16_reader.awqos
+    output bool                                     maxi_hbm16_awlock   = hbm16_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm16_awregion = hbm16_reader.awregion
     output bool                                     maxi_hbm16_wvalid   = hbm16_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm16_wdata    = hbm16_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm16_wstrb    = hbm16_reader.wstrb
@@ -1408,12 +1474,14 @@ module SUSpMV_Full {
     hbm16_reader.bresp =                            maxi_hbm16_bresp
     output bool                                     maxi_hbm16_arvalid  = hbm16_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm16_araddr   = hbm16_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm16_arlen    = hbm16_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm16_arlen    = hbm16_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm16_arsize   = hbm16_reader.arsize
     output bool[2]                                  maxi_hbm16_arburst  = hbm16_reader.arburst
     output bool[3]                                  maxi_hbm16_arprot   = hbm16_reader.arprot
     output bool[4]                                  maxi_hbm16_arcache  = hbm16_reader.arcache
-    output bool[2]                                  maxi_hbm16_arlock   = hbm16_reader.arlock
+    output bool                                     maxi_hbm16_arlock   = hbm16_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm16_arqos    = hbm16_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm16_arregion = hbm16_reader.arregion
     output bool                                     maxi_hbm16_rready   = hbm16_reader.rready
     input  bool                                     maxi_hbm16_arready
     input  bool                                     maxi_hbm16_rvalid
@@ -1443,12 +1511,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[17], COUNT_REG: HBM_COUNT_REGS[17]) hbm17_reader
     output bool                                     maxi_hbm17_awvalid  = hbm17_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm17_awaddr   = hbm17_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm17_awlen    = hbm17_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm17_awlen    = hbm17_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm17_awsize   = hbm17_reader.awsize
     output bool[2]                                  maxi_hbm17_awburst  = hbm17_reader.awburst
     output bool[3]                                  maxi_hbm17_awprot   = hbm17_reader.awprot
     output bool[4]                                  maxi_hbm17_awcache  = hbm17_reader.awcache
-    output bool[2]                                  maxi_hbm17_awlock   = hbm17_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm17_awqos    = hbm17_reader.awqos
+    output bool                                     maxi_hbm17_awlock   = hbm17_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm17_awregion = hbm17_reader.awregion
     output bool                                     maxi_hbm17_wvalid   = hbm17_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm17_wdata    = hbm17_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm17_wstrb    = hbm17_reader.wstrb
@@ -1464,12 +1534,14 @@ module SUSpMV_Full {
     hbm17_reader.bresp =                            maxi_hbm17_bresp
     output bool                                     maxi_hbm17_arvalid  = hbm17_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm17_araddr   = hbm17_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm17_arlen    = hbm17_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm17_arlen    = hbm17_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm17_arsize   = hbm17_reader.arsize
     output bool[2]                                  maxi_hbm17_arburst  = hbm17_reader.arburst
     output bool[3]                                  maxi_hbm17_arprot   = hbm17_reader.arprot
     output bool[4]                                  maxi_hbm17_arcache  = hbm17_reader.arcache
-    output bool[2]                                  maxi_hbm17_arlock   = hbm17_reader.arlock
+    output bool                                     maxi_hbm17_arlock   = hbm17_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm17_arqos    = hbm17_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm17_arregion = hbm17_reader.arregion
     output bool                                     maxi_hbm17_rready   = hbm17_reader.rready
     input  bool                                     maxi_hbm17_arready
     input  bool                                     maxi_hbm17_rvalid
@@ -1499,12 +1571,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[18], COUNT_REG: HBM_COUNT_REGS[18]) hbm18_reader
     output bool                                     maxi_hbm18_awvalid  = hbm18_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm18_awaddr   = hbm18_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm18_awlen    = hbm18_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm18_awlen    = hbm18_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm18_awsize   = hbm18_reader.awsize
     output bool[2]                                  maxi_hbm18_awburst  = hbm18_reader.awburst
     output bool[3]                                  maxi_hbm18_awprot   = hbm18_reader.awprot
     output bool[4]                                  maxi_hbm18_awcache  = hbm18_reader.awcache
-    output bool[2]                                  maxi_hbm18_awlock   = hbm18_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm18_awqos    = hbm18_reader.awqos
+    output bool                                     maxi_hbm18_awlock   = hbm18_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm18_awregion = hbm18_reader.awregion
     output bool                                     maxi_hbm18_wvalid   = hbm18_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm18_wdata    = hbm18_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm18_wstrb    = hbm18_reader.wstrb
@@ -1520,12 +1594,14 @@ module SUSpMV_Full {
     hbm18_reader.bresp =                            maxi_hbm18_bresp
     output bool                                     maxi_hbm18_arvalid  = hbm18_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm18_araddr   = hbm18_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm18_arlen    = hbm18_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm18_arlen    = hbm18_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm18_arsize   = hbm18_reader.arsize
     output bool[2]                                  maxi_hbm18_arburst  = hbm18_reader.arburst
     output bool[3]                                  maxi_hbm18_arprot   = hbm18_reader.arprot
     output bool[4]                                  maxi_hbm18_arcache  = hbm18_reader.arcache
-    output bool[2]                                  maxi_hbm18_arlock   = hbm18_reader.arlock
+    output bool                                     maxi_hbm18_arlock   = hbm18_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm18_arqos    = hbm18_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm18_arregion = hbm18_reader.arregion
     output bool                                     maxi_hbm18_rready   = hbm18_reader.rready
     input  bool                                     maxi_hbm18_arready
     input  bool                                     maxi_hbm18_rvalid
@@ -1555,12 +1631,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[19], COUNT_REG: HBM_COUNT_REGS[19]) hbm19_reader
     output bool                                     maxi_hbm19_awvalid  = hbm19_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm19_awaddr   = hbm19_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm19_awlen    = hbm19_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm19_awlen    = hbm19_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm19_awsize   = hbm19_reader.awsize
     output bool[2]                                  maxi_hbm19_awburst  = hbm19_reader.awburst
     output bool[3]                                  maxi_hbm19_awprot   = hbm19_reader.awprot
     output bool[4]                                  maxi_hbm19_awcache  = hbm19_reader.awcache
-    output bool[2]                                  maxi_hbm19_awlock   = hbm19_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm19_awqos    = hbm19_reader.awqos
+    output bool                                     maxi_hbm19_awlock   = hbm19_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm19_awregion = hbm19_reader.awregion
     output bool                                     maxi_hbm19_wvalid   = hbm19_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm19_wdata    = hbm19_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm19_wstrb    = hbm19_reader.wstrb
@@ -1576,12 +1654,14 @@ module SUSpMV_Full {
     hbm19_reader.bresp =                            maxi_hbm19_bresp
     output bool                                     maxi_hbm19_arvalid  = hbm19_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm19_araddr   = hbm19_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm19_arlen    = hbm19_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm19_arlen    = hbm19_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm19_arsize   = hbm19_reader.arsize
     output bool[2]                                  maxi_hbm19_arburst  = hbm19_reader.arburst
     output bool[3]                                  maxi_hbm19_arprot   = hbm19_reader.arprot
     output bool[4]                                  maxi_hbm19_arcache  = hbm19_reader.arcache
-    output bool[2]                                  maxi_hbm19_arlock   = hbm19_reader.arlock
+    output bool                                     maxi_hbm19_arlock   = hbm19_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm19_arqos    = hbm19_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm19_arregion = hbm19_reader.arregion
     output bool                                     maxi_hbm19_rready   = hbm19_reader.rready
     input  bool                                     maxi_hbm19_arready
     input  bool                                     maxi_hbm19_rvalid
@@ -1611,12 +1691,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[20], COUNT_REG: HBM_COUNT_REGS[20]) hbm20_reader
     output bool                                     maxi_hbm20_awvalid  = hbm20_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm20_awaddr   = hbm20_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm20_awlen    = hbm20_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm20_awlen    = hbm20_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm20_awsize   = hbm20_reader.awsize
     output bool[2]                                  maxi_hbm20_awburst  = hbm20_reader.awburst
     output bool[3]                                  maxi_hbm20_awprot   = hbm20_reader.awprot
     output bool[4]                                  maxi_hbm20_awcache  = hbm20_reader.awcache
-    output bool[2]                                  maxi_hbm20_awlock   = hbm20_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm20_awqos    = hbm20_reader.awqos
+    output bool                                     maxi_hbm20_awlock   = hbm20_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm20_awregion = hbm20_reader.awregion
     output bool                                     maxi_hbm20_wvalid   = hbm20_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm20_wdata    = hbm20_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm20_wstrb    = hbm20_reader.wstrb
@@ -1632,12 +1714,14 @@ module SUSpMV_Full {
     hbm20_reader.bresp =                            maxi_hbm20_bresp
     output bool                                     maxi_hbm20_arvalid  = hbm20_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm20_araddr   = hbm20_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm20_arlen    = hbm20_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm20_arlen    = hbm20_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm20_arsize   = hbm20_reader.arsize
     output bool[2]                                  maxi_hbm20_arburst  = hbm20_reader.arburst
     output bool[3]                                  maxi_hbm20_arprot   = hbm20_reader.arprot
     output bool[4]                                  maxi_hbm20_arcache  = hbm20_reader.arcache
-    output bool[2]                                  maxi_hbm20_arlock   = hbm20_reader.arlock
+    output bool                                     maxi_hbm20_arlock   = hbm20_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm20_arqos    = hbm20_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm20_arregion = hbm20_reader.arregion
     output bool                                     maxi_hbm20_rready   = hbm20_reader.rready
     input  bool                                     maxi_hbm20_arready
     input  bool                                     maxi_hbm20_rvalid
@@ -1667,12 +1751,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[21], COUNT_REG: HBM_COUNT_REGS[21]) hbm21_reader
     output bool                                     maxi_hbm21_awvalid  = hbm21_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm21_awaddr   = hbm21_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm21_awlen    = hbm21_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm21_awlen    = hbm21_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm21_awsize   = hbm21_reader.awsize
     output bool[2]                                  maxi_hbm21_awburst  = hbm21_reader.awburst
     output bool[3]                                  maxi_hbm21_awprot   = hbm21_reader.awprot
     output bool[4]                                  maxi_hbm21_awcache  = hbm21_reader.awcache
-    output bool[2]                                  maxi_hbm21_awlock   = hbm21_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm21_awqos    = hbm21_reader.awqos
+    output bool                                     maxi_hbm21_awlock   = hbm21_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm21_awregion = hbm21_reader.awregion
     output bool                                     maxi_hbm21_wvalid   = hbm21_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm21_wdata    = hbm21_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm21_wstrb    = hbm21_reader.wstrb
@@ -1688,12 +1774,14 @@ module SUSpMV_Full {
     hbm21_reader.bresp =                            maxi_hbm21_bresp
     output bool                                     maxi_hbm21_arvalid  = hbm21_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm21_araddr   = hbm21_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm21_arlen    = hbm21_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm21_arlen    = hbm21_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm21_arsize   = hbm21_reader.arsize
     output bool[2]                                  maxi_hbm21_arburst  = hbm21_reader.arburst
     output bool[3]                                  maxi_hbm21_arprot   = hbm21_reader.arprot
     output bool[4]                                  maxi_hbm21_arcache  = hbm21_reader.arcache
-    output bool[2]                                  maxi_hbm21_arlock   = hbm21_reader.arlock
+    output bool                                     maxi_hbm21_arlock   = hbm21_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm21_arqos    = hbm21_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm21_arregion = hbm21_reader.arregion
     output bool                                     maxi_hbm21_rready   = hbm21_reader.rready
     input  bool                                     maxi_hbm21_arready
     input  bool                                     maxi_hbm21_rvalid
@@ -1723,12 +1811,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[22], COUNT_REG: HBM_COUNT_REGS[22]) hbm22_reader
     output bool                                     maxi_hbm22_awvalid  = hbm22_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm22_awaddr   = hbm22_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm22_awlen    = hbm22_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm22_awlen    = hbm22_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm22_awsize   = hbm22_reader.awsize
     output bool[2]                                  maxi_hbm22_awburst  = hbm22_reader.awburst
     output bool[3]                                  maxi_hbm22_awprot   = hbm22_reader.awprot
     output bool[4]                                  maxi_hbm22_awcache  = hbm22_reader.awcache
-    output bool[2]                                  maxi_hbm22_awlock   = hbm22_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm22_awqos    = hbm22_reader.awqos
+    output bool                                     maxi_hbm22_awlock   = hbm22_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm22_awregion = hbm22_reader.awregion
     output bool                                     maxi_hbm22_wvalid   = hbm22_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm22_wdata    = hbm22_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm22_wstrb    = hbm22_reader.wstrb
@@ -1744,12 +1834,14 @@ module SUSpMV_Full {
     hbm22_reader.bresp =                            maxi_hbm22_bresp
     output bool                                     maxi_hbm22_arvalid  = hbm22_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm22_araddr   = hbm22_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm22_arlen    = hbm22_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm22_arlen    = hbm22_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm22_arsize   = hbm22_reader.arsize
     output bool[2]                                  maxi_hbm22_arburst  = hbm22_reader.arburst
     output bool[3]                                  maxi_hbm22_arprot   = hbm22_reader.arprot
     output bool[4]                                  maxi_hbm22_arcache  = hbm22_reader.arcache
-    output bool[2]                                  maxi_hbm22_arlock   = hbm22_reader.arlock
+    output bool                                     maxi_hbm22_arlock   = hbm22_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm22_arqos    = hbm22_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm22_arregion = hbm22_reader.arregion
     output bool                                     maxi_hbm22_rready   = hbm22_reader.rready
     input  bool                                     maxi_hbm22_arready
     input  bool                                     maxi_hbm22_rvalid
@@ -1779,12 +1871,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[23], COUNT_REG: HBM_COUNT_REGS[23]) hbm23_reader
     output bool                                     maxi_hbm23_awvalid  = hbm23_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm23_awaddr   = hbm23_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm23_awlen    = hbm23_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm23_awlen    = hbm23_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm23_awsize   = hbm23_reader.awsize
     output bool[2]                                  maxi_hbm23_awburst  = hbm23_reader.awburst
     output bool[3]                                  maxi_hbm23_awprot   = hbm23_reader.awprot
     output bool[4]                                  maxi_hbm23_awcache  = hbm23_reader.awcache
-    output bool[2]                                  maxi_hbm23_awlock   = hbm23_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm23_awqos    = hbm23_reader.awqos
+    output bool                                     maxi_hbm23_awlock   = hbm23_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm23_awregion = hbm23_reader.awregion
     output bool                                     maxi_hbm23_wvalid   = hbm23_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm23_wdata    = hbm23_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm23_wstrb    = hbm23_reader.wstrb
@@ -1800,12 +1894,14 @@ module SUSpMV_Full {
     hbm23_reader.bresp =                            maxi_hbm23_bresp
     output bool                                     maxi_hbm23_arvalid  = hbm23_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm23_araddr   = hbm23_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm23_arlen    = hbm23_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm23_arlen    = hbm23_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm23_arsize   = hbm23_reader.arsize
     output bool[2]                                  maxi_hbm23_arburst  = hbm23_reader.arburst
     output bool[3]                                  maxi_hbm23_arprot   = hbm23_reader.arprot
     output bool[4]                                  maxi_hbm23_arcache  = hbm23_reader.arcache
-    output bool[2]                                  maxi_hbm23_arlock   = hbm23_reader.arlock
+    output bool                                     maxi_hbm23_arlock   = hbm23_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm23_arqos    = hbm23_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm23_arregion = hbm23_reader.arregion
     output bool                                     maxi_hbm23_rready   = hbm23_reader.rready
     input  bool                                     maxi_hbm23_arready
     input  bool                                     maxi_hbm23_rvalid
@@ -1835,12 +1931,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[24], COUNT_REG: HBM_COUNT_REGS[24]) hbm24_reader
     output bool                                     maxi_hbm24_awvalid  = hbm24_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm24_awaddr   = hbm24_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm24_awlen    = hbm24_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm24_awlen    = hbm24_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm24_awsize   = hbm24_reader.awsize
     output bool[2]                                  maxi_hbm24_awburst  = hbm24_reader.awburst
     output bool[3]                                  maxi_hbm24_awprot   = hbm24_reader.awprot
     output bool[4]                                  maxi_hbm24_awcache  = hbm24_reader.awcache
-    output bool[2]                                  maxi_hbm24_awlock   = hbm24_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm24_awqos    = hbm24_reader.awqos
+    output bool                                     maxi_hbm24_awlock   = hbm24_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm24_awregion = hbm24_reader.awregion
     output bool                                     maxi_hbm24_wvalid   = hbm24_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm24_wdata    = hbm24_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm24_wstrb    = hbm24_reader.wstrb
@@ -1856,12 +1954,14 @@ module SUSpMV_Full {
     hbm24_reader.bresp =                            maxi_hbm24_bresp
     output bool                                     maxi_hbm24_arvalid  = hbm24_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm24_araddr   = hbm24_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm24_arlen    = hbm24_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm24_arlen    = hbm24_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm24_arsize   = hbm24_reader.arsize
     output bool[2]                                  maxi_hbm24_arburst  = hbm24_reader.arburst
     output bool[3]                                  maxi_hbm24_arprot   = hbm24_reader.arprot
     output bool[4]                                  maxi_hbm24_arcache  = hbm24_reader.arcache
-    output bool[2]                                  maxi_hbm24_arlock   = hbm24_reader.arlock
+    output bool                                     maxi_hbm24_arlock   = hbm24_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm24_arqos    = hbm24_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm24_arregion = hbm24_reader.arregion
     output bool                                     maxi_hbm24_rready   = hbm24_reader.rready
     input  bool                                     maxi_hbm24_arready
     input  bool                                     maxi_hbm24_rvalid
@@ -1891,12 +1991,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[25], COUNT_REG: HBM_COUNT_REGS[25]) hbm25_reader
     output bool                                     maxi_hbm25_awvalid  = hbm25_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm25_awaddr   = hbm25_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm25_awlen    = hbm25_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm25_awlen    = hbm25_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm25_awsize   = hbm25_reader.awsize
     output bool[2]                                  maxi_hbm25_awburst  = hbm25_reader.awburst
     output bool[3]                                  maxi_hbm25_awprot   = hbm25_reader.awprot
     output bool[4]                                  maxi_hbm25_awcache  = hbm25_reader.awcache
-    output bool[2]                                  maxi_hbm25_awlock   = hbm25_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm25_awqos    = hbm25_reader.awqos
+    output bool                                     maxi_hbm25_awlock   = hbm25_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm25_awregion = hbm25_reader.awregion
     output bool                                     maxi_hbm25_wvalid   = hbm25_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm25_wdata    = hbm25_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm25_wstrb    = hbm25_reader.wstrb
@@ -1912,12 +2014,14 @@ module SUSpMV_Full {
     hbm25_reader.bresp =                            maxi_hbm25_bresp
     output bool                                     maxi_hbm25_arvalid  = hbm25_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm25_araddr   = hbm25_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm25_arlen    = hbm25_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm25_arlen    = hbm25_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm25_arsize   = hbm25_reader.arsize
     output bool[2]                                  maxi_hbm25_arburst  = hbm25_reader.arburst
     output bool[3]                                  maxi_hbm25_arprot   = hbm25_reader.arprot
     output bool[4]                                  maxi_hbm25_arcache  = hbm25_reader.arcache
-    output bool[2]                                  maxi_hbm25_arlock   = hbm25_reader.arlock
+    output bool                                     maxi_hbm25_arlock   = hbm25_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm25_arqos    = hbm25_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm25_arregion = hbm25_reader.arregion
     output bool                                     maxi_hbm25_rready   = hbm25_reader.rready
     input  bool                                     maxi_hbm25_arready
     input  bool                                     maxi_hbm25_rvalid
@@ -1947,12 +2051,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[26], COUNT_REG: HBM_COUNT_REGS[26]) hbm26_reader
     output bool                                     maxi_hbm26_awvalid  = hbm26_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm26_awaddr   = hbm26_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm26_awlen    = hbm26_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm26_awlen    = hbm26_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm26_awsize   = hbm26_reader.awsize
     output bool[2]                                  maxi_hbm26_awburst  = hbm26_reader.awburst
     output bool[3]                                  maxi_hbm26_awprot   = hbm26_reader.awprot
     output bool[4]                                  maxi_hbm26_awcache  = hbm26_reader.awcache
-    output bool[2]                                  maxi_hbm26_awlock   = hbm26_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm26_awqos    = hbm26_reader.awqos
+    output bool                                     maxi_hbm26_awlock   = hbm26_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm26_awregion = hbm26_reader.awregion
     output bool                                     maxi_hbm26_wvalid   = hbm26_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm26_wdata    = hbm26_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm26_wstrb    = hbm26_reader.wstrb
@@ -1968,12 +2074,14 @@ module SUSpMV_Full {
     hbm26_reader.bresp =                            maxi_hbm26_bresp
     output bool                                     maxi_hbm26_arvalid  = hbm26_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm26_araddr   = hbm26_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm26_arlen    = hbm26_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm26_arlen    = hbm26_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm26_arsize   = hbm26_reader.arsize
     output bool[2]                                  maxi_hbm26_arburst  = hbm26_reader.arburst
     output bool[3]                                  maxi_hbm26_arprot   = hbm26_reader.arprot
     output bool[4]                                  maxi_hbm26_arcache  = hbm26_reader.arcache
-    output bool[2]                                  maxi_hbm26_arlock   = hbm26_reader.arlock
+    output bool                                     maxi_hbm26_arlock   = hbm26_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm26_arqos    = hbm26_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm26_arregion = hbm26_reader.arregion
     output bool                                     maxi_hbm26_rready   = hbm26_reader.rready
     input  bool                                     maxi_hbm26_arready
     input  bool                                     maxi_hbm26_rvalid
@@ -2003,12 +2111,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[27], COUNT_REG: HBM_COUNT_REGS[27]) hbm27_reader
     output bool                                     maxi_hbm27_awvalid  = hbm27_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm27_awaddr   = hbm27_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm27_awlen    = hbm27_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm27_awlen    = hbm27_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm27_awsize   = hbm27_reader.awsize
     output bool[2]                                  maxi_hbm27_awburst  = hbm27_reader.awburst
     output bool[3]                                  maxi_hbm27_awprot   = hbm27_reader.awprot
     output bool[4]                                  maxi_hbm27_awcache  = hbm27_reader.awcache
-    output bool[2]                                  maxi_hbm27_awlock   = hbm27_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm27_awqos    = hbm27_reader.awqos
+    output bool                                     maxi_hbm27_awlock   = hbm27_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm27_awregion = hbm27_reader.awregion
     output bool                                     maxi_hbm27_wvalid   = hbm27_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm27_wdata    = hbm27_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm27_wstrb    = hbm27_reader.wstrb
@@ -2024,12 +2134,14 @@ module SUSpMV_Full {
     hbm27_reader.bresp =                            maxi_hbm27_bresp
     output bool                                     maxi_hbm27_arvalid  = hbm27_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm27_araddr   = hbm27_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm27_arlen    = hbm27_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm27_arlen    = hbm27_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm27_arsize   = hbm27_reader.arsize
     output bool[2]                                  maxi_hbm27_arburst  = hbm27_reader.arburst
     output bool[3]                                  maxi_hbm27_arprot   = hbm27_reader.arprot
     output bool[4]                                  maxi_hbm27_arcache  = hbm27_reader.arcache
-    output bool[2]                                  maxi_hbm27_arlock   = hbm27_reader.arlock
+    output bool                                     maxi_hbm27_arlock   = hbm27_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm27_arqos    = hbm27_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm27_arregion = hbm27_reader.arregion
     output bool                                     maxi_hbm27_rready   = hbm27_reader.rready
     input  bool                                     maxi_hbm27_arready
     input  bool                                     maxi_hbm27_rvalid
@@ -2059,12 +2171,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[28], COUNT_REG: HBM_COUNT_REGS[28]) hbm28_reader
     output bool                                     maxi_hbm28_awvalid  = hbm28_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm28_awaddr   = hbm28_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm28_awlen    = hbm28_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm28_awlen    = hbm28_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm28_awsize   = hbm28_reader.awsize
     output bool[2]                                  maxi_hbm28_awburst  = hbm28_reader.awburst
     output bool[3]                                  maxi_hbm28_awprot   = hbm28_reader.awprot
     output bool[4]                                  maxi_hbm28_awcache  = hbm28_reader.awcache
-    output bool[2]                                  maxi_hbm28_awlock   = hbm28_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm28_awqos    = hbm28_reader.awqos
+    output bool                                     maxi_hbm28_awlock   = hbm28_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm28_awregion = hbm28_reader.awregion
     output bool                                     maxi_hbm28_wvalid   = hbm28_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm28_wdata    = hbm28_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm28_wstrb    = hbm28_reader.wstrb
@@ -2080,12 +2194,14 @@ module SUSpMV_Full {
     hbm28_reader.bresp =                            maxi_hbm28_bresp
     output bool                                     maxi_hbm28_arvalid  = hbm28_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm28_araddr   = hbm28_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm28_arlen    = hbm28_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm28_arlen    = hbm28_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm28_arsize   = hbm28_reader.arsize
     output bool[2]                                  maxi_hbm28_arburst  = hbm28_reader.arburst
     output bool[3]                                  maxi_hbm28_arprot   = hbm28_reader.arprot
     output bool[4]                                  maxi_hbm28_arcache  = hbm28_reader.arcache
-    output bool[2]                                  maxi_hbm28_arlock   = hbm28_reader.arlock
+    output bool                                     maxi_hbm28_arlock   = hbm28_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm28_arqos    = hbm28_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm28_arregion = hbm28_reader.arregion
     output bool                                     maxi_hbm28_rready   = hbm28_reader.rready
     input  bool                                     maxi_hbm28_arready
     input  bool                                     maxi_hbm28_rvalid
@@ -2115,12 +2231,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[29], COUNT_REG: HBM_COUNT_REGS[29]) hbm29_reader
     output bool                                     maxi_hbm29_awvalid  = hbm29_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm29_awaddr   = hbm29_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm29_awlen    = hbm29_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm29_awlen    = hbm29_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm29_awsize   = hbm29_reader.awsize
     output bool[2]                                  maxi_hbm29_awburst  = hbm29_reader.awburst
     output bool[3]                                  maxi_hbm29_awprot   = hbm29_reader.awprot
     output bool[4]                                  maxi_hbm29_awcache  = hbm29_reader.awcache
-    output bool[2]                                  maxi_hbm29_awlock   = hbm29_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm29_awqos    = hbm29_reader.awqos
+    output bool                                     maxi_hbm29_awlock   = hbm29_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm29_awregion = hbm29_reader.awregion
     output bool                                     maxi_hbm29_wvalid   = hbm29_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm29_wdata    = hbm29_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm29_wstrb    = hbm29_reader.wstrb
@@ -2136,12 +2254,14 @@ module SUSpMV_Full {
     hbm29_reader.bresp =                            maxi_hbm29_bresp
     output bool                                     maxi_hbm29_arvalid  = hbm29_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm29_araddr   = hbm29_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm29_arlen    = hbm29_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm29_arlen    = hbm29_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm29_arsize   = hbm29_reader.arsize
     output bool[2]                                  maxi_hbm29_arburst  = hbm29_reader.arburst
     output bool[3]                                  maxi_hbm29_arprot   = hbm29_reader.arprot
     output bool[4]                                  maxi_hbm29_arcache  = hbm29_reader.arcache
-    output bool[2]                                  maxi_hbm29_arlock   = hbm29_reader.arlock
+    output bool                                     maxi_hbm29_arlock   = hbm29_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm29_arqos    = hbm29_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm29_arregion = hbm29_reader.arregion
     output bool                                     maxi_hbm29_rready   = hbm29_reader.rready
     input  bool                                     maxi_hbm29_arready
     input  bool                                     maxi_hbm29_rvalid
@@ -2171,12 +2291,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[30], COUNT_REG: HBM_COUNT_REGS[30]) hbm30_reader
     output bool                                     maxi_hbm30_awvalid  = hbm30_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm30_awaddr   = hbm30_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm30_awlen    = hbm30_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm30_awlen    = hbm30_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm30_awsize   = hbm30_reader.awsize
     output bool[2]                                  maxi_hbm30_awburst  = hbm30_reader.awburst
     output bool[3]                                  maxi_hbm30_awprot   = hbm30_reader.awprot
     output bool[4]                                  maxi_hbm30_awcache  = hbm30_reader.awcache
-    output bool[2]                                  maxi_hbm30_awlock   = hbm30_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm30_awqos    = hbm30_reader.awqos
+    output bool                                     maxi_hbm30_awlock   = hbm30_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm30_awregion = hbm30_reader.awregion
     output bool                                     maxi_hbm30_wvalid   = hbm30_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm30_wdata    = hbm30_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm30_wstrb    = hbm30_reader.wstrb
@@ -2192,12 +2314,14 @@ module SUSpMV_Full {
     hbm30_reader.bresp =                            maxi_hbm30_bresp
     output bool                                     maxi_hbm30_arvalid  = hbm30_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm30_araddr   = hbm30_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm30_arlen    = hbm30_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm30_arlen    = hbm30_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm30_arsize   = hbm30_reader.arsize
     output bool[2]                                  maxi_hbm30_arburst  = hbm30_reader.arburst
     output bool[3]                                  maxi_hbm30_arprot   = hbm30_reader.arprot
     output bool[4]                                  maxi_hbm30_arcache  = hbm30_reader.arcache
-    output bool[2]                                  maxi_hbm30_arlock   = hbm30_reader.arlock
+    output bool                                     maxi_hbm30_arlock   = hbm30_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm30_arqos    = hbm30_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm30_arregion = hbm30_reader.arregion
     output bool                                     maxi_hbm30_rready   = hbm30_reader.rready
     input  bool                                     maxi_hbm30_arready
     input  bool                                     maxi_hbm30_rvalid
@@ -2227,12 +2351,14 @@ module SUSpMV_Full {
     HBMReader#(START_REG: 0, ADDR_REG: HBM_ADDR_REGS[31], COUNT_REG: HBM_COUNT_REGS[31]) hbm31_reader
     output bool                                     maxi_hbm31_awvalid  = hbm31_reader.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm31_awaddr   = hbm31_reader.awaddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm31_awlen    = hbm31_reader.awlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm31_awlen    = hbm31_reader.awlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm31_awsize   = hbm31_reader.awsize
     output bool[2]                                  maxi_hbm31_awburst  = hbm31_reader.awburst
     output bool[3]                                  maxi_hbm31_awprot   = hbm31_reader.awprot
     output bool[4]                                  maxi_hbm31_awcache  = hbm31_reader.awcache
-    output bool[2]                                  maxi_hbm31_awlock   = hbm31_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm31_awqos    = hbm31_reader.awqos
+    output bool                                     maxi_hbm31_awlock   = hbm31_reader.awlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm31_awregion = hbm31_reader.awregion
     output bool                                     maxi_hbm31_wvalid   = hbm31_reader.wvalid
     output bool[HBM_AXI_WIDTH]                      maxi_hbm31_wdata    = hbm31_reader.wdata
     output bool[HBM_AXI_WIDTH / 8]                  maxi_hbm31_wstrb    = hbm31_reader.wstrb
@@ -2248,12 +2374,14 @@ module SUSpMV_Full {
     hbm31_reader.bresp =                            maxi_hbm31_bresp
     output bool                                     maxi_hbm31_arvalid  = hbm31_reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   maxi_hbm31_araddr   = hbm31_reader.araddr
-    output int#(FROM: 0, TO: 16)                    maxi_hbm31_arlen    = hbm31_reader.arlen
+    output int#(FROM: 0, TO: 256)                   maxi_hbm31_arlen    = hbm31_reader.arlen
     output int#(FROM: 0, TO: 8)                     maxi_hbm31_arsize   = hbm31_reader.arsize
     output bool[2]                                  maxi_hbm31_arburst  = hbm31_reader.arburst
     output bool[3]                                  maxi_hbm31_arprot   = hbm31_reader.arprot
     output bool[4]                                  maxi_hbm31_arcache  = hbm31_reader.arcache
-    output bool[2]                                  maxi_hbm31_arlock   = hbm31_reader.arlock
+    output bool                                     maxi_hbm31_arlock   = hbm31_reader.arlock
+    output int#(FROM: 0, TO: 16)                    maxi_hbm31_arqos    = hbm31_reader.arqos
+    output int#(FROM: 0, TO: 16)                    maxi_hbm31_arregion = hbm31_reader.arregion
     output bool                                     maxi_hbm31_rready   = hbm31_reader.rready
     input  bool                                     maxi_hbm31_arready
     input  bool                                     maxi_hbm31_rvalid

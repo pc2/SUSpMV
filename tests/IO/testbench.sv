@@ -128,8 +128,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm00_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm00_awaddr'0
 	wire[63:0] maxi_hbm00_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm00_awlen'0
-	wire[3:0] maxi_hbm00_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm00_awlen'0
+	wire[7:0] maxi_hbm00_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm00_awsize'0
 	wire[2:0] maxi_hbm00_awsize;
 	// {aclk} output bool #()[2] maxi_hbm00_awburst'0
@@ -138,8 +138,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm00_awprot;
 	// {aclk} output bool #()[4] maxi_hbm00_awcache'0
 	wire[3:0] maxi_hbm00_awcache;
-	// {aclk} output bool #()[2] maxi_hbm00_awlock'0
-	wire[1:0] maxi_hbm00_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm00_awqos'0
+	wire[3:0] maxi_hbm00_awqos;
+	// {aclk} output bool #() maxi_hbm00_awlock'0
+	wire maxi_hbm00_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm00_awregion'0
+	wire[3:0] maxi_hbm00_awregion;
 	// {aclk} output bool #() maxi_hbm00_wvalid'0
 	wire maxi_hbm00_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm00_wdata'0
@@ -162,8 +166,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm00_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm00_araddr'0
 	wire[63:0] maxi_hbm00_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm00_arlen'0
-	wire[3:0] maxi_hbm00_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm00_arlen'0
+	wire[7:0] maxi_hbm00_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm00_arsize'0
 	wire[2:0] maxi_hbm00_arsize;
 	// {aclk} output bool #()[2] maxi_hbm00_arburst'0
@@ -172,8 +176,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm00_arprot;
 	// {aclk} output bool #()[4] maxi_hbm00_arcache'0
 	wire[3:0] maxi_hbm00_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm00_arqos'0
+	wire[3:0] maxi_hbm00_arqos;
 	// {aclk} output bool #() maxi_hbm00_arlock'0
-	wire[1:0] maxi_hbm00_arlock;
+	wire maxi_hbm00_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm00_arregion'0
+	wire[3:0] maxi_hbm00_arregion;
 	// {aclk} output bool #() maxi_hbm00_rready'0
 	wire maxi_hbm00_rready;
 	// {aclk} input bool #() maxi_hbm00_arready'0
@@ -186,14 +194,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm00_rresp;
 	// {aclk} input bool #() maxi_hbm00_rlast'0
 	logic maxi_hbm00_rlast;
-
 	// HBM01
 	// {aclk} output bool #() maxi_hbm01_awvalid'0
 	wire maxi_hbm01_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm01_awaddr'0
 	wire[63:0] maxi_hbm01_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm01_awlen'0
-	wire[3:0] maxi_hbm01_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm01_awlen'0
+	wire[7:0] maxi_hbm01_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm01_awsize'0
 	wire[2:0] maxi_hbm01_awsize;
 	// {aclk} output bool #()[2] maxi_hbm01_awburst'0
@@ -202,8 +209,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm01_awprot;
 	// {aclk} output bool #()[4] maxi_hbm01_awcache'0
 	wire[3:0] maxi_hbm01_awcache;
-	// {aclk} output bool #()[2] maxi_hbm01_awlock'0
-	wire[1:0] maxi_hbm01_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm01_awqos'0
+	wire[3:0] maxi_hbm01_awqos;
+	// {aclk} output bool #() maxi_hbm01_awlock'0
+	wire maxi_hbm01_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm01_awregion'0
+	wire[3:0] maxi_hbm01_awregion;
 	// {aclk} output bool #() maxi_hbm01_wvalid'0
 	wire maxi_hbm01_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm01_wdata'0
@@ -226,8 +237,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm01_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm01_araddr'0
 	wire[63:0] maxi_hbm01_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm01_arlen'0
-	wire[3:0] maxi_hbm01_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm01_arlen'0
+	wire[7:0] maxi_hbm01_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm01_arsize'0
 	wire[2:0] maxi_hbm01_arsize;
 	// {aclk} output bool #()[2] maxi_hbm01_arburst'0
@@ -236,8 +247,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm01_arprot;
 	// {aclk} output bool #()[4] maxi_hbm01_arcache'0
 	wire[3:0] maxi_hbm01_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm01_arqos'0
+	wire[3:0] maxi_hbm01_arqos;
 	// {aclk} output bool #() maxi_hbm01_arlock'0
-	wire[1:0] maxi_hbm01_arlock;
+	wire maxi_hbm01_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm01_arregion'0
+	wire[3:0] maxi_hbm01_arregion;
 	// {aclk} output bool #() maxi_hbm01_rready'0
 	wire maxi_hbm01_rready;
 	// {aclk} input bool #() maxi_hbm01_arready'0
@@ -250,14 +265,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm01_rresp;
 	// {aclk} input bool #() maxi_hbm01_rlast'0
 	logic maxi_hbm01_rlast;
-
 	// HBM02
 	// {aclk} output bool #() maxi_hbm02_awvalid'0
 	wire maxi_hbm02_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm02_awaddr'0
 	wire[63:0] maxi_hbm02_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm02_awlen'0
-	wire[3:0] maxi_hbm02_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm02_awlen'0
+	wire[7:0] maxi_hbm02_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm02_awsize'0
 	wire[2:0] maxi_hbm02_awsize;
 	// {aclk} output bool #()[2] maxi_hbm02_awburst'0
@@ -266,8 +280,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm02_awprot;
 	// {aclk} output bool #()[4] maxi_hbm02_awcache'0
 	wire[3:0] maxi_hbm02_awcache;
-	// {aclk} output bool #()[2] maxi_hbm02_awlock'0
-	wire[1:0] maxi_hbm02_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm02_awqos'0
+	wire[3:0] maxi_hbm02_awqos;
+	// {aclk} output bool #() maxi_hbm02_awlock'0
+	wire maxi_hbm02_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm02_awregion'0
+	wire[3:0] maxi_hbm02_awregion;
 	// {aclk} output bool #() maxi_hbm02_wvalid'0
 	wire maxi_hbm02_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm02_wdata'0
@@ -290,8 +308,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm02_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm02_araddr'0
 	wire[63:0] maxi_hbm02_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm02_arlen'0
-	wire[3:0] maxi_hbm02_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm02_arlen'0
+	wire[7:0] maxi_hbm02_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm02_arsize'0
 	wire[2:0] maxi_hbm02_arsize;
 	// {aclk} output bool #()[2] maxi_hbm02_arburst'0
@@ -300,8 +318,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm02_arprot;
 	// {aclk} output bool #()[4] maxi_hbm02_arcache'0
 	wire[3:0] maxi_hbm02_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm02_arqos'0
+	wire[3:0] maxi_hbm02_arqos;
 	// {aclk} output bool #() maxi_hbm02_arlock'0
-	wire[1:0] maxi_hbm02_arlock;
+	wire maxi_hbm02_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm02_arregion'0
+	wire[3:0] maxi_hbm02_arregion;
 	// {aclk} output bool #() maxi_hbm02_rready'0
 	wire maxi_hbm02_rready;
 	// {aclk} input bool #() maxi_hbm02_arready'0
@@ -314,14 +336,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm02_rresp;
 	// {aclk} input bool #() maxi_hbm02_rlast'0
 	logic maxi_hbm02_rlast;
-
 	// HBM03
 	// {aclk} output bool #() maxi_hbm03_awvalid'0
 	wire maxi_hbm03_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm03_awaddr'0
 	wire[63:0] maxi_hbm03_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm03_awlen'0
-	wire[3:0] maxi_hbm03_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm03_awlen'0
+	wire[7:0] maxi_hbm03_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm03_awsize'0
 	wire[2:0] maxi_hbm03_awsize;
 	// {aclk} output bool #()[2] maxi_hbm03_awburst'0
@@ -330,8 +351,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm03_awprot;
 	// {aclk} output bool #()[4] maxi_hbm03_awcache'0
 	wire[3:0] maxi_hbm03_awcache;
-	// {aclk} output bool #()[2] maxi_hbm03_awlock'0
-	wire[1:0] maxi_hbm03_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm03_awqos'0
+	wire[3:0] maxi_hbm03_awqos;
+	// {aclk} output bool #() maxi_hbm03_awlock'0
+	wire maxi_hbm03_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm03_awregion'0
+	wire[3:0] maxi_hbm03_awregion;
 	// {aclk} output bool #() maxi_hbm03_wvalid'0
 	wire maxi_hbm03_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm03_wdata'0
@@ -354,8 +379,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm03_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm03_araddr'0
 	wire[63:0] maxi_hbm03_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm03_arlen'0
-	wire[3:0] maxi_hbm03_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm03_arlen'0
+	wire[7:0] maxi_hbm03_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm03_arsize'0
 	wire[2:0] maxi_hbm03_arsize;
 	// {aclk} output bool #()[2] maxi_hbm03_arburst'0
@@ -364,8 +389,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm03_arprot;
 	// {aclk} output bool #()[4] maxi_hbm03_arcache'0
 	wire[3:0] maxi_hbm03_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm03_arqos'0
+	wire[3:0] maxi_hbm03_arqos;
 	// {aclk} output bool #() maxi_hbm03_arlock'0
-	wire[1:0] maxi_hbm03_arlock;
+	wire maxi_hbm03_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm03_arregion'0
+	wire[3:0] maxi_hbm03_arregion;
 	// {aclk} output bool #() maxi_hbm03_rready'0
 	wire maxi_hbm03_rready;
 	// {aclk} input bool #() maxi_hbm03_arready'0
@@ -378,14 +407,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm03_rresp;
 	// {aclk} input bool #() maxi_hbm03_rlast'0
 	logic maxi_hbm03_rlast;
-
 	// HBM04
 	// {aclk} output bool #() maxi_hbm04_awvalid'0
 	wire maxi_hbm04_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm04_awaddr'0
 	wire[63:0] maxi_hbm04_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm04_awlen'0
-	wire[3:0] maxi_hbm04_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm04_awlen'0
+	wire[7:0] maxi_hbm04_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm04_awsize'0
 	wire[2:0] maxi_hbm04_awsize;
 	// {aclk} output bool #()[2] maxi_hbm04_awburst'0
@@ -394,8 +422,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm04_awprot;
 	// {aclk} output bool #()[4] maxi_hbm04_awcache'0
 	wire[3:0] maxi_hbm04_awcache;
-	// {aclk} output bool #()[2] maxi_hbm04_awlock'0
-	wire[1:0] maxi_hbm04_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm04_awqos'0
+	wire[3:0] maxi_hbm04_awqos;
+	// {aclk} output bool #() maxi_hbm04_awlock'0
+	wire maxi_hbm04_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm04_awregion'0
+	wire[3:0] maxi_hbm04_awregion;
 	// {aclk} output bool #() maxi_hbm04_wvalid'0
 	wire maxi_hbm04_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm04_wdata'0
@@ -418,8 +450,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm04_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm04_araddr'0
 	wire[63:0] maxi_hbm04_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm04_arlen'0
-	wire[3:0] maxi_hbm04_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm04_arlen'0
+	wire[7:0] maxi_hbm04_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm04_arsize'0
 	wire[2:0] maxi_hbm04_arsize;
 	// {aclk} output bool #()[2] maxi_hbm04_arburst'0
@@ -428,8 +460,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm04_arprot;
 	// {aclk} output bool #()[4] maxi_hbm04_arcache'0
 	wire[3:0] maxi_hbm04_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm04_arqos'0
+	wire[3:0] maxi_hbm04_arqos;
 	// {aclk} output bool #() maxi_hbm04_arlock'0
-	wire[1:0] maxi_hbm04_arlock;
+	wire maxi_hbm04_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm04_arregion'0
+	wire[3:0] maxi_hbm04_arregion;
 	// {aclk} output bool #() maxi_hbm04_rready'0
 	wire maxi_hbm04_rready;
 	// {aclk} input bool #() maxi_hbm04_arready'0
@@ -442,14 +478,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm04_rresp;
 	// {aclk} input bool #() maxi_hbm04_rlast'0
 	logic maxi_hbm04_rlast;
-
 	// HBM05
 	// {aclk} output bool #() maxi_hbm05_awvalid'0
 	wire maxi_hbm05_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm05_awaddr'0
 	wire[63:0] maxi_hbm05_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm05_awlen'0
-	wire[3:0] maxi_hbm05_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm05_awlen'0
+	wire[7:0] maxi_hbm05_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm05_awsize'0
 	wire[2:0] maxi_hbm05_awsize;
 	// {aclk} output bool #()[2] maxi_hbm05_awburst'0
@@ -458,8 +493,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm05_awprot;
 	// {aclk} output bool #()[4] maxi_hbm05_awcache'0
 	wire[3:0] maxi_hbm05_awcache;
-	// {aclk} output bool #()[2] maxi_hbm05_awlock'0
-	wire[1:0] maxi_hbm05_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm05_awqos'0
+	wire[3:0] maxi_hbm05_awqos;
+	// {aclk} output bool #() maxi_hbm05_awlock'0
+	wire maxi_hbm05_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm05_awregion'0
+	wire[3:0] maxi_hbm05_awregion;
 	// {aclk} output bool #() maxi_hbm05_wvalid'0
 	wire maxi_hbm05_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm05_wdata'0
@@ -482,8 +521,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm05_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm05_araddr'0
 	wire[63:0] maxi_hbm05_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm05_arlen'0
-	wire[3:0] maxi_hbm05_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm05_arlen'0
+	wire[7:0] maxi_hbm05_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm05_arsize'0
 	wire[2:0] maxi_hbm05_arsize;
 	// {aclk} output bool #()[2] maxi_hbm05_arburst'0
@@ -492,8 +531,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm05_arprot;
 	// {aclk} output bool #()[4] maxi_hbm05_arcache'0
 	wire[3:0] maxi_hbm05_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm05_arqos'0
+	wire[3:0] maxi_hbm05_arqos;
 	// {aclk} output bool #() maxi_hbm05_arlock'0
-	wire[1:0] maxi_hbm05_arlock;
+	wire maxi_hbm05_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm05_arregion'0
+	wire[3:0] maxi_hbm05_arregion;
 	// {aclk} output bool #() maxi_hbm05_rready'0
 	wire maxi_hbm05_rready;
 	// {aclk} input bool #() maxi_hbm05_arready'0
@@ -506,14 +549,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm05_rresp;
 	// {aclk} input bool #() maxi_hbm05_rlast'0
 	logic maxi_hbm05_rlast;
-
 	// HBM06
 	// {aclk} output bool #() maxi_hbm06_awvalid'0
 	wire maxi_hbm06_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm06_awaddr'0
 	wire[63:0] maxi_hbm06_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm06_awlen'0
-	wire[3:0] maxi_hbm06_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm06_awlen'0
+	wire[7:0] maxi_hbm06_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm06_awsize'0
 	wire[2:0] maxi_hbm06_awsize;
 	// {aclk} output bool #()[2] maxi_hbm06_awburst'0
@@ -522,8 +564,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm06_awprot;
 	// {aclk} output bool #()[4] maxi_hbm06_awcache'0
 	wire[3:0] maxi_hbm06_awcache;
-	// {aclk} output bool #()[2] maxi_hbm06_awlock'0
-	wire[1:0] maxi_hbm06_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm06_awqos'0
+	wire[3:0] maxi_hbm06_awqos;
+	// {aclk} output bool #() maxi_hbm06_awlock'0
+	wire maxi_hbm06_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm06_awregion'0
+	wire[3:0] maxi_hbm06_awregion;
 	// {aclk} output bool #() maxi_hbm06_wvalid'0
 	wire maxi_hbm06_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm06_wdata'0
@@ -546,8 +592,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm06_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm06_araddr'0
 	wire[63:0] maxi_hbm06_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm06_arlen'0
-	wire[3:0] maxi_hbm06_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm06_arlen'0
+	wire[7:0] maxi_hbm06_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm06_arsize'0
 	wire[2:0] maxi_hbm06_arsize;
 	// {aclk} output bool #()[2] maxi_hbm06_arburst'0
@@ -556,8 +602,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm06_arprot;
 	// {aclk} output bool #()[4] maxi_hbm06_arcache'0
 	wire[3:0] maxi_hbm06_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm06_arqos'0
+	wire[3:0] maxi_hbm06_arqos;
 	// {aclk} output bool #() maxi_hbm06_arlock'0
-	wire[1:0] maxi_hbm06_arlock;
+	wire maxi_hbm06_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm06_arregion'0
+	wire[3:0] maxi_hbm06_arregion;
 	// {aclk} output bool #() maxi_hbm06_rready'0
 	wire maxi_hbm06_rready;
 	// {aclk} input bool #() maxi_hbm06_arready'0
@@ -570,14 +620,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm06_rresp;
 	// {aclk} input bool #() maxi_hbm06_rlast'0
 	logic maxi_hbm06_rlast;
-
 	// HBM07
 	// {aclk} output bool #() maxi_hbm07_awvalid'0
 	wire maxi_hbm07_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm07_awaddr'0
 	wire[63:0] maxi_hbm07_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm07_awlen'0
-	wire[3:0] maxi_hbm07_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm07_awlen'0
+	wire[7:0] maxi_hbm07_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm07_awsize'0
 	wire[2:0] maxi_hbm07_awsize;
 	// {aclk} output bool #()[2] maxi_hbm07_awburst'0
@@ -586,8 +635,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm07_awprot;
 	// {aclk} output bool #()[4] maxi_hbm07_awcache'0
 	wire[3:0] maxi_hbm07_awcache;
-	// {aclk} output bool #()[2] maxi_hbm07_awlock'0
-	wire[1:0] maxi_hbm07_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm07_awqos'0
+	wire[3:0] maxi_hbm07_awqos;
+	// {aclk} output bool #() maxi_hbm07_awlock'0
+	wire maxi_hbm07_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm07_awregion'0
+	wire[3:0] maxi_hbm07_awregion;
 	// {aclk} output bool #() maxi_hbm07_wvalid'0
 	wire maxi_hbm07_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm07_wdata'0
@@ -610,8 +663,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm07_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm07_araddr'0
 	wire[63:0] maxi_hbm07_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm07_arlen'0
-	wire[3:0] maxi_hbm07_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm07_arlen'0
+	wire[7:0] maxi_hbm07_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm07_arsize'0
 	wire[2:0] maxi_hbm07_arsize;
 	// {aclk} output bool #()[2] maxi_hbm07_arburst'0
@@ -620,8 +673,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm07_arprot;
 	// {aclk} output bool #()[4] maxi_hbm07_arcache'0
 	wire[3:0] maxi_hbm07_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm07_arqos'0
+	wire[3:0] maxi_hbm07_arqos;
 	// {aclk} output bool #() maxi_hbm07_arlock'0
-	wire[1:0] maxi_hbm07_arlock;
+	wire maxi_hbm07_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm07_arregion'0
+	wire[3:0] maxi_hbm07_arregion;
 	// {aclk} output bool #() maxi_hbm07_rready'0
 	wire maxi_hbm07_rready;
 	// {aclk} input bool #() maxi_hbm07_arready'0
@@ -634,14 +691,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm07_rresp;
 	// {aclk} input bool #() maxi_hbm07_rlast'0
 	logic maxi_hbm07_rlast;
-
 	// HBM08
 	// {aclk} output bool #() maxi_hbm08_awvalid'0
 	wire maxi_hbm08_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm08_awaddr'0
 	wire[63:0] maxi_hbm08_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm08_awlen'0
-	wire[3:0] maxi_hbm08_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm08_awlen'0
+	wire[7:0] maxi_hbm08_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm08_awsize'0
 	wire[2:0] maxi_hbm08_awsize;
 	// {aclk} output bool #()[2] maxi_hbm08_awburst'0
@@ -650,8 +706,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm08_awprot;
 	// {aclk} output bool #()[4] maxi_hbm08_awcache'0
 	wire[3:0] maxi_hbm08_awcache;
-	// {aclk} output bool #()[2] maxi_hbm08_awlock'0
-	wire[1:0] maxi_hbm08_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm08_awqos'0
+	wire[3:0] maxi_hbm08_awqos;
+	// {aclk} output bool #() maxi_hbm08_awlock'0
+	wire maxi_hbm08_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm08_awregion'0
+	wire[3:0] maxi_hbm08_awregion;
 	// {aclk} output bool #() maxi_hbm08_wvalid'0
 	wire maxi_hbm08_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm08_wdata'0
@@ -674,8 +734,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm08_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm08_araddr'0
 	wire[63:0] maxi_hbm08_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm08_arlen'0
-	wire[3:0] maxi_hbm08_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm08_arlen'0
+	wire[7:0] maxi_hbm08_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm08_arsize'0
 	wire[2:0] maxi_hbm08_arsize;
 	// {aclk} output bool #()[2] maxi_hbm08_arburst'0
@@ -684,8 +744,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm08_arprot;
 	// {aclk} output bool #()[4] maxi_hbm08_arcache'0
 	wire[3:0] maxi_hbm08_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm08_arqos'0
+	wire[3:0] maxi_hbm08_arqos;
 	// {aclk} output bool #() maxi_hbm08_arlock'0
-	wire[1:0] maxi_hbm08_arlock;
+	wire maxi_hbm08_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm08_arregion'0
+	wire[3:0] maxi_hbm08_arregion;
 	// {aclk} output bool #() maxi_hbm08_rready'0
 	wire maxi_hbm08_rready;
 	// {aclk} input bool #() maxi_hbm08_arready'0
@@ -698,14 +762,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm08_rresp;
 	// {aclk} input bool #() maxi_hbm08_rlast'0
 	logic maxi_hbm08_rlast;
-
 	// HBM09
 	// {aclk} output bool #() maxi_hbm09_awvalid'0
 	wire maxi_hbm09_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm09_awaddr'0
 	wire[63:0] maxi_hbm09_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm09_awlen'0
-	wire[3:0] maxi_hbm09_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm09_awlen'0
+	wire[7:0] maxi_hbm09_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm09_awsize'0
 	wire[2:0] maxi_hbm09_awsize;
 	// {aclk} output bool #()[2] maxi_hbm09_awburst'0
@@ -714,8 +777,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm09_awprot;
 	// {aclk} output bool #()[4] maxi_hbm09_awcache'0
 	wire[3:0] maxi_hbm09_awcache;
-	// {aclk} output bool #()[2] maxi_hbm09_awlock'0
-	wire[1:0] maxi_hbm09_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm09_awqos'0
+	wire[3:0] maxi_hbm09_awqos;
+	// {aclk} output bool #() maxi_hbm09_awlock'0
+	wire maxi_hbm09_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm09_awregion'0
+	wire[3:0] maxi_hbm09_awregion;
 	// {aclk} output bool #() maxi_hbm09_wvalid'0
 	wire maxi_hbm09_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm09_wdata'0
@@ -738,8 +805,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm09_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm09_araddr'0
 	wire[63:0] maxi_hbm09_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm09_arlen'0
-	wire[3:0] maxi_hbm09_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm09_arlen'0
+	wire[7:0] maxi_hbm09_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm09_arsize'0
 	wire[2:0] maxi_hbm09_arsize;
 	// {aclk} output bool #()[2] maxi_hbm09_arburst'0
@@ -748,8 +815,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm09_arprot;
 	// {aclk} output bool #()[4] maxi_hbm09_arcache'0
 	wire[3:0] maxi_hbm09_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm09_arqos'0
+	wire[3:0] maxi_hbm09_arqos;
 	// {aclk} output bool #() maxi_hbm09_arlock'0
-	wire[1:0] maxi_hbm09_arlock;
+	wire maxi_hbm09_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm09_arregion'0
+	wire[3:0] maxi_hbm09_arregion;
 	// {aclk} output bool #() maxi_hbm09_rready'0
 	wire maxi_hbm09_rready;
 	// {aclk} input bool #() maxi_hbm09_arready'0
@@ -762,14 +833,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm09_rresp;
 	// {aclk} input bool #() maxi_hbm09_rlast'0
 	logic maxi_hbm09_rlast;
-
 	// HBM10
 	// {aclk} output bool #() maxi_hbm10_awvalid'0
 	wire maxi_hbm10_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm10_awaddr'0
 	wire[63:0] maxi_hbm10_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm10_awlen'0
-	wire[3:0] maxi_hbm10_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm10_awlen'0
+	wire[7:0] maxi_hbm10_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm10_awsize'0
 	wire[2:0] maxi_hbm10_awsize;
 	// {aclk} output bool #()[2] maxi_hbm10_awburst'0
@@ -778,8 +848,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm10_awprot;
 	// {aclk} output bool #()[4] maxi_hbm10_awcache'0
 	wire[3:0] maxi_hbm10_awcache;
-	// {aclk} output bool #()[2] maxi_hbm10_awlock'0
-	wire[1:0] maxi_hbm10_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm10_awqos'0
+	wire[3:0] maxi_hbm10_awqos;
+	// {aclk} output bool #() maxi_hbm10_awlock'0
+	wire maxi_hbm10_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm10_awregion'0
+	wire[3:0] maxi_hbm10_awregion;
 	// {aclk} output bool #() maxi_hbm10_wvalid'0
 	wire maxi_hbm10_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm10_wdata'0
@@ -802,8 +876,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm10_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm10_araddr'0
 	wire[63:0] maxi_hbm10_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm10_arlen'0
-	wire[3:0] maxi_hbm10_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm10_arlen'0
+	wire[7:0] maxi_hbm10_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm10_arsize'0
 	wire[2:0] maxi_hbm10_arsize;
 	// {aclk} output bool #()[2] maxi_hbm10_arburst'0
@@ -812,8 +886,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm10_arprot;
 	// {aclk} output bool #()[4] maxi_hbm10_arcache'0
 	wire[3:0] maxi_hbm10_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm10_arqos'0
+	wire[3:0] maxi_hbm10_arqos;
 	// {aclk} output bool #() maxi_hbm10_arlock'0
-	wire[1:0] maxi_hbm10_arlock;
+	wire maxi_hbm10_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm10_arregion'0
+	wire[3:0] maxi_hbm10_arregion;
 	// {aclk} output bool #() maxi_hbm10_rready'0
 	wire maxi_hbm10_rready;
 	// {aclk} input bool #() maxi_hbm10_arready'0
@@ -826,14 +904,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm10_rresp;
 	// {aclk} input bool #() maxi_hbm10_rlast'0
 	logic maxi_hbm10_rlast;
-
 	// HBM11
 	// {aclk} output bool #() maxi_hbm11_awvalid'0
 	wire maxi_hbm11_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm11_awaddr'0
 	wire[63:0] maxi_hbm11_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm11_awlen'0
-	wire[3:0] maxi_hbm11_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm11_awlen'0
+	wire[7:0] maxi_hbm11_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm11_awsize'0
 	wire[2:0] maxi_hbm11_awsize;
 	// {aclk} output bool #()[2] maxi_hbm11_awburst'0
@@ -842,8 +919,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm11_awprot;
 	// {aclk} output bool #()[4] maxi_hbm11_awcache'0
 	wire[3:0] maxi_hbm11_awcache;
-	// {aclk} output bool #()[2] maxi_hbm11_awlock'0
-	wire[1:0] maxi_hbm11_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm11_awqos'0
+	wire[3:0] maxi_hbm11_awqos;
+	// {aclk} output bool #() maxi_hbm11_awlock'0
+	wire maxi_hbm11_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm11_awregion'0
+	wire[3:0] maxi_hbm11_awregion;
 	// {aclk} output bool #() maxi_hbm11_wvalid'0
 	wire maxi_hbm11_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm11_wdata'0
@@ -866,8 +947,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm11_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm11_araddr'0
 	wire[63:0] maxi_hbm11_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm11_arlen'0
-	wire[3:0] maxi_hbm11_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm11_arlen'0
+	wire[7:0] maxi_hbm11_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm11_arsize'0
 	wire[2:0] maxi_hbm11_arsize;
 	// {aclk} output bool #()[2] maxi_hbm11_arburst'0
@@ -876,8 +957,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm11_arprot;
 	// {aclk} output bool #()[4] maxi_hbm11_arcache'0
 	wire[3:0] maxi_hbm11_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm11_arqos'0
+	wire[3:0] maxi_hbm11_arqos;
 	// {aclk} output bool #() maxi_hbm11_arlock'0
-	wire[1:0] maxi_hbm11_arlock;
+	wire maxi_hbm11_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm11_arregion'0
+	wire[3:0] maxi_hbm11_arregion;
 	// {aclk} output bool #() maxi_hbm11_rready'0
 	wire maxi_hbm11_rready;
 	// {aclk} input bool #() maxi_hbm11_arready'0
@@ -890,14 +975,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm11_rresp;
 	// {aclk} input bool #() maxi_hbm11_rlast'0
 	logic maxi_hbm11_rlast;
-
 	// HBM12
 	// {aclk} output bool #() maxi_hbm12_awvalid'0
 	wire maxi_hbm12_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm12_awaddr'0
 	wire[63:0] maxi_hbm12_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm12_awlen'0
-	wire[3:0] maxi_hbm12_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm12_awlen'0
+	wire[7:0] maxi_hbm12_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm12_awsize'0
 	wire[2:0] maxi_hbm12_awsize;
 	// {aclk} output bool #()[2] maxi_hbm12_awburst'0
@@ -906,8 +990,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm12_awprot;
 	// {aclk} output bool #()[4] maxi_hbm12_awcache'0
 	wire[3:0] maxi_hbm12_awcache;
-	// {aclk} output bool #()[2] maxi_hbm12_awlock'0
-	wire[1:0] maxi_hbm12_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm12_awqos'0
+	wire[3:0] maxi_hbm12_awqos;
+	// {aclk} output bool #() maxi_hbm12_awlock'0
+	wire maxi_hbm12_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm12_awregion'0
+	wire[3:0] maxi_hbm12_awregion;
 	// {aclk} output bool #() maxi_hbm12_wvalid'0
 	wire maxi_hbm12_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm12_wdata'0
@@ -930,8 +1018,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm12_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm12_araddr'0
 	wire[63:0] maxi_hbm12_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm12_arlen'0
-	wire[3:0] maxi_hbm12_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm12_arlen'0
+	wire[7:0] maxi_hbm12_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm12_arsize'0
 	wire[2:0] maxi_hbm12_arsize;
 	// {aclk} output bool #()[2] maxi_hbm12_arburst'0
@@ -940,8 +1028,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm12_arprot;
 	// {aclk} output bool #()[4] maxi_hbm12_arcache'0
 	wire[3:0] maxi_hbm12_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm12_arqos'0
+	wire[3:0] maxi_hbm12_arqos;
 	// {aclk} output bool #() maxi_hbm12_arlock'0
-	wire[1:0] maxi_hbm12_arlock;
+	wire maxi_hbm12_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm12_arregion'0
+	wire[3:0] maxi_hbm12_arregion;
 	// {aclk} output bool #() maxi_hbm12_rready'0
 	wire maxi_hbm12_rready;
 	// {aclk} input bool #() maxi_hbm12_arready'0
@@ -954,14 +1046,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm12_rresp;
 	// {aclk} input bool #() maxi_hbm12_rlast'0
 	logic maxi_hbm12_rlast;
-
 	// HBM13
 	// {aclk} output bool #() maxi_hbm13_awvalid'0
 	wire maxi_hbm13_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm13_awaddr'0
 	wire[63:0] maxi_hbm13_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm13_awlen'0
-	wire[3:0] maxi_hbm13_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm13_awlen'0
+	wire[7:0] maxi_hbm13_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm13_awsize'0
 	wire[2:0] maxi_hbm13_awsize;
 	// {aclk} output bool #()[2] maxi_hbm13_awburst'0
@@ -970,8 +1061,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm13_awprot;
 	// {aclk} output bool #()[4] maxi_hbm13_awcache'0
 	wire[3:0] maxi_hbm13_awcache;
-	// {aclk} output bool #()[2] maxi_hbm13_awlock'0
-	wire[1:0] maxi_hbm13_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm13_awqos'0
+	wire[3:0] maxi_hbm13_awqos;
+	// {aclk} output bool #() maxi_hbm13_awlock'0
+	wire maxi_hbm13_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm13_awregion'0
+	wire[3:0] maxi_hbm13_awregion;
 	// {aclk} output bool #() maxi_hbm13_wvalid'0
 	wire maxi_hbm13_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm13_wdata'0
@@ -994,8 +1089,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm13_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm13_araddr'0
 	wire[63:0] maxi_hbm13_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm13_arlen'0
-	wire[3:0] maxi_hbm13_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm13_arlen'0
+	wire[7:0] maxi_hbm13_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm13_arsize'0
 	wire[2:0] maxi_hbm13_arsize;
 	// {aclk} output bool #()[2] maxi_hbm13_arburst'0
@@ -1004,8 +1099,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm13_arprot;
 	// {aclk} output bool #()[4] maxi_hbm13_arcache'0
 	wire[3:0] maxi_hbm13_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm13_arqos'0
+	wire[3:0] maxi_hbm13_arqos;
 	// {aclk} output bool #() maxi_hbm13_arlock'0
-	wire[1:0] maxi_hbm13_arlock;
+	wire maxi_hbm13_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm13_arregion'0
+	wire[3:0] maxi_hbm13_arregion;
 	// {aclk} output bool #() maxi_hbm13_rready'0
 	wire maxi_hbm13_rready;
 	// {aclk} input bool #() maxi_hbm13_arready'0
@@ -1018,14 +1117,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm13_rresp;
 	// {aclk} input bool #() maxi_hbm13_rlast'0
 	logic maxi_hbm13_rlast;
-
 	// HBM14
 	// {aclk} output bool #() maxi_hbm14_awvalid'0
 	wire maxi_hbm14_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm14_awaddr'0
 	wire[63:0] maxi_hbm14_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm14_awlen'0
-	wire[3:0] maxi_hbm14_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm14_awlen'0
+	wire[7:0] maxi_hbm14_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm14_awsize'0
 	wire[2:0] maxi_hbm14_awsize;
 	// {aclk} output bool #()[2] maxi_hbm14_awburst'0
@@ -1034,8 +1132,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm14_awprot;
 	// {aclk} output bool #()[4] maxi_hbm14_awcache'0
 	wire[3:0] maxi_hbm14_awcache;
-	// {aclk} output bool #()[2] maxi_hbm14_awlock'0
-	wire[1:0] maxi_hbm14_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm14_awqos'0
+	wire[3:0] maxi_hbm14_awqos;
+	// {aclk} output bool #() maxi_hbm14_awlock'0
+	wire maxi_hbm14_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm14_awregion'0
+	wire[3:0] maxi_hbm14_awregion;
 	// {aclk} output bool #() maxi_hbm14_wvalid'0
 	wire maxi_hbm14_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm14_wdata'0
@@ -1058,8 +1160,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm14_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm14_araddr'0
 	wire[63:0] maxi_hbm14_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm14_arlen'0
-	wire[3:0] maxi_hbm14_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm14_arlen'0
+	wire[7:0] maxi_hbm14_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm14_arsize'0
 	wire[2:0] maxi_hbm14_arsize;
 	// {aclk} output bool #()[2] maxi_hbm14_arburst'0
@@ -1068,8 +1170,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm14_arprot;
 	// {aclk} output bool #()[4] maxi_hbm14_arcache'0
 	wire[3:0] maxi_hbm14_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm14_arqos'0
+	wire[3:0] maxi_hbm14_arqos;
 	// {aclk} output bool #() maxi_hbm14_arlock'0
-	wire[1:0] maxi_hbm14_arlock;
+	wire maxi_hbm14_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm14_arregion'0
+	wire[3:0] maxi_hbm14_arregion;
 	// {aclk} output bool #() maxi_hbm14_rready'0
 	wire maxi_hbm14_rready;
 	// {aclk} input bool #() maxi_hbm14_arready'0
@@ -1082,14 +1188,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm14_rresp;
 	// {aclk} input bool #() maxi_hbm14_rlast'0
 	logic maxi_hbm14_rlast;
-
 	// HBM15
 	// {aclk} output bool #() maxi_hbm15_awvalid'0
 	wire maxi_hbm15_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm15_awaddr'0
 	wire[63:0] maxi_hbm15_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm15_awlen'0
-	wire[3:0] maxi_hbm15_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm15_awlen'0
+	wire[7:0] maxi_hbm15_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm15_awsize'0
 	wire[2:0] maxi_hbm15_awsize;
 	// {aclk} output bool #()[2] maxi_hbm15_awburst'0
@@ -1098,8 +1203,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm15_awprot;
 	// {aclk} output bool #()[4] maxi_hbm15_awcache'0
 	wire[3:0] maxi_hbm15_awcache;
-	// {aclk} output bool #()[2] maxi_hbm15_awlock'0
-	wire[1:0] maxi_hbm15_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm15_awqos'0
+	wire[3:0] maxi_hbm15_awqos;
+	// {aclk} output bool #() maxi_hbm15_awlock'0
+	wire maxi_hbm15_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm15_awregion'0
+	wire[3:0] maxi_hbm15_awregion;
 	// {aclk} output bool #() maxi_hbm15_wvalid'0
 	wire maxi_hbm15_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm15_wdata'0
@@ -1122,8 +1231,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm15_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm15_araddr'0
 	wire[63:0] maxi_hbm15_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm15_arlen'0
-	wire[3:0] maxi_hbm15_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm15_arlen'0
+	wire[7:0] maxi_hbm15_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm15_arsize'0
 	wire[2:0] maxi_hbm15_arsize;
 	// {aclk} output bool #()[2] maxi_hbm15_arburst'0
@@ -1132,8 +1241,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm15_arprot;
 	// {aclk} output bool #()[4] maxi_hbm15_arcache'0
 	wire[3:0] maxi_hbm15_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm15_arqos'0
+	wire[3:0] maxi_hbm15_arqos;
 	// {aclk} output bool #() maxi_hbm15_arlock'0
-	wire[1:0] maxi_hbm15_arlock;
+	wire maxi_hbm15_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm15_arregion'0
+	wire[3:0] maxi_hbm15_arregion;
 	// {aclk} output bool #() maxi_hbm15_rready'0
 	wire maxi_hbm15_rready;
 	// {aclk} input bool #() maxi_hbm15_arready'0
@@ -1146,14 +1259,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm15_rresp;
 	// {aclk} input bool #() maxi_hbm15_rlast'0
 	logic maxi_hbm15_rlast;
-
 	// HBM16
 	// {aclk} output bool #() maxi_hbm16_awvalid'0
 	wire maxi_hbm16_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm16_awaddr'0
 	wire[63:0] maxi_hbm16_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm16_awlen'0
-	wire[3:0] maxi_hbm16_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm16_awlen'0
+	wire[7:0] maxi_hbm16_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm16_awsize'0
 	wire[2:0] maxi_hbm16_awsize;
 	// {aclk} output bool #()[2] maxi_hbm16_awburst'0
@@ -1162,8 +1274,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm16_awprot;
 	// {aclk} output bool #()[4] maxi_hbm16_awcache'0
 	wire[3:0] maxi_hbm16_awcache;
-	// {aclk} output bool #()[2] maxi_hbm16_awlock'0
-	wire[1:0] maxi_hbm16_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm16_awqos'0
+	wire[3:0] maxi_hbm16_awqos;
+	// {aclk} output bool #() maxi_hbm16_awlock'0
+	wire maxi_hbm16_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm16_awregion'0
+	wire[3:0] maxi_hbm16_awregion;
 	// {aclk} output bool #() maxi_hbm16_wvalid'0
 	wire maxi_hbm16_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm16_wdata'0
@@ -1186,8 +1302,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm16_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm16_araddr'0
 	wire[63:0] maxi_hbm16_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm16_arlen'0
-	wire[3:0] maxi_hbm16_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm16_arlen'0
+	wire[7:0] maxi_hbm16_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm16_arsize'0
 	wire[2:0] maxi_hbm16_arsize;
 	// {aclk} output bool #()[2] maxi_hbm16_arburst'0
@@ -1196,8 +1312,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm16_arprot;
 	// {aclk} output bool #()[4] maxi_hbm16_arcache'0
 	wire[3:0] maxi_hbm16_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm16_arqos'0
+	wire[3:0] maxi_hbm16_arqos;
 	// {aclk} output bool #() maxi_hbm16_arlock'0
-	wire[1:0] maxi_hbm16_arlock;
+	wire maxi_hbm16_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm16_arregion'0
+	wire[3:0] maxi_hbm16_arregion;
 	// {aclk} output bool #() maxi_hbm16_rready'0
 	wire maxi_hbm16_rready;
 	// {aclk} input bool #() maxi_hbm16_arready'0
@@ -1210,14 +1330,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm16_rresp;
 	// {aclk} input bool #() maxi_hbm16_rlast'0
 	logic maxi_hbm16_rlast;
-
 	// HBM17
 	// {aclk} output bool #() maxi_hbm17_awvalid'0
 	wire maxi_hbm17_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm17_awaddr'0
 	wire[63:0] maxi_hbm17_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm17_awlen'0
-	wire[3:0] maxi_hbm17_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm17_awlen'0
+	wire[7:0] maxi_hbm17_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm17_awsize'0
 	wire[2:0] maxi_hbm17_awsize;
 	// {aclk} output bool #()[2] maxi_hbm17_awburst'0
@@ -1226,8 +1345,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm17_awprot;
 	// {aclk} output bool #()[4] maxi_hbm17_awcache'0
 	wire[3:0] maxi_hbm17_awcache;
-	// {aclk} output bool #()[2] maxi_hbm17_awlock'0
-	wire[1:0] maxi_hbm17_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm17_awqos'0
+	wire[3:0] maxi_hbm17_awqos;
+	// {aclk} output bool #() maxi_hbm17_awlock'0
+	wire maxi_hbm17_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm17_awregion'0
+	wire[3:0] maxi_hbm17_awregion;
 	// {aclk} output bool #() maxi_hbm17_wvalid'0
 	wire maxi_hbm17_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm17_wdata'0
@@ -1250,8 +1373,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm17_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm17_araddr'0
 	wire[63:0] maxi_hbm17_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm17_arlen'0
-	wire[3:0] maxi_hbm17_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm17_arlen'0
+	wire[7:0] maxi_hbm17_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm17_arsize'0
 	wire[2:0] maxi_hbm17_arsize;
 	// {aclk} output bool #()[2] maxi_hbm17_arburst'0
@@ -1260,8 +1383,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm17_arprot;
 	// {aclk} output bool #()[4] maxi_hbm17_arcache'0
 	wire[3:0] maxi_hbm17_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm17_arqos'0
+	wire[3:0] maxi_hbm17_arqos;
 	// {aclk} output bool #() maxi_hbm17_arlock'0
-	wire[1:0] maxi_hbm17_arlock;
+	wire maxi_hbm17_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm17_arregion'0
+	wire[3:0] maxi_hbm17_arregion;
 	// {aclk} output bool #() maxi_hbm17_rready'0
 	wire maxi_hbm17_rready;
 	// {aclk} input bool #() maxi_hbm17_arready'0
@@ -1274,14 +1401,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm17_rresp;
 	// {aclk} input bool #() maxi_hbm17_rlast'0
 	logic maxi_hbm17_rlast;
-
 	// HBM18
 	// {aclk} output bool #() maxi_hbm18_awvalid'0
 	wire maxi_hbm18_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm18_awaddr'0
 	wire[63:0] maxi_hbm18_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm18_awlen'0
-	wire[3:0] maxi_hbm18_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm18_awlen'0
+	wire[7:0] maxi_hbm18_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm18_awsize'0
 	wire[2:0] maxi_hbm18_awsize;
 	// {aclk} output bool #()[2] maxi_hbm18_awburst'0
@@ -1290,8 +1416,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm18_awprot;
 	// {aclk} output bool #()[4] maxi_hbm18_awcache'0
 	wire[3:0] maxi_hbm18_awcache;
-	// {aclk} output bool #()[2] maxi_hbm18_awlock'0
-	wire[1:0] maxi_hbm18_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm18_awqos'0
+	wire[3:0] maxi_hbm18_awqos;
+	// {aclk} output bool #() maxi_hbm18_awlock'0
+	wire maxi_hbm18_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm18_awregion'0
+	wire[3:0] maxi_hbm18_awregion;
 	// {aclk} output bool #() maxi_hbm18_wvalid'0
 	wire maxi_hbm18_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm18_wdata'0
@@ -1314,8 +1444,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm18_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm18_araddr'0
 	wire[63:0] maxi_hbm18_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm18_arlen'0
-	wire[3:0] maxi_hbm18_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm18_arlen'0
+	wire[7:0] maxi_hbm18_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm18_arsize'0
 	wire[2:0] maxi_hbm18_arsize;
 	// {aclk} output bool #()[2] maxi_hbm18_arburst'0
@@ -1324,8 +1454,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm18_arprot;
 	// {aclk} output bool #()[4] maxi_hbm18_arcache'0
 	wire[3:0] maxi_hbm18_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm18_arqos'0
+	wire[3:0] maxi_hbm18_arqos;
 	// {aclk} output bool #() maxi_hbm18_arlock'0
-	wire[1:0] maxi_hbm18_arlock;
+	wire maxi_hbm18_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm18_arregion'0
+	wire[3:0] maxi_hbm18_arregion;
 	// {aclk} output bool #() maxi_hbm18_rready'0
 	wire maxi_hbm18_rready;
 	// {aclk} input bool #() maxi_hbm18_arready'0
@@ -1338,14 +1472,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm18_rresp;
 	// {aclk} input bool #() maxi_hbm18_rlast'0
 	logic maxi_hbm18_rlast;
-
 	// HBM19
 	// {aclk} output bool #() maxi_hbm19_awvalid'0
 	wire maxi_hbm19_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm19_awaddr'0
 	wire[63:0] maxi_hbm19_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm19_awlen'0
-	wire[3:0] maxi_hbm19_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm19_awlen'0
+	wire[7:0] maxi_hbm19_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm19_awsize'0
 	wire[2:0] maxi_hbm19_awsize;
 	// {aclk} output bool #()[2] maxi_hbm19_awburst'0
@@ -1354,8 +1487,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm19_awprot;
 	// {aclk} output bool #()[4] maxi_hbm19_awcache'0
 	wire[3:0] maxi_hbm19_awcache;
-	// {aclk} output bool #()[2] maxi_hbm19_awlock'0
-	wire[1:0] maxi_hbm19_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm19_awqos'0
+	wire[3:0] maxi_hbm19_awqos;
+	// {aclk} output bool #() maxi_hbm19_awlock'0
+	wire maxi_hbm19_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm19_awregion'0
+	wire[3:0] maxi_hbm19_awregion;
 	// {aclk} output bool #() maxi_hbm19_wvalid'0
 	wire maxi_hbm19_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm19_wdata'0
@@ -1378,8 +1515,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm19_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm19_araddr'0
 	wire[63:0] maxi_hbm19_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm19_arlen'0
-	wire[3:0] maxi_hbm19_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm19_arlen'0
+	wire[7:0] maxi_hbm19_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm19_arsize'0
 	wire[2:0] maxi_hbm19_arsize;
 	// {aclk} output bool #()[2] maxi_hbm19_arburst'0
@@ -1388,8 +1525,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm19_arprot;
 	// {aclk} output bool #()[4] maxi_hbm19_arcache'0
 	wire[3:0] maxi_hbm19_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm19_arqos'0
+	wire[3:0] maxi_hbm19_arqos;
 	// {aclk} output bool #() maxi_hbm19_arlock'0
-	wire[1:0] maxi_hbm19_arlock;
+	wire maxi_hbm19_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm19_arregion'0
+	wire[3:0] maxi_hbm19_arregion;
 	// {aclk} output bool #() maxi_hbm19_rready'0
 	wire maxi_hbm19_rready;
 	// {aclk} input bool #() maxi_hbm19_arready'0
@@ -1402,14 +1543,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm19_rresp;
 	// {aclk} input bool #() maxi_hbm19_rlast'0
 	logic maxi_hbm19_rlast;
-
 	// HBM20
 	// {aclk} output bool #() maxi_hbm20_awvalid'0
 	wire maxi_hbm20_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm20_awaddr'0
 	wire[63:0] maxi_hbm20_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm20_awlen'0
-	wire[3:0] maxi_hbm20_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm20_awlen'0
+	wire[7:0] maxi_hbm20_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm20_awsize'0
 	wire[2:0] maxi_hbm20_awsize;
 	// {aclk} output bool #()[2] maxi_hbm20_awburst'0
@@ -1418,8 +1558,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm20_awprot;
 	// {aclk} output bool #()[4] maxi_hbm20_awcache'0
 	wire[3:0] maxi_hbm20_awcache;
-	// {aclk} output bool #()[2] maxi_hbm20_awlock'0
-	wire[1:0] maxi_hbm20_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm20_awqos'0
+	wire[3:0] maxi_hbm20_awqos;
+	// {aclk} output bool #() maxi_hbm20_awlock'0
+	wire maxi_hbm20_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm20_awregion'0
+	wire[3:0] maxi_hbm20_awregion;
 	// {aclk} output bool #() maxi_hbm20_wvalid'0
 	wire maxi_hbm20_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm20_wdata'0
@@ -1442,8 +1586,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm20_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm20_araddr'0
 	wire[63:0] maxi_hbm20_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm20_arlen'0
-	wire[3:0] maxi_hbm20_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm20_arlen'0
+	wire[7:0] maxi_hbm20_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm20_arsize'0
 	wire[2:0] maxi_hbm20_arsize;
 	// {aclk} output bool #()[2] maxi_hbm20_arburst'0
@@ -1452,8 +1596,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm20_arprot;
 	// {aclk} output bool #()[4] maxi_hbm20_arcache'0
 	wire[3:0] maxi_hbm20_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm20_arqos'0
+	wire[3:0] maxi_hbm20_arqos;
 	// {aclk} output bool #() maxi_hbm20_arlock'0
-	wire[1:0] maxi_hbm20_arlock;
+	wire maxi_hbm20_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm20_arregion'0
+	wire[3:0] maxi_hbm20_arregion;
 	// {aclk} output bool #() maxi_hbm20_rready'0
 	wire maxi_hbm20_rready;
 	// {aclk} input bool #() maxi_hbm20_arready'0
@@ -1466,14 +1614,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm20_rresp;
 	// {aclk} input bool #() maxi_hbm20_rlast'0
 	logic maxi_hbm20_rlast;
-
 	// HBM21
 	// {aclk} output bool #() maxi_hbm21_awvalid'0
 	wire maxi_hbm21_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm21_awaddr'0
 	wire[63:0] maxi_hbm21_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm21_awlen'0
-	wire[3:0] maxi_hbm21_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm21_awlen'0
+	wire[7:0] maxi_hbm21_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm21_awsize'0
 	wire[2:0] maxi_hbm21_awsize;
 	// {aclk} output bool #()[2] maxi_hbm21_awburst'0
@@ -1482,8 +1629,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm21_awprot;
 	// {aclk} output bool #()[4] maxi_hbm21_awcache'0
 	wire[3:0] maxi_hbm21_awcache;
-	// {aclk} output bool #()[2] maxi_hbm21_awlock'0
-	wire[1:0] maxi_hbm21_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm21_awqos'0
+	wire[3:0] maxi_hbm21_awqos;
+	// {aclk} output bool #() maxi_hbm21_awlock'0
+	wire maxi_hbm21_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm21_awregion'0
+	wire[3:0] maxi_hbm21_awregion;
 	// {aclk} output bool #() maxi_hbm21_wvalid'0
 	wire maxi_hbm21_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm21_wdata'0
@@ -1506,8 +1657,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm21_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm21_araddr'0
 	wire[63:0] maxi_hbm21_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm21_arlen'0
-	wire[3:0] maxi_hbm21_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm21_arlen'0
+	wire[7:0] maxi_hbm21_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm21_arsize'0
 	wire[2:0] maxi_hbm21_arsize;
 	// {aclk} output bool #()[2] maxi_hbm21_arburst'0
@@ -1516,8 +1667,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm21_arprot;
 	// {aclk} output bool #()[4] maxi_hbm21_arcache'0
 	wire[3:0] maxi_hbm21_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm21_arqos'0
+	wire[3:0] maxi_hbm21_arqos;
 	// {aclk} output bool #() maxi_hbm21_arlock'0
-	wire[1:0] maxi_hbm21_arlock;
+	wire maxi_hbm21_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm21_arregion'0
+	wire[3:0] maxi_hbm21_arregion;
 	// {aclk} output bool #() maxi_hbm21_rready'0
 	wire maxi_hbm21_rready;
 	// {aclk} input bool #() maxi_hbm21_arready'0
@@ -1530,14 +1685,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm21_rresp;
 	// {aclk} input bool #() maxi_hbm21_rlast'0
 	logic maxi_hbm21_rlast;
-
 	// HBM22
 	// {aclk} output bool #() maxi_hbm22_awvalid'0
 	wire maxi_hbm22_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm22_awaddr'0
 	wire[63:0] maxi_hbm22_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm22_awlen'0
-	wire[3:0] maxi_hbm22_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm22_awlen'0
+	wire[7:0] maxi_hbm22_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm22_awsize'0
 	wire[2:0] maxi_hbm22_awsize;
 	// {aclk} output bool #()[2] maxi_hbm22_awburst'0
@@ -1546,8 +1700,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm22_awprot;
 	// {aclk} output bool #()[4] maxi_hbm22_awcache'0
 	wire[3:0] maxi_hbm22_awcache;
-	// {aclk} output bool #()[2] maxi_hbm22_awlock'0
-	wire[1:0] maxi_hbm22_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm22_awqos'0
+	wire[3:0] maxi_hbm22_awqos;
+	// {aclk} output bool #() maxi_hbm22_awlock'0
+	wire maxi_hbm22_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm22_awregion'0
+	wire[3:0] maxi_hbm22_awregion;
 	// {aclk} output bool #() maxi_hbm22_wvalid'0
 	wire maxi_hbm22_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm22_wdata'0
@@ -1570,8 +1728,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm22_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm22_araddr'0
 	wire[63:0] maxi_hbm22_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm22_arlen'0
-	wire[3:0] maxi_hbm22_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm22_arlen'0
+	wire[7:0] maxi_hbm22_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm22_arsize'0
 	wire[2:0] maxi_hbm22_arsize;
 	// {aclk} output bool #()[2] maxi_hbm22_arburst'0
@@ -1580,8 +1738,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm22_arprot;
 	// {aclk} output bool #()[4] maxi_hbm22_arcache'0
 	wire[3:0] maxi_hbm22_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm22_arqos'0
+	wire[3:0] maxi_hbm22_arqos;
 	// {aclk} output bool #() maxi_hbm22_arlock'0
-	wire[1:0] maxi_hbm22_arlock;
+	wire maxi_hbm22_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm22_arregion'0
+	wire[3:0] maxi_hbm22_arregion;
 	// {aclk} output bool #() maxi_hbm22_rready'0
 	wire maxi_hbm22_rready;
 	// {aclk} input bool #() maxi_hbm22_arready'0
@@ -1594,14 +1756,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm22_rresp;
 	// {aclk} input bool #() maxi_hbm22_rlast'0
 	logic maxi_hbm22_rlast;
-
 	// HBM23
 	// {aclk} output bool #() maxi_hbm23_awvalid'0
 	wire maxi_hbm23_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm23_awaddr'0
 	wire[63:0] maxi_hbm23_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm23_awlen'0
-	wire[3:0] maxi_hbm23_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm23_awlen'0
+	wire[7:0] maxi_hbm23_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm23_awsize'0
 	wire[2:0] maxi_hbm23_awsize;
 	// {aclk} output bool #()[2] maxi_hbm23_awburst'0
@@ -1610,8 +1771,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm23_awprot;
 	// {aclk} output bool #()[4] maxi_hbm23_awcache'0
 	wire[3:0] maxi_hbm23_awcache;
-	// {aclk} output bool #()[2] maxi_hbm23_awlock'0
-	wire[1:0] maxi_hbm23_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm23_awqos'0
+	wire[3:0] maxi_hbm23_awqos;
+	// {aclk} output bool #() maxi_hbm23_awlock'0
+	wire maxi_hbm23_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm23_awregion'0
+	wire[3:0] maxi_hbm23_awregion;
 	// {aclk} output bool #() maxi_hbm23_wvalid'0
 	wire maxi_hbm23_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm23_wdata'0
@@ -1634,8 +1799,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm23_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm23_araddr'0
 	wire[63:0] maxi_hbm23_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm23_arlen'0
-	wire[3:0] maxi_hbm23_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm23_arlen'0
+	wire[7:0] maxi_hbm23_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm23_arsize'0
 	wire[2:0] maxi_hbm23_arsize;
 	// {aclk} output bool #()[2] maxi_hbm23_arburst'0
@@ -1644,8 +1809,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm23_arprot;
 	// {aclk} output bool #()[4] maxi_hbm23_arcache'0
 	wire[3:0] maxi_hbm23_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm23_arqos'0
+	wire[3:0] maxi_hbm23_arqos;
 	// {aclk} output bool #() maxi_hbm23_arlock'0
-	wire[1:0] maxi_hbm23_arlock;
+	wire maxi_hbm23_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm23_arregion'0
+	wire[3:0] maxi_hbm23_arregion;
 	// {aclk} output bool #() maxi_hbm23_rready'0
 	wire maxi_hbm23_rready;
 	// {aclk} input bool #() maxi_hbm23_arready'0
@@ -1658,14 +1827,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm23_rresp;
 	// {aclk} input bool #() maxi_hbm23_rlast'0
 	logic maxi_hbm23_rlast;
-
 	// HBM24
 	// {aclk} output bool #() maxi_hbm24_awvalid'0
 	wire maxi_hbm24_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm24_awaddr'0
 	wire[63:0] maxi_hbm24_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm24_awlen'0
-	wire[3:0] maxi_hbm24_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm24_awlen'0
+	wire[7:0] maxi_hbm24_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm24_awsize'0
 	wire[2:0] maxi_hbm24_awsize;
 	// {aclk} output bool #()[2] maxi_hbm24_awburst'0
@@ -1674,8 +1842,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm24_awprot;
 	// {aclk} output bool #()[4] maxi_hbm24_awcache'0
 	wire[3:0] maxi_hbm24_awcache;
-	// {aclk} output bool #()[2] maxi_hbm24_awlock'0
-	wire[1:0] maxi_hbm24_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm24_awqos'0
+	wire[3:0] maxi_hbm24_awqos;
+	// {aclk} output bool #() maxi_hbm24_awlock'0
+	wire maxi_hbm24_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm24_awregion'0
+	wire[3:0] maxi_hbm24_awregion;
 	// {aclk} output bool #() maxi_hbm24_wvalid'0
 	wire maxi_hbm24_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm24_wdata'0
@@ -1698,8 +1870,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm24_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm24_araddr'0
 	wire[63:0] maxi_hbm24_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm24_arlen'0
-	wire[3:0] maxi_hbm24_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm24_arlen'0
+	wire[7:0] maxi_hbm24_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm24_arsize'0
 	wire[2:0] maxi_hbm24_arsize;
 	// {aclk} output bool #()[2] maxi_hbm24_arburst'0
@@ -1708,8 +1880,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm24_arprot;
 	// {aclk} output bool #()[4] maxi_hbm24_arcache'0
 	wire[3:0] maxi_hbm24_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm24_arqos'0
+	wire[3:0] maxi_hbm24_arqos;
 	// {aclk} output bool #() maxi_hbm24_arlock'0
-	wire[1:0] maxi_hbm24_arlock;
+	wire maxi_hbm24_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm24_arregion'0
+	wire[3:0] maxi_hbm24_arregion;
 	// {aclk} output bool #() maxi_hbm24_rready'0
 	wire maxi_hbm24_rready;
 	// {aclk} input bool #() maxi_hbm24_arready'0
@@ -1722,14 +1898,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm24_rresp;
 	// {aclk} input bool #() maxi_hbm24_rlast'0
 	logic maxi_hbm24_rlast;
-
 	// HBM25
 	// {aclk} output bool #() maxi_hbm25_awvalid'0
 	wire maxi_hbm25_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm25_awaddr'0
 	wire[63:0] maxi_hbm25_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm25_awlen'0
-	wire[3:0] maxi_hbm25_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm25_awlen'0
+	wire[7:0] maxi_hbm25_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm25_awsize'0
 	wire[2:0] maxi_hbm25_awsize;
 	// {aclk} output bool #()[2] maxi_hbm25_awburst'0
@@ -1738,8 +1913,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm25_awprot;
 	// {aclk} output bool #()[4] maxi_hbm25_awcache'0
 	wire[3:0] maxi_hbm25_awcache;
-	// {aclk} output bool #()[2] maxi_hbm25_awlock'0
-	wire[1:0] maxi_hbm25_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm25_awqos'0
+	wire[3:0] maxi_hbm25_awqos;
+	// {aclk} output bool #() maxi_hbm25_awlock'0
+	wire maxi_hbm25_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm25_awregion'0
+	wire[3:0] maxi_hbm25_awregion;
 	// {aclk} output bool #() maxi_hbm25_wvalid'0
 	wire maxi_hbm25_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm25_wdata'0
@@ -1762,8 +1941,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm25_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm25_araddr'0
 	wire[63:0] maxi_hbm25_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm25_arlen'0
-	wire[3:0] maxi_hbm25_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm25_arlen'0
+	wire[7:0] maxi_hbm25_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm25_arsize'0
 	wire[2:0] maxi_hbm25_arsize;
 	// {aclk} output bool #()[2] maxi_hbm25_arburst'0
@@ -1772,8 +1951,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm25_arprot;
 	// {aclk} output bool #()[4] maxi_hbm25_arcache'0
 	wire[3:0] maxi_hbm25_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm25_arqos'0
+	wire[3:0] maxi_hbm25_arqos;
 	// {aclk} output bool #() maxi_hbm25_arlock'0
-	wire[1:0] maxi_hbm25_arlock;
+	wire maxi_hbm25_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm25_arregion'0
+	wire[3:0] maxi_hbm25_arregion;
 	// {aclk} output bool #() maxi_hbm25_rready'0
 	wire maxi_hbm25_rready;
 	// {aclk} input bool #() maxi_hbm25_arready'0
@@ -1786,14 +1969,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm25_rresp;
 	// {aclk} input bool #() maxi_hbm25_rlast'0
 	logic maxi_hbm25_rlast;
-
 	// HBM26
 	// {aclk} output bool #() maxi_hbm26_awvalid'0
 	wire maxi_hbm26_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm26_awaddr'0
 	wire[63:0] maxi_hbm26_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm26_awlen'0
-	wire[3:0] maxi_hbm26_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm26_awlen'0
+	wire[7:0] maxi_hbm26_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm26_awsize'0
 	wire[2:0] maxi_hbm26_awsize;
 	// {aclk} output bool #()[2] maxi_hbm26_awburst'0
@@ -1802,8 +1984,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm26_awprot;
 	// {aclk} output bool #()[4] maxi_hbm26_awcache'0
 	wire[3:0] maxi_hbm26_awcache;
-	// {aclk} output bool #()[2] maxi_hbm26_awlock'0
-	wire[1:0] maxi_hbm26_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm26_awqos'0
+	wire[3:0] maxi_hbm26_awqos;
+	// {aclk} output bool #() maxi_hbm26_awlock'0
+	wire maxi_hbm26_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm26_awregion'0
+	wire[3:0] maxi_hbm26_awregion;
 	// {aclk} output bool #() maxi_hbm26_wvalid'0
 	wire maxi_hbm26_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm26_wdata'0
@@ -1826,8 +2012,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm26_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm26_araddr'0
 	wire[63:0] maxi_hbm26_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm26_arlen'0
-	wire[3:0] maxi_hbm26_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm26_arlen'0
+	wire[7:0] maxi_hbm26_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm26_arsize'0
 	wire[2:0] maxi_hbm26_arsize;
 	// {aclk} output bool #()[2] maxi_hbm26_arburst'0
@@ -1836,8 +2022,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm26_arprot;
 	// {aclk} output bool #()[4] maxi_hbm26_arcache'0
 	wire[3:0] maxi_hbm26_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm26_arqos'0
+	wire[3:0] maxi_hbm26_arqos;
 	// {aclk} output bool #() maxi_hbm26_arlock'0
-	wire[1:0] maxi_hbm26_arlock;
+	wire maxi_hbm26_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm26_arregion'0
+	wire[3:0] maxi_hbm26_arregion;
 	// {aclk} output bool #() maxi_hbm26_rready'0
 	wire maxi_hbm26_rready;
 	// {aclk} input bool #() maxi_hbm26_arready'0
@@ -1850,14 +2040,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm26_rresp;
 	// {aclk} input bool #() maxi_hbm26_rlast'0
 	logic maxi_hbm26_rlast;
-
 	// HBM27
 	// {aclk} output bool #() maxi_hbm27_awvalid'0
 	wire maxi_hbm27_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm27_awaddr'0
 	wire[63:0] maxi_hbm27_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm27_awlen'0
-	wire[3:0] maxi_hbm27_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm27_awlen'0
+	wire[7:0] maxi_hbm27_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm27_awsize'0
 	wire[2:0] maxi_hbm27_awsize;
 	// {aclk} output bool #()[2] maxi_hbm27_awburst'0
@@ -1866,8 +2055,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm27_awprot;
 	// {aclk} output bool #()[4] maxi_hbm27_awcache'0
 	wire[3:0] maxi_hbm27_awcache;
-	// {aclk} output bool #()[2] maxi_hbm27_awlock'0
-	wire[1:0] maxi_hbm27_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm27_awqos'0
+	wire[3:0] maxi_hbm27_awqos;
+	// {aclk} output bool #() maxi_hbm27_awlock'0
+	wire maxi_hbm27_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm27_awregion'0
+	wire[3:0] maxi_hbm27_awregion;
 	// {aclk} output bool #() maxi_hbm27_wvalid'0
 	wire maxi_hbm27_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm27_wdata'0
@@ -1890,8 +2083,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm27_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm27_araddr'0
 	wire[63:0] maxi_hbm27_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm27_arlen'0
-	wire[3:0] maxi_hbm27_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm27_arlen'0
+	wire[7:0] maxi_hbm27_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm27_arsize'0
 	wire[2:0] maxi_hbm27_arsize;
 	// {aclk} output bool #()[2] maxi_hbm27_arburst'0
@@ -1900,8 +2093,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm27_arprot;
 	// {aclk} output bool #()[4] maxi_hbm27_arcache'0
 	wire[3:0] maxi_hbm27_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm27_arqos'0
+	wire[3:0] maxi_hbm27_arqos;
 	// {aclk} output bool #() maxi_hbm27_arlock'0
-	wire[1:0] maxi_hbm27_arlock;
+	wire maxi_hbm27_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm27_arregion'0
+	wire[3:0] maxi_hbm27_arregion;
 	// {aclk} output bool #() maxi_hbm27_rready'0
 	wire maxi_hbm27_rready;
 	// {aclk} input bool #() maxi_hbm27_arready'0
@@ -1914,14 +2111,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm27_rresp;
 	// {aclk} input bool #() maxi_hbm27_rlast'0
 	logic maxi_hbm27_rlast;
-
 	// HBM28
 	// {aclk} output bool #() maxi_hbm28_awvalid'0
 	wire maxi_hbm28_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm28_awaddr'0
 	wire[63:0] maxi_hbm28_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm28_awlen'0
-	wire[3:0] maxi_hbm28_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm28_awlen'0
+	wire[7:0] maxi_hbm28_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm28_awsize'0
 	wire[2:0] maxi_hbm28_awsize;
 	// {aclk} output bool #()[2] maxi_hbm28_awburst'0
@@ -1930,8 +2126,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm28_awprot;
 	// {aclk} output bool #()[4] maxi_hbm28_awcache'0
 	wire[3:0] maxi_hbm28_awcache;
-	// {aclk} output bool #()[2] maxi_hbm28_awlock'0
-	wire[1:0] maxi_hbm28_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm28_awqos'0
+	wire[3:0] maxi_hbm28_awqos;
+	// {aclk} output bool #() maxi_hbm28_awlock'0
+	wire maxi_hbm28_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm28_awregion'0
+	wire[3:0] maxi_hbm28_awregion;
 	// {aclk} output bool #() maxi_hbm28_wvalid'0
 	wire maxi_hbm28_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm28_wdata'0
@@ -1954,8 +2154,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm28_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm28_araddr'0
 	wire[63:0] maxi_hbm28_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm28_arlen'0
-	wire[3:0] maxi_hbm28_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm28_arlen'0
+	wire[7:0] maxi_hbm28_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm28_arsize'0
 	wire[2:0] maxi_hbm28_arsize;
 	// {aclk} output bool #()[2] maxi_hbm28_arburst'0
@@ -1964,8 +2164,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm28_arprot;
 	// {aclk} output bool #()[4] maxi_hbm28_arcache'0
 	wire[3:0] maxi_hbm28_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm28_arqos'0
+	wire[3:0] maxi_hbm28_arqos;
 	// {aclk} output bool #() maxi_hbm28_arlock'0
-	wire[1:0] maxi_hbm28_arlock;
+	wire maxi_hbm28_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm28_arregion'0
+	wire[3:0] maxi_hbm28_arregion;
 	// {aclk} output bool #() maxi_hbm28_rready'0
 	wire maxi_hbm28_rready;
 	// {aclk} input bool #() maxi_hbm28_arready'0
@@ -1978,14 +2182,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm28_rresp;
 	// {aclk} input bool #() maxi_hbm28_rlast'0
 	logic maxi_hbm28_rlast;
-
 	// HBM29
 	// {aclk} output bool #() maxi_hbm29_awvalid'0
 	wire maxi_hbm29_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm29_awaddr'0
 	wire[63:0] maxi_hbm29_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm29_awlen'0
-	wire[3:0] maxi_hbm29_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm29_awlen'0
+	wire[7:0] maxi_hbm29_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm29_awsize'0
 	wire[2:0] maxi_hbm29_awsize;
 	// {aclk} output bool #()[2] maxi_hbm29_awburst'0
@@ -1994,8 +2197,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm29_awprot;
 	// {aclk} output bool #()[4] maxi_hbm29_awcache'0
 	wire[3:0] maxi_hbm29_awcache;
-	// {aclk} output bool #()[2] maxi_hbm29_awlock'0
-	wire[1:0] maxi_hbm29_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm29_awqos'0
+	wire[3:0] maxi_hbm29_awqos;
+	// {aclk} output bool #() maxi_hbm29_awlock'0
+	wire maxi_hbm29_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm29_awregion'0
+	wire[3:0] maxi_hbm29_awregion;
 	// {aclk} output bool #() maxi_hbm29_wvalid'0
 	wire maxi_hbm29_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm29_wdata'0
@@ -2018,8 +2225,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm29_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm29_araddr'0
 	wire[63:0] maxi_hbm29_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm29_arlen'0
-	wire[3:0] maxi_hbm29_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm29_arlen'0
+	wire[7:0] maxi_hbm29_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm29_arsize'0
 	wire[2:0] maxi_hbm29_arsize;
 	// {aclk} output bool #()[2] maxi_hbm29_arburst'0
@@ -2028,8 +2235,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm29_arprot;
 	// {aclk} output bool #()[4] maxi_hbm29_arcache'0
 	wire[3:0] maxi_hbm29_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm29_arqos'0
+	wire[3:0] maxi_hbm29_arqos;
 	// {aclk} output bool #() maxi_hbm29_arlock'0
-	wire[1:0] maxi_hbm29_arlock;
+	wire maxi_hbm29_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm29_arregion'0
+	wire[3:0] maxi_hbm29_arregion;
 	// {aclk} output bool #() maxi_hbm29_rready'0
 	wire maxi_hbm29_rready;
 	// {aclk} input bool #() maxi_hbm29_arready'0
@@ -2042,14 +2253,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm29_rresp;
 	// {aclk} input bool #() maxi_hbm29_rlast'0
 	logic maxi_hbm29_rlast;
-
 	// HBM30
 	// {aclk} output bool #() maxi_hbm30_awvalid'0
 	wire maxi_hbm30_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm30_awaddr'0
 	wire[63:0] maxi_hbm30_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm30_awlen'0
-	wire[3:0] maxi_hbm30_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm30_awlen'0
+	wire[7:0] maxi_hbm30_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm30_awsize'0
 	wire[2:0] maxi_hbm30_awsize;
 	// {aclk} output bool #()[2] maxi_hbm30_awburst'0
@@ -2058,8 +2268,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm30_awprot;
 	// {aclk} output bool #()[4] maxi_hbm30_awcache'0
 	wire[3:0] maxi_hbm30_awcache;
-	// {aclk} output bool #()[2] maxi_hbm30_awlock'0
-	wire[1:0] maxi_hbm30_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm30_awqos'0
+	wire[3:0] maxi_hbm30_awqos;
+	// {aclk} output bool #() maxi_hbm30_awlock'0
+	wire maxi_hbm30_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm30_awregion'0
+	wire[3:0] maxi_hbm30_awregion;
 	// {aclk} output bool #() maxi_hbm30_wvalid'0
 	wire maxi_hbm30_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm30_wdata'0
@@ -2082,8 +2296,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm30_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm30_araddr'0
 	wire[63:0] maxi_hbm30_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm30_arlen'0
-	wire[3:0] maxi_hbm30_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm30_arlen'0
+	wire[7:0] maxi_hbm30_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm30_arsize'0
 	wire[2:0] maxi_hbm30_arsize;
 	// {aclk} output bool #()[2] maxi_hbm30_arburst'0
@@ -2092,8 +2306,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm30_arprot;
 	// {aclk} output bool #()[4] maxi_hbm30_arcache'0
 	wire[3:0] maxi_hbm30_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm30_arqos'0
+	wire[3:0] maxi_hbm30_arqos;
 	// {aclk} output bool #() maxi_hbm30_arlock'0
-	wire[1:0] maxi_hbm30_arlock;
+	wire maxi_hbm30_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm30_arregion'0
+	wire[3:0] maxi_hbm30_arregion;
 	// {aclk} output bool #() maxi_hbm30_rready'0
 	wire maxi_hbm30_rready;
 	// {aclk} input bool #() maxi_hbm30_arready'0
@@ -2106,14 +2324,13 @@ module SUSpMV_Full_tb;
 	logic[1:0] maxi_hbm30_rresp;
 	// {aclk} input bool #() maxi_hbm30_rlast'0
 	logic maxi_hbm30_rlast;
-
 	// HBM31
 	// {aclk} output bool #() maxi_hbm31_awvalid'0
 	wire maxi_hbm31_awvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm31_awaddr'0
 	wire[63:0] maxi_hbm31_awaddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm31_awlen'0
-	wire[3:0] maxi_hbm31_awlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm31_awlen'0
+	wire[7:0] maxi_hbm31_awlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm31_awsize'0
 	wire[2:0] maxi_hbm31_awsize;
 	// {aclk} output bool #()[2] maxi_hbm31_awburst'0
@@ -2122,8 +2339,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm31_awprot;
 	// {aclk} output bool #()[4] maxi_hbm31_awcache'0
 	wire[3:0] maxi_hbm31_awcache;
-	// {aclk} output bool #()[2] maxi_hbm31_awlock'0
-	wire[1:0] maxi_hbm31_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm31_awqos'0
+	wire[3:0] maxi_hbm31_awqos;
+	// {aclk} output bool #() maxi_hbm31_awlock'0
+	wire maxi_hbm31_awlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm31_awregion'0
+	wire[3:0] maxi_hbm31_awregion;
 	// {aclk} output bool #() maxi_hbm31_wvalid'0
 	wire maxi_hbm31_wvalid;
 	// {aclk} output bool #()[256] maxi_hbm31_wdata'0
@@ -2146,8 +2367,8 @@ module SUSpMV_Full_tb;
 	wire maxi_hbm31_arvalid;
 	// {aclk} output int #(FROM: 0, TO: 18446744073709551616) maxi_hbm31_araddr'0
 	wire[63:0] maxi_hbm31_araddr;
-	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm31_arlen'0
-	wire[3:0] maxi_hbm31_arlen;
+	// {aclk} output int #(FROM: 0, TO: 256) maxi_hbm31_arlen'0
+	wire[7:0] maxi_hbm31_arlen;
 	// {aclk} output int #(FROM: 0, TO: 8) maxi_hbm31_arsize'0
 	wire[2:0] maxi_hbm31_arsize;
 	// {aclk} output bool #()[2] maxi_hbm31_arburst'0
@@ -2156,8 +2377,12 @@ module SUSpMV_Full_tb;
 	wire[2:0] maxi_hbm31_arprot;
 	// {aclk} output bool #()[4] maxi_hbm31_arcache'0
 	wire[3:0] maxi_hbm31_arcache;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm31_arqos'0
+	wire[3:0] maxi_hbm31_arqos;
 	// {aclk} output bool #() maxi_hbm31_arlock'0
-	wire[1:0] maxi_hbm31_arlock;
+	wire maxi_hbm31_arlock;
+	// {aclk} output int #(FROM: 0, TO: 16) maxi_hbm31_arregion'0
+	wire[3:0] maxi_hbm31_arregion;
 	// {aclk} output bool #() maxi_hbm31_rready'0
 	wire maxi_hbm31_rready;
 	// {aclk} input bool #() maxi_hbm31_arready'0
@@ -2238,7 +2463,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm00_awburst (maxi_hbm00_awburst),
 		.maxi_hbm00_awprot  (maxi_hbm00_awprot),
 		.maxi_hbm00_awcache (maxi_hbm00_awcache),
+		.maxi_hbm00_awqos   (maxi_hbm00_awqos),
 		.maxi_hbm00_awlock  (maxi_hbm00_awlock),
+		.maxi_hbm00_awregion(maxi_hbm00_awregion),
 		.maxi_hbm00_wvalid  (maxi_hbm00_wvalid),
 		.maxi_hbm00_wdata   (maxi_hbm00_wdata),
 		.maxi_hbm00_wstrb   (maxi_hbm00_wstrb),
@@ -2255,7 +2482,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm00_arburst (maxi_hbm00_arburst),
 		.maxi_hbm00_arprot  (maxi_hbm00_arprot),
 		.maxi_hbm00_arcache (maxi_hbm00_arcache),
+		.maxi_hbm00_arqos   (maxi_hbm00_arqos),
 		.maxi_hbm00_arlock  (maxi_hbm00_arlock),
+		.maxi_hbm00_arregion(maxi_hbm00_arregion),
 		.maxi_hbm00_rready  (maxi_hbm00_rready),
 		.maxi_hbm00_arready (maxi_hbm00_arready),
 		.maxi_hbm00_rvalid  (maxi_hbm00_rvalid),
@@ -2270,7 +2499,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm01_awburst (maxi_hbm01_awburst),
 		.maxi_hbm01_awprot  (maxi_hbm01_awprot),
 		.maxi_hbm01_awcache (maxi_hbm01_awcache),
+		.maxi_hbm01_awqos   (maxi_hbm01_awqos),
 		.maxi_hbm01_awlock  (maxi_hbm01_awlock),
+		.maxi_hbm01_awregion(maxi_hbm01_awregion),
 		.maxi_hbm01_wvalid  (maxi_hbm01_wvalid),
 		.maxi_hbm01_wdata   (maxi_hbm01_wdata),
 		.maxi_hbm01_wstrb   (maxi_hbm01_wstrb),
@@ -2287,7 +2518,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm01_arburst (maxi_hbm01_arburst),
 		.maxi_hbm01_arprot  (maxi_hbm01_arprot),
 		.maxi_hbm01_arcache (maxi_hbm01_arcache),
+		.maxi_hbm01_arqos   (maxi_hbm01_arqos),
 		.maxi_hbm01_arlock  (maxi_hbm01_arlock),
+		.maxi_hbm01_arregion(maxi_hbm01_arregion),
 		.maxi_hbm01_rready  (maxi_hbm01_rready),
 		.maxi_hbm01_arready (maxi_hbm01_arready),
 		.maxi_hbm01_rvalid  (maxi_hbm01_rvalid),
@@ -2302,7 +2535,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm02_awburst (maxi_hbm02_awburst),
 		.maxi_hbm02_awprot  (maxi_hbm02_awprot),
 		.maxi_hbm02_awcache (maxi_hbm02_awcache),
+		.maxi_hbm02_awqos   (maxi_hbm02_awqos),
 		.maxi_hbm02_awlock  (maxi_hbm02_awlock),
+		.maxi_hbm02_awregion(maxi_hbm02_awregion),
 		.maxi_hbm02_wvalid  (maxi_hbm02_wvalid),
 		.maxi_hbm02_wdata   (maxi_hbm02_wdata),
 		.maxi_hbm02_wstrb   (maxi_hbm02_wstrb),
@@ -2319,7 +2554,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm02_arburst (maxi_hbm02_arburst),
 		.maxi_hbm02_arprot  (maxi_hbm02_arprot),
 		.maxi_hbm02_arcache (maxi_hbm02_arcache),
+		.maxi_hbm02_arqos   (maxi_hbm02_arqos),
 		.maxi_hbm02_arlock  (maxi_hbm02_arlock),
+		.maxi_hbm02_arregion(maxi_hbm02_arregion),
 		.maxi_hbm02_rready  (maxi_hbm02_rready),
 		.maxi_hbm02_arready (maxi_hbm02_arready),
 		.maxi_hbm02_rvalid  (maxi_hbm02_rvalid),
@@ -2334,7 +2571,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm03_awburst (maxi_hbm03_awburst),
 		.maxi_hbm03_awprot  (maxi_hbm03_awprot),
 		.maxi_hbm03_awcache (maxi_hbm03_awcache),
+		.maxi_hbm03_awqos   (maxi_hbm03_awqos),
 		.maxi_hbm03_awlock  (maxi_hbm03_awlock),
+		.maxi_hbm03_awregion(maxi_hbm03_awregion),
 		.maxi_hbm03_wvalid  (maxi_hbm03_wvalid),
 		.maxi_hbm03_wdata   (maxi_hbm03_wdata),
 		.maxi_hbm03_wstrb   (maxi_hbm03_wstrb),
@@ -2351,7 +2590,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm03_arburst (maxi_hbm03_arburst),
 		.maxi_hbm03_arprot  (maxi_hbm03_arprot),
 		.maxi_hbm03_arcache (maxi_hbm03_arcache),
+		.maxi_hbm03_arqos   (maxi_hbm03_arqos),
 		.maxi_hbm03_arlock  (maxi_hbm03_arlock),
+		.maxi_hbm03_arregion(maxi_hbm03_arregion),
 		.maxi_hbm03_rready  (maxi_hbm03_rready),
 		.maxi_hbm03_arready (maxi_hbm03_arready),
 		.maxi_hbm03_rvalid  (maxi_hbm03_rvalid),
@@ -2366,7 +2607,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm04_awburst (maxi_hbm04_awburst),
 		.maxi_hbm04_awprot  (maxi_hbm04_awprot),
 		.maxi_hbm04_awcache (maxi_hbm04_awcache),
+		.maxi_hbm04_awqos   (maxi_hbm04_awqos),
 		.maxi_hbm04_awlock  (maxi_hbm04_awlock),
+		.maxi_hbm04_awregion(maxi_hbm04_awregion),
 		.maxi_hbm04_wvalid  (maxi_hbm04_wvalid),
 		.maxi_hbm04_wdata   (maxi_hbm04_wdata),
 		.maxi_hbm04_wstrb   (maxi_hbm04_wstrb),
@@ -2383,7 +2626,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm04_arburst (maxi_hbm04_arburst),
 		.maxi_hbm04_arprot  (maxi_hbm04_arprot),
 		.maxi_hbm04_arcache (maxi_hbm04_arcache),
+		.maxi_hbm04_arqos   (maxi_hbm04_arqos),
 		.maxi_hbm04_arlock  (maxi_hbm04_arlock),
+		.maxi_hbm04_arregion(maxi_hbm04_arregion),
 		.maxi_hbm04_rready  (maxi_hbm04_rready),
 		.maxi_hbm04_arready (maxi_hbm04_arready),
 		.maxi_hbm04_rvalid  (maxi_hbm04_rvalid),
@@ -2398,7 +2643,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm05_awburst (maxi_hbm05_awburst),
 		.maxi_hbm05_awprot  (maxi_hbm05_awprot),
 		.maxi_hbm05_awcache (maxi_hbm05_awcache),
+		.maxi_hbm05_awqos   (maxi_hbm05_awqos),
 		.maxi_hbm05_awlock  (maxi_hbm05_awlock),
+		.maxi_hbm05_awregion(maxi_hbm05_awregion),
 		.maxi_hbm05_wvalid  (maxi_hbm05_wvalid),
 		.maxi_hbm05_wdata   (maxi_hbm05_wdata),
 		.maxi_hbm05_wstrb   (maxi_hbm05_wstrb),
@@ -2415,7 +2662,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm05_arburst (maxi_hbm05_arburst),
 		.maxi_hbm05_arprot  (maxi_hbm05_arprot),
 		.maxi_hbm05_arcache (maxi_hbm05_arcache),
+		.maxi_hbm05_arqos   (maxi_hbm05_arqos),
 		.maxi_hbm05_arlock  (maxi_hbm05_arlock),
+		.maxi_hbm05_arregion(maxi_hbm05_arregion),
 		.maxi_hbm05_rready  (maxi_hbm05_rready),
 		.maxi_hbm05_arready (maxi_hbm05_arready),
 		.maxi_hbm05_rvalid  (maxi_hbm05_rvalid),
@@ -2430,7 +2679,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm06_awburst (maxi_hbm06_awburst),
 		.maxi_hbm06_awprot  (maxi_hbm06_awprot),
 		.maxi_hbm06_awcache (maxi_hbm06_awcache),
+		.maxi_hbm06_awqos   (maxi_hbm06_awqos),
 		.maxi_hbm06_awlock  (maxi_hbm06_awlock),
+		.maxi_hbm06_awregion(maxi_hbm06_awregion),
 		.maxi_hbm06_wvalid  (maxi_hbm06_wvalid),
 		.maxi_hbm06_wdata   (maxi_hbm06_wdata),
 		.maxi_hbm06_wstrb   (maxi_hbm06_wstrb),
@@ -2447,7 +2698,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm06_arburst (maxi_hbm06_arburst),
 		.maxi_hbm06_arprot  (maxi_hbm06_arprot),
 		.maxi_hbm06_arcache (maxi_hbm06_arcache),
+		.maxi_hbm06_arqos   (maxi_hbm06_arqos),
 		.maxi_hbm06_arlock  (maxi_hbm06_arlock),
+		.maxi_hbm06_arregion(maxi_hbm06_arregion),
 		.maxi_hbm06_rready  (maxi_hbm06_rready),
 		.maxi_hbm06_arready (maxi_hbm06_arready),
 		.maxi_hbm06_rvalid  (maxi_hbm06_rvalid),
@@ -2462,7 +2715,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm07_awburst (maxi_hbm07_awburst),
 		.maxi_hbm07_awprot  (maxi_hbm07_awprot),
 		.maxi_hbm07_awcache (maxi_hbm07_awcache),
+		.maxi_hbm07_awqos   (maxi_hbm07_awqos),
 		.maxi_hbm07_awlock  (maxi_hbm07_awlock),
+		.maxi_hbm07_awregion(maxi_hbm07_awregion),
 		.maxi_hbm07_wvalid  (maxi_hbm07_wvalid),
 		.maxi_hbm07_wdata   (maxi_hbm07_wdata),
 		.maxi_hbm07_wstrb   (maxi_hbm07_wstrb),
@@ -2479,7 +2734,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm07_arburst (maxi_hbm07_arburst),
 		.maxi_hbm07_arprot  (maxi_hbm07_arprot),
 		.maxi_hbm07_arcache (maxi_hbm07_arcache),
+		.maxi_hbm07_arqos   (maxi_hbm07_arqos),
 		.maxi_hbm07_arlock  (maxi_hbm07_arlock),
+		.maxi_hbm07_arregion(maxi_hbm07_arregion),
 		.maxi_hbm07_rready  (maxi_hbm07_rready),
 		.maxi_hbm07_arready (maxi_hbm07_arready),
 		.maxi_hbm07_rvalid  (maxi_hbm07_rvalid),
@@ -2494,7 +2751,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm08_awburst (maxi_hbm08_awburst),
 		.maxi_hbm08_awprot  (maxi_hbm08_awprot),
 		.maxi_hbm08_awcache (maxi_hbm08_awcache),
+		.maxi_hbm08_awqos   (maxi_hbm08_awqos),
 		.maxi_hbm08_awlock  (maxi_hbm08_awlock),
+		.maxi_hbm08_awregion(maxi_hbm08_awregion),
 		.maxi_hbm08_wvalid  (maxi_hbm08_wvalid),
 		.maxi_hbm08_wdata   (maxi_hbm08_wdata),
 		.maxi_hbm08_wstrb   (maxi_hbm08_wstrb),
@@ -2511,7 +2770,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm08_arburst (maxi_hbm08_arburst),
 		.maxi_hbm08_arprot  (maxi_hbm08_arprot),
 		.maxi_hbm08_arcache (maxi_hbm08_arcache),
+		.maxi_hbm08_arqos   (maxi_hbm08_arqos),
 		.maxi_hbm08_arlock  (maxi_hbm08_arlock),
+		.maxi_hbm08_arregion(maxi_hbm08_arregion),
 		.maxi_hbm08_rready  (maxi_hbm08_rready),
 		.maxi_hbm08_arready (maxi_hbm08_arready),
 		.maxi_hbm08_rvalid  (maxi_hbm08_rvalid),
@@ -2526,7 +2787,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm09_awburst (maxi_hbm09_awburst),
 		.maxi_hbm09_awprot  (maxi_hbm09_awprot),
 		.maxi_hbm09_awcache (maxi_hbm09_awcache),
+		.maxi_hbm09_awqos   (maxi_hbm09_awqos),
 		.maxi_hbm09_awlock  (maxi_hbm09_awlock),
+		.maxi_hbm09_awregion(maxi_hbm09_awregion),
 		.maxi_hbm09_wvalid  (maxi_hbm09_wvalid),
 		.maxi_hbm09_wdata   (maxi_hbm09_wdata),
 		.maxi_hbm09_wstrb   (maxi_hbm09_wstrb),
@@ -2543,7 +2806,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm09_arburst (maxi_hbm09_arburst),
 		.maxi_hbm09_arprot  (maxi_hbm09_arprot),
 		.maxi_hbm09_arcache (maxi_hbm09_arcache),
+		.maxi_hbm09_arqos   (maxi_hbm09_arqos),
 		.maxi_hbm09_arlock  (maxi_hbm09_arlock),
+		.maxi_hbm09_arregion(maxi_hbm09_arregion),
 		.maxi_hbm09_rready  (maxi_hbm09_rready),
 		.maxi_hbm09_arready (maxi_hbm09_arready),
 		.maxi_hbm09_rvalid  (maxi_hbm09_rvalid),
@@ -2558,7 +2823,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm10_awburst (maxi_hbm10_awburst),
 		.maxi_hbm10_awprot  (maxi_hbm10_awprot),
 		.maxi_hbm10_awcache (maxi_hbm10_awcache),
+		.maxi_hbm10_awqos   (maxi_hbm10_awqos),
 		.maxi_hbm10_awlock  (maxi_hbm10_awlock),
+		.maxi_hbm10_awregion(maxi_hbm10_awregion),
 		.maxi_hbm10_wvalid  (maxi_hbm10_wvalid),
 		.maxi_hbm10_wdata   (maxi_hbm10_wdata),
 		.maxi_hbm10_wstrb   (maxi_hbm10_wstrb),
@@ -2575,7 +2842,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm10_arburst (maxi_hbm10_arburst),
 		.maxi_hbm10_arprot  (maxi_hbm10_arprot),
 		.maxi_hbm10_arcache (maxi_hbm10_arcache),
+		.maxi_hbm10_arqos   (maxi_hbm10_arqos),
 		.maxi_hbm10_arlock  (maxi_hbm10_arlock),
+		.maxi_hbm10_arregion(maxi_hbm10_arregion),
 		.maxi_hbm10_rready  (maxi_hbm10_rready),
 		.maxi_hbm10_arready (maxi_hbm10_arready),
 		.maxi_hbm10_rvalid  (maxi_hbm10_rvalid),
@@ -2590,7 +2859,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm11_awburst (maxi_hbm11_awburst),
 		.maxi_hbm11_awprot  (maxi_hbm11_awprot),
 		.maxi_hbm11_awcache (maxi_hbm11_awcache),
+		.maxi_hbm11_awqos   (maxi_hbm11_awqos),
 		.maxi_hbm11_awlock  (maxi_hbm11_awlock),
+		.maxi_hbm11_awregion(maxi_hbm11_awregion),
 		.maxi_hbm11_wvalid  (maxi_hbm11_wvalid),
 		.maxi_hbm11_wdata   (maxi_hbm11_wdata),
 		.maxi_hbm11_wstrb   (maxi_hbm11_wstrb),
@@ -2607,7 +2878,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm11_arburst (maxi_hbm11_arburst),
 		.maxi_hbm11_arprot  (maxi_hbm11_arprot),
 		.maxi_hbm11_arcache (maxi_hbm11_arcache),
+		.maxi_hbm11_arqos   (maxi_hbm11_arqos),
 		.maxi_hbm11_arlock  (maxi_hbm11_arlock),
+		.maxi_hbm11_arregion(maxi_hbm11_arregion),
 		.maxi_hbm11_rready  (maxi_hbm11_rready),
 		.maxi_hbm11_arready (maxi_hbm11_arready),
 		.maxi_hbm11_rvalid  (maxi_hbm11_rvalid),
@@ -2622,7 +2895,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm12_awburst (maxi_hbm12_awburst),
 		.maxi_hbm12_awprot  (maxi_hbm12_awprot),
 		.maxi_hbm12_awcache (maxi_hbm12_awcache),
+		.maxi_hbm12_awqos   (maxi_hbm12_awqos),
 		.maxi_hbm12_awlock  (maxi_hbm12_awlock),
+		.maxi_hbm12_awregion(maxi_hbm12_awregion),
 		.maxi_hbm12_wvalid  (maxi_hbm12_wvalid),
 		.maxi_hbm12_wdata   (maxi_hbm12_wdata),
 		.maxi_hbm12_wstrb   (maxi_hbm12_wstrb),
@@ -2639,7 +2914,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm12_arburst (maxi_hbm12_arburst),
 		.maxi_hbm12_arprot  (maxi_hbm12_arprot),
 		.maxi_hbm12_arcache (maxi_hbm12_arcache),
+		.maxi_hbm12_arqos   (maxi_hbm12_arqos),
 		.maxi_hbm12_arlock  (maxi_hbm12_arlock),
+		.maxi_hbm12_arregion(maxi_hbm12_arregion),
 		.maxi_hbm12_rready  (maxi_hbm12_rready),
 		.maxi_hbm12_arready (maxi_hbm12_arready),
 		.maxi_hbm12_rvalid  (maxi_hbm12_rvalid),
@@ -2654,7 +2931,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm13_awburst (maxi_hbm13_awburst),
 		.maxi_hbm13_awprot  (maxi_hbm13_awprot),
 		.maxi_hbm13_awcache (maxi_hbm13_awcache),
+		.maxi_hbm13_awqos   (maxi_hbm13_awqos),
 		.maxi_hbm13_awlock  (maxi_hbm13_awlock),
+		.maxi_hbm13_awregion(maxi_hbm13_awregion),
 		.maxi_hbm13_wvalid  (maxi_hbm13_wvalid),
 		.maxi_hbm13_wdata   (maxi_hbm13_wdata),
 		.maxi_hbm13_wstrb   (maxi_hbm13_wstrb),
@@ -2671,7 +2950,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm13_arburst (maxi_hbm13_arburst),
 		.maxi_hbm13_arprot  (maxi_hbm13_arprot),
 		.maxi_hbm13_arcache (maxi_hbm13_arcache),
+		.maxi_hbm13_arqos   (maxi_hbm13_arqos),
 		.maxi_hbm13_arlock  (maxi_hbm13_arlock),
+		.maxi_hbm13_arregion(maxi_hbm13_arregion),
 		.maxi_hbm13_rready  (maxi_hbm13_rready),
 		.maxi_hbm13_arready (maxi_hbm13_arready),
 		.maxi_hbm13_rvalid  (maxi_hbm13_rvalid),
@@ -2686,7 +2967,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm14_awburst (maxi_hbm14_awburst),
 		.maxi_hbm14_awprot  (maxi_hbm14_awprot),
 		.maxi_hbm14_awcache (maxi_hbm14_awcache),
+		.maxi_hbm14_awqos   (maxi_hbm14_awqos),
 		.maxi_hbm14_awlock  (maxi_hbm14_awlock),
+		.maxi_hbm14_awregion(maxi_hbm14_awregion),
 		.maxi_hbm14_wvalid  (maxi_hbm14_wvalid),
 		.maxi_hbm14_wdata   (maxi_hbm14_wdata),
 		.maxi_hbm14_wstrb   (maxi_hbm14_wstrb),
@@ -2703,7 +2986,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm14_arburst (maxi_hbm14_arburst),
 		.maxi_hbm14_arprot  (maxi_hbm14_arprot),
 		.maxi_hbm14_arcache (maxi_hbm14_arcache),
+		.maxi_hbm14_arqos   (maxi_hbm14_arqos),
 		.maxi_hbm14_arlock  (maxi_hbm14_arlock),
+		.maxi_hbm14_arregion(maxi_hbm14_arregion),
 		.maxi_hbm14_rready  (maxi_hbm14_rready),
 		.maxi_hbm14_arready (maxi_hbm14_arready),
 		.maxi_hbm14_rvalid  (maxi_hbm14_rvalid),
@@ -2718,7 +3003,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm15_awburst (maxi_hbm15_awburst),
 		.maxi_hbm15_awprot  (maxi_hbm15_awprot),
 		.maxi_hbm15_awcache (maxi_hbm15_awcache),
+		.maxi_hbm15_awqos   (maxi_hbm15_awqos),
 		.maxi_hbm15_awlock  (maxi_hbm15_awlock),
+		.maxi_hbm15_awregion(maxi_hbm15_awregion),
 		.maxi_hbm15_wvalid  (maxi_hbm15_wvalid),
 		.maxi_hbm15_wdata   (maxi_hbm15_wdata),
 		.maxi_hbm15_wstrb   (maxi_hbm15_wstrb),
@@ -2735,7 +3022,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm15_arburst (maxi_hbm15_arburst),
 		.maxi_hbm15_arprot  (maxi_hbm15_arprot),
 		.maxi_hbm15_arcache (maxi_hbm15_arcache),
+		.maxi_hbm15_arqos   (maxi_hbm15_arqos),
 		.maxi_hbm15_arlock  (maxi_hbm15_arlock),
+		.maxi_hbm15_arregion(maxi_hbm15_arregion),
 		.maxi_hbm15_rready  (maxi_hbm15_rready),
 		.maxi_hbm15_arready (maxi_hbm15_arready),
 		.maxi_hbm15_rvalid  (maxi_hbm15_rvalid),
@@ -2750,7 +3039,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm16_awburst (maxi_hbm16_awburst),
 		.maxi_hbm16_awprot  (maxi_hbm16_awprot),
 		.maxi_hbm16_awcache (maxi_hbm16_awcache),
+		.maxi_hbm16_awqos   (maxi_hbm16_awqos),
 		.maxi_hbm16_awlock  (maxi_hbm16_awlock),
+		.maxi_hbm16_awregion(maxi_hbm16_awregion),
 		.maxi_hbm16_wvalid  (maxi_hbm16_wvalid),
 		.maxi_hbm16_wdata   (maxi_hbm16_wdata),
 		.maxi_hbm16_wstrb   (maxi_hbm16_wstrb),
@@ -2767,7 +3058,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm16_arburst (maxi_hbm16_arburst),
 		.maxi_hbm16_arprot  (maxi_hbm16_arprot),
 		.maxi_hbm16_arcache (maxi_hbm16_arcache),
+		.maxi_hbm16_arqos   (maxi_hbm16_arqos),
 		.maxi_hbm16_arlock  (maxi_hbm16_arlock),
+		.maxi_hbm16_arregion(maxi_hbm16_arregion),
 		.maxi_hbm16_rready  (maxi_hbm16_rready),
 		.maxi_hbm16_arready (maxi_hbm16_arready),
 		.maxi_hbm16_rvalid  (maxi_hbm16_rvalid),
@@ -2782,7 +3075,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm17_awburst (maxi_hbm17_awburst),
 		.maxi_hbm17_awprot  (maxi_hbm17_awprot),
 		.maxi_hbm17_awcache (maxi_hbm17_awcache),
+		.maxi_hbm17_awqos   (maxi_hbm17_awqos),
 		.maxi_hbm17_awlock  (maxi_hbm17_awlock),
+		.maxi_hbm17_awregion(maxi_hbm17_awregion),
 		.maxi_hbm17_wvalid  (maxi_hbm17_wvalid),
 		.maxi_hbm17_wdata   (maxi_hbm17_wdata),
 		.maxi_hbm17_wstrb   (maxi_hbm17_wstrb),
@@ -2799,7 +3094,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm17_arburst (maxi_hbm17_arburst),
 		.maxi_hbm17_arprot  (maxi_hbm17_arprot),
 		.maxi_hbm17_arcache (maxi_hbm17_arcache),
+		.maxi_hbm17_arqos   (maxi_hbm17_arqos),
 		.maxi_hbm17_arlock  (maxi_hbm17_arlock),
+		.maxi_hbm17_arregion(maxi_hbm17_arregion),
 		.maxi_hbm17_rready  (maxi_hbm17_rready),
 		.maxi_hbm17_arready (maxi_hbm17_arready),
 		.maxi_hbm17_rvalid  (maxi_hbm17_rvalid),
@@ -2814,7 +3111,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm18_awburst (maxi_hbm18_awburst),
 		.maxi_hbm18_awprot  (maxi_hbm18_awprot),
 		.maxi_hbm18_awcache (maxi_hbm18_awcache),
+		.maxi_hbm18_awqos   (maxi_hbm18_awqos),
 		.maxi_hbm18_awlock  (maxi_hbm18_awlock),
+		.maxi_hbm18_awregion(maxi_hbm18_awregion),
 		.maxi_hbm18_wvalid  (maxi_hbm18_wvalid),
 		.maxi_hbm18_wdata   (maxi_hbm18_wdata),
 		.maxi_hbm18_wstrb   (maxi_hbm18_wstrb),
@@ -2831,7 +3130,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm18_arburst (maxi_hbm18_arburst),
 		.maxi_hbm18_arprot  (maxi_hbm18_arprot),
 		.maxi_hbm18_arcache (maxi_hbm18_arcache),
+		.maxi_hbm18_arqos   (maxi_hbm18_arqos),
 		.maxi_hbm18_arlock  (maxi_hbm18_arlock),
+		.maxi_hbm18_arregion(maxi_hbm18_arregion),
 		.maxi_hbm18_rready  (maxi_hbm18_rready),
 		.maxi_hbm18_arready (maxi_hbm18_arready),
 		.maxi_hbm18_rvalid  (maxi_hbm18_rvalid),
@@ -2846,7 +3147,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm19_awburst (maxi_hbm19_awburst),
 		.maxi_hbm19_awprot  (maxi_hbm19_awprot),
 		.maxi_hbm19_awcache (maxi_hbm19_awcache),
+		.maxi_hbm19_awqos   (maxi_hbm19_awqos),
 		.maxi_hbm19_awlock  (maxi_hbm19_awlock),
+		.maxi_hbm19_awregion(maxi_hbm19_awregion),
 		.maxi_hbm19_wvalid  (maxi_hbm19_wvalid),
 		.maxi_hbm19_wdata   (maxi_hbm19_wdata),
 		.maxi_hbm19_wstrb   (maxi_hbm19_wstrb),
@@ -2863,7 +3166,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm19_arburst (maxi_hbm19_arburst),
 		.maxi_hbm19_arprot  (maxi_hbm19_arprot),
 		.maxi_hbm19_arcache (maxi_hbm19_arcache),
+		.maxi_hbm19_arqos   (maxi_hbm19_arqos),
 		.maxi_hbm19_arlock  (maxi_hbm19_arlock),
+		.maxi_hbm19_arregion(maxi_hbm19_arregion),
 		.maxi_hbm19_rready  (maxi_hbm19_rready),
 		.maxi_hbm19_arready (maxi_hbm19_arready),
 		.maxi_hbm19_rvalid  (maxi_hbm19_rvalid),
@@ -2878,7 +3183,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm20_awburst (maxi_hbm20_awburst),
 		.maxi_hbm20_awprot  (maxi_hbm20_awprot),
 		.maxi_hbm20_awcache (maxi_hbm20_awcache),
+		.maxi_hbm20_awqos   (maxi_hbm20_awqos),
 		.maxi_hbm20_awlock  (maxi_hbm20_awlock),
+		.maxi_hbm20_awregion(maxi_hbm20_awregion),
 		.maxi_hbm20_wvalid  (maxi_hbm20_wvalid),
 		.maxi_hbm20_wdata   (maxi_hbm20_wdata),
 		.maxi_hbm20_wstrb   (maxi_hbm20_wstrb),
@@ -2895,7 +3202,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm20_arburst (maxi_hbm20_arburst),
 		.maxi_hbm20_arprot  (maxi_hbm20_arprot),
 		.maxi_hbm20_arcache (maxi_hbm20_arcache),
+		.maxi_hbm20_arqos   (maxi_hbm20_arqos),
 		.maxi_hbm20_arlock  (maxi_hbm20_arlock),
+		.maxi_hbm20_arregion(maxi_hbm20_arregion),
 		.maxi_hbm20_rready  (maxi_hbm20_rready),
 		.maxi_hbm20_arready (maxi_hbm20_arready),
 		.maxi_hbm20_rvalid  (maxi_hbm20_rvalid),
@@ -2910,7 +3219,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm21_awburst (maxi_hbm21_awburst),
 		.maxi_hbm21_awprot  (maxi_hbm21_awprot),
 		.maxi_hbm21_awcache (maxi_hbm21_awcache),
+		.maxi_hbm21_awqos   (maxi_hbm21_awqos),
 		.maxi_hbm21_awlock  (maxi_hbm21_awlock),
+		.maxi_hbm21_awregion(maxi_hbm21_awregion),
 		.maxi_hbm21_wvalid  (maxi_hbm21_wvalid),
 		.maxi_hbm21_wdata   (maxi_hbm21_wdata),
 		.maxi_hbm21_wstrb   (maxi_hbm21_wstrb),
@@ -2927,7 +3238,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm21_arburst (maxi_hbm21_arburst),
 		.maxi_hbm21_arprot  (maxi_hbm21_arprot),
 		.maxi_hbm21_arcache (maxi_hbm21_arcache),
+		.maxi_hbm21_arqos   (maxi_hbm21_arqos),
 		.maxi_hbm21_arlock  (maxi_hbm21_arlock),
+		.maxi_hbm21_arregion(maxi_hbm21_arregion),
 		.maxi_hbm21_rready  (maxi_hbm21_rready),
 		.maxi_hbm21_arready (maxi_hbm21_arready),
 		.maxi_hbm21_rvalid  (maxi_hbm21_rvalid),
@@ -2942,7 +3255,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm22_awburst (maxi_hbm22_awburst),
 		.maxi_hbm22_awprot  (maxi_hbm22_awprot),
 		.maxi_hbm22_awcache (maxi_hbm22_awcache),
+		.maxi_hbm22_awqos   (maxi_hbm22_awqos),
 		.maxi_hbm22_awlock  (maxi_hbm22_awlock),
+		.maxi_hbm22_awregion(maxi_hbm22_awregion),
 		.maxi_hbm22_wvalid  (maxi_hbm22_wvalid),
 		.maxi_hbm22_wdata   (maxi_hbm22_wdata),
 		.maxi_hbm22_wstrb   (maxi_hbm22_wstrb),
@@ -2959,7 +3274,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm22_arburst (maxi_hbm22_arburst),
 		.maxi_hbm22_arprot  (maxi_hbm22_arprot),
 		.maxi_hbm22_arcache (maxi_hbm22_arcache),
+		.maxi_hbm22_arqos   (maxi_hbm22_arqos),
 		.maxi_hbm22_arlock  (maxi_hbm22_arlock),
+		.maxi_hbm22_arregion(maxi_hbm22_arregion),
 		.maxi_hbm22_rready  (maxi_hbm22_rready),
 		.maxi_hbm22_arready (maxi_hbm22_arready),
 		.maxi_hbm22_rvalid  (maxi_hbm22_rvalid),
@@ -2974,7 +3291,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm23_awburst (maxi_hbm23_awburst),
 		.maxi_hbm23_awprot  (maxi_hbm23_awprot),
 		.maxi_hbm23_awcache (maxi_hbm23_awcache),
+		.maxi_hbm23_awqos   (maxi_hbm23_awqos),
 		.maxi_hbm23_awlock  (maxi_hbm23_awlock),
+		.maxi_hbm23_awregion(maxi_hbm23_awregion),
 		.maxi_hbm23_wvalid  (maxi_hbm23_wvalid),
 		.maxi_hbm23_wdata   (maxi_hbm23_wdata),
 		.maxi_hbm23_wstrb   (maxi_hbm23_wstrb),
@@ -2991,7 +3310,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm23_arburst (maxi_hbm23_arburst),
 		.maxi_hbm23_arprot  (maxi_hbm23_arprot),
 		.maxi_hbm23_arcache (maxi_hbm23_arcache),
+		.maxi_hbm23_arqos   (maxi_hbm23_arqos),
 		.maxi_hbm23_arlock  (maxi_hbm23_arlock),
+		.maxi_hbm23_arregion(maxi_hbm23_arregion),
 		.maxi_hbm23_rready  (maxi_hbm23_rready),
 		.maxi_hbm23_arready (maxi_hbm23_arready),
 		.maxi_hbm23_rvalid  (maxi_hbm23_rvalid),
@@ -3006,7 +3327,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm24_awburst (maxi_hbm24_awburst),
 		.maxi_hbm24_awprot  (maxi_hbm24_awprot),
 		.maxi_hbm24_awcache (maxi_hbm24_awcache),
+		.maxi_hbm24_awqos   (maxi_hbm24_awqos),
 		.maxi_hbm24_awlock  (maxi_hbm24_awlock),
+		.maxi_hbm24_awregion(maxi_hbm24_awregion),
 		.maxi_hbm24_wvalid  (maxi_hbm24_wvalid),
 		.maxi_hbm24_wdata   (maxi_hbm24_wdata),
 		.maxi_hbm24_wstrb   (maxi_hbm24_wstrb),
@@ -3023,7 +3346,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm24_arburst (maxi_hbm24_arburst),
 		.maxi_hbm24_arprot  (maxi_hbm24_arprot),
 		.maxi_hbm24_arcache (maxi_hbm24_arcache),
+		.maxi_hbm24_arqos   (maxi_hbm24_arqos),
 		.maxi_hbm24_arlock  (maxi_hbm24_arlock),
+		.maxi_hbm24_arregion(maxi_hbm24_arregion),
 		.maxi_hbm24_rready  (maxi_hbm24_rready),
 		.maxi_hbm24_arready (maxi_hbm24_arready),
 		.maxi_hbm24_rvalid  (maxi_hbm24_rvalid),
@@ -3038,7 +3363,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm25_awburst (maxi_hbm25_awburst),
 		.maxi_hbm25_awprot  (maxi_hbm25_awprot),
 		.maxi_hbm25_awcache (maxi_hbm25_awcache),
+		.maxi_hbm25_awqos   (maxi_hbm25_awqos),
 		.maxi_hbm25_awlock  (maxi_hbm25_awlock),
+		.maxi_hbm25_awregion(maxi_hbm25_awregion),
 		.maxi_hbm25_wvalid  (maxi_hbm25_wvalid),
 		.maxi_hbm25_wdata   (maxi_hbm25_wdata),
 		.maxi_hbm25_wstrb   (maxi_hbm25_wstrb),
@@ -3055,7 +3382,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm25_arburst (maxi_hbm25_arburst),
 		.maxi_hbm25_arprot  (maxi_hbm25_arprot),
 		.maxi_hbm25_arcache (maxi_hbm25_arcache),
+		.maxi_hbm25_arqos   (maxi_hbm25_arqos),
 		.maxi_hbm25_arlock  (maxi_hbm25_arlock),
+		.maxi_hbm25_arregion(maxi_hbm25_arregion),
 		.maxi_hbm25_rready  (maxi_hbm25_rready),
 		.maxi_hbm25_arready (maxi_hbm25_arready),
 		.maxi_hbm25_rvalid  (maxi_hbm25_rvalid),
@@ -3070,7 +3399,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm26_awburst (maxi_hbm26_awburst),
 		.maxi_hbm26_awprot  (maxi_hbm26_awprot),
 		.maxi_hbm26_awcache (maxi_hbm26_awcache),
+		.maxi_hbm26_awqos   (maxi_hbm26_awqos),
 		.maxi_hbm26_awlock  (maxi_hbm26_awlock),
+		.maxi_hbm26_awregion(maxi_hbm26_awregion),
 		.maxi_hbm26_wvalid  (maxi_hbm26_wvalid),
 		.maxi_hbm26_wdata   (maxi_hbm26_wdata),
 		.maxi_hbm26_wstrb   (maxi_hbm26_wstrb),
@@ -3087,7 +3418,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm26_arburst (maxi_hbm26_arburst),
 		.maxi_hbm26_arprot  (maxi_hbm26_arprot),
 		.maxi_hbm26_arcache (maxi_hbm26_arcache),
+		.maxi_hbm26_arqos   (maxi_hbm26_arqos),
 		.maxi_hbm26_arlock  (maxi_hbm26_arlock),
+		.maxi_hbm26_arregion(maxi_hbm26_arregion),
 		.maxi_hbm26_rready  (maxi_hbm26_rready),
 		.maxi_hbm26_arready (maxi_hbm26_arready),
 		.maxi_hbm26_rvalid  (maxi_hbm26_rvalid),
@@ -3102,7 +3435,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm27_awburst (maxi_hbm27_awburst),
 		.maxi_hbm27_awprot  (maxi_hbm27_awprot),
 		.maxi_hbm27_awcache (maxi_hbm27_awcache),
+		.maxi_hbm27_awqos   (maxi_hbm27_awqos),
 		.maxi_hbm27_awlock  (maxi_hbm27_awlock),
+		.maxi_hbm27_awregion(maxi_hbm27_awregion),
 		.maxi_hbm27_wvalid  (maxi_hbm27_wvalid),
 		.maxi_hbm27_wdata   (maxi_hbm27_wdata),
 		.maxi_hbm27_wstrb   (maxi_hbm27_wstrb),
@@ -3119,7 +3454,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm27_arburst (maxi_hbm27_arburst),
 		.maxi_hbm27_arprot  (maxi_hbm27_arprot),
 		.maxi_hbm27_arcache (maxi_hbm27_arcache),
+		.maxi_hbm27_arqos   (maxi_hbm27_arqos),
 		.maxi_hbm27_arlock  (maxi_hbm27_arlock),
+		.maxi_hbm27_arregion(maxi_hbm27_arregion),
 		.maxi_hbm27_rready  (maxi_hbm27_rready),
 		.maxi_hbm27_arready (maxi_hbm27_arready),
 		.maxi_hbm27_rvalid  (maxi_hbm27_rvalid),
@@ -3134,7 +3471,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm28_awburst (maxi_hbm28_awburst),
 		.maxi_hbm28_awprot  (maxi_hbm28_awprot),
 		.maxi_hbm28_awcache (maxi_hbm28_awcache),
+		.maxi_hbm28_awqos   (maxi_hbm28_awqos),
 		.maxi_hbm28_awlock  (maxi_hbm28_awlock),
+		.maxi_hbm28_awregion(maxi_hbm28_awregion),
 		.maxi_hbm28_wvalid  (maxi_hbm28_wvalid),
 		.maxi_hbm28_wdata   (maxi_hbm28_wdata),
 		.maxi_hbm28_wstrb   (maxi_hbm28_wstrb),
@@ -3151,7 +3490,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm28_arburst (maxi_hbm28_arburst),
 		.maxi_hbm28_arprot  (maxi_hbm28_arprot),
 		.maxi_hbm28_arcache (maxi_hbm28_arcache),
+		.maxi_hbm28_arqos   (maxi_hbm28_arqos),
 		.maxi_hbm28_arlock  (maxi_hbm28_arlock),
+		.maxi_hbm28_arregion(maxi_hbm28_arregion),
 		.maxi_hbm28_rready  (maxi_hbm28_rready),
 		.maxi_hbm28_arready (maxi_hbm28_arready),
 		.maxi_hbm28_rvalid  (maxi_hbm28_rvalid),
@@ -3166,7 +3507,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm29_awburst (maxi_hbm29_awburst),
 		.maxi_hbm29_awprot  (maxi_hbm29_awprot),
 		.maxi_hbm29_awcache (maxi_hbm29_awcache),
+		.maxi_hbm29_awqos   (maxi_hbm29_awqos),
 		.maxi_hbm29_awlock  (maxi_hbm29_awlock),
+		.maxi_hbm29_awregion(maxi_hbm29_awregion),
 		.maxi_hbm29_wvalid  (maxi_hbm29_wvalid),
 		.maxi_hbm29_wdata   (maxi_hbm29_wdata),
 		.maxi_hbm29_wstrb   (maxi_hbm29_wstrb),
@@ -3183,7 +3526,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm29_arburst (maxi_hbm29_arburst),
 		.maxi_hbm29_arprot  (maxi_hbm29_arprot),
 		.maxi_hbm29_arcache (maxi_hbm29_arcache),
+		.maxi_hbm29_arqos   (maxi_hbm29_arqos),
 		.maxi_hbm29_arlock  (maxi_hbm29_arlock),
+		.maxi_hbm29_arregion(maxi_hbm29_arregion),
 		.maxi_hbm29_rready  (maxi_hbm29_rready),
 		.maxi_hbm29_arready (maxi_hbm29_arready),
 		.maxi_hbm29_rvalid  (maxi_hbm29_rvalid),
@@ -3198,7 +3543,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm30_awburst (maxi_hbm30_awburst),
 		.maxi_hbm30_awprot  (maxi_hbm30_awprot),
 		.maxi_hbm30_awcache (maxi_hbm30_awcache),
+		.maxi_hbm30_awqos   (maxi_hbm30_awqos),
 		.maxi_hbm30_awlock  (maxi_hbm30_awlock),
+		.maxi_hbm30_awregion(maxi_hbm30_awregion),
 		.maxi_hbm30_wvalid  (maxi_hbm30_wvalid),
 		.maxi_hbm30_wdata   (maxi_hbm30_wdata),
 		.maxi_hbm30_wstrb   (maxi_hbm30_wstrb),
@@ -3215,7 +3562,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm30_arburst (maxi_hbm30_arburst),
 		.maxi_hbm30_arprot  (maxi_hbm30_arprot),
 		.maxi_hbm30_arcache (maxi_hbm30_arcache),
+		.maxi_hbm30_arqos   (maxi_hbm30_arqos),
 		.maxi_hbm30_arlock  (maxi_hbm30_arlock),
+		.maxi_hbm30_arregion(maxi_hbm30_arregion),
 		.maxi_hbm30_rready  (maxi_hbm30_rready),
 		.maxi_hbm30_arready (maxi_hbm30_arready),
 		.maxi_hbm30_rvalid  (maxi_hbm30_rvalid),
@@ -3230,7 +3579,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm31_awburst (maxi_hbm31_awburst),
 		.maxi_hbm31_awprot  (maxi_hbm31_awprot),
 		.maxi_hbm31_awcache (maxi_hbm31_awcache),
+		.maxi_hbm31_awqos   (maxi_hbm31_awqos),
 		.maxi_hbm31_awlock  (maxi_hbm31_awlock),
+		.maxi_hbm31_awregion(maxi_hbm31_awregion),
 		.maxi_hbm31_wvalid  (maxi_hbm31_wvalid),
 		.maxi_hbm31_wdata   (maxi_hbm31_wdata),
 		.maxi_hbm31_wstrb   (maxi_hbm31_wstrb),
@@ -3247,7 +3598,9 @@ module SUSpMV_Full_tb;
 		.maxi_hbm31_arburst (maxi_hbm31_arburst),
 		.maxi_hbm31_arprot  (maxi_hbm31_arprot),
 		.maxi_hbm31_arcache (maxi_hbm31_arcache),
+		.maxi_hbm31_arqos   (maxi_hbm31_arqos),
 		.maxi_hbm31_arlock  (maxi_hbm31_arlock),
+		.maxi_hbm31_arregion(maxi_hbm31_arregion),
 		.maxi_hbm31_rready  (maxi_hbm31_rready),
 		.maxi_hbm31_arready (maxi_hbm31_arready),
 		.maxi_hbm31_rvalid  (maxi_hbm31_rvalid),
@@ -3291,7 +3644,7 @@ module SUSpMV_Full_tb;
 	);
 
 
-	simple_axi3_mem #(
+simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3324,7 +3677,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm00_rresp),
         .rlast   (maxi_hbm00_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3357,7 +3710,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm01_rresp),
         .rlast   (maxi_hbm01_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3390,7 +3743,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm02_rresp),
         .rlast   (maxi_hbm02_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3423,7 +3776,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm03_rresp),
         .rlast   (maxi_hbm03_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3456,7 +3809,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm04_rresp),
         .rlast   (maxi_hbm04_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3489,7 +3842,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm05_rresp),
         .rlast   (maxi_hbm05_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3522,7 +3875,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm06_rresp),
         .rlast   (maxi_hbm06_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3555,7 +3908,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm07_rresp),
         .rlast   (maxi_hbm07_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3588,7 +3941,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm08_rresp),
         .rlast   (maxi_hbm08_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3621,7 +3974,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm09_rresp),
         .rlast   (maxi_hbm09_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3654,7 +4007,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm10_rresp),
         .rlast   (maxi_hbm10_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3687,7 +4040,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm11_rresp),
         .rlast   (maxi_hbm11_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3720,7 +4073,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm12_rresp),
         .rlast   (maxi_hbm12_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3753,7 +4106,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm13_rresp),
         .rlast   (maxi_hbm13_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3786,7 +4139,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm14_rresp),
         .rlast   (maxi_hbm14_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3819,7 +4172,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm15_rresp),
         .rlast   (maxi_hbm15_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3852,7 +4205,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm16_rresp),
         .rlast   (maxi_hbm16_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3885,7 +4238,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm17_rresp),
         .rlast   (maxi_hbm17_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3918,7 +4271,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm18_rresp),
         .rlast   (maxi_hbm18_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3951,7 +4304,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm19_rresp),
         .rlast   (maxi_hbm19_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -3984,7 +4337,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm20_rresp),
         .rlast   (maxi_hbm20_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -4017,7 +4370,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm21_rresp),
         .rlast   (maxi_hbm21_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -4050,7 +4403,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm22_rresp),
         .rlast   (maxi_hbm22_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -4083,7 +4436,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm23_rresp),
         .rlast   (maxi_hbm23_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -4116,7 +4469,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm24_rresp),
         .rlast   (maxi_hbm24_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -4149,7 +4502,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm25_rresp),
         .rlast   (maxi_hbm25_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -4182,7 +4535,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm26_rresp),
         .rlast   (maxi_hbm26_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -4215,7 +4568,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm27_rresp),
         .rlast   (maxi_hbm27_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -4248,7 +4601,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm28_rresp),
         .rlast   (maxi_hbm28_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -4281,7 +4634,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm29_rresp),
         .rlast   (maxi_hbm29_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
@@ -4314,7 +4667,7 @@ module SUSpMV_Full_tb;
         .rresp   (maxi_hbm30_rresp),
         .rlast   (maxi_hbm30_rlast)
     );
-    simple_axi3_mem #(
+    simple_axi4_mem #(
         .ADDR_WIDTH (64),
         .DATA_WIDTH (256),
         .DEPTH  (1024*1024)
