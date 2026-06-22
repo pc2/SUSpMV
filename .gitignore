@@ -31,3 +31,6 @@ host/suspmv
 host/Makefile
 host/cmake_install.cmake
 **/.nfs*
+RelevantWork/
+fpga_builds/
+**/*.bkp
