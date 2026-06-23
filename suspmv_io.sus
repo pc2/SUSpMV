@@ -226,54 +226,54 @@ extern module y_vec_writer_ila{
     /// awready
     input bool                                    probe1'0
     /// awaddr
-    input int#(FROM: 0, TO: 1 << 64)  probe2'0
+    // input int#(FROM: 0, TO: 1 << 64)              probe2'0
     /// awlen
-    input int#(FROM: 0, TO: 256)                  probe3'0
+    input int#(FROM: 0, TO: 256)                  probe2'0
     /// awsize
-    input int#(FROM: 0, TO: 8)                    probe4'0
+    //input int#(FROM: 0, TO: 8)                    probe3'0
     /// awburst
-    input bool[2]                                 probe5'0
+    //input bool[2]                                 probe4'0
     /// awprot
-    input bool[3]                                 probe6'0
+    //input bool[3]                                 probe5'0
     /// awcache
-    input bool[4]                                 probe7'0
+    //input bool[4]                                 probe6'0
     /// awqos
-    input int#(FROM: 0, TO: 16)                   probe8'0
+    //input int#(FROM: 0, TO: 16)                   probe7'0
     /// awlock
-    input bool                                    probe9'0
+    //input bool                                    probe8'0
     /// awregion
-    input int#(FROM: 0, TO: 16)                   probe10'0
+    //input int#(FROM: 0, TO: 16)                   probe9'0
     /// wvalid
-    input bool                                    probe11'0
+    input bool                                    probe3'0
     /// wready
-    input bool                                    probe12'0
+    input bool                                    probe4'0
     /// wstrb
-    input bool[512 / 8]                           probe13'0
+    // input bool[512 / 8]                           probe13'0
     /// wlast
-    input bool                                    probe14'0
+    input bool                                    probe5'0
     /// bvalid
-    input bool                                    probe15'0
+    input bool                                    probe6'0
     /// bready
-    input bool                                    probe16'0
+    input bool                                    probe7'0
     /// bresp
-    input bool[2]                                 probe17'0
+    input bool[2]                                 probe8'0
 
     /// unit_holding_y_token
-    input int#(FROM: 0, TO: 32)                   probe18'0
+    input int#(FROM: 0, TO: 32)                   probe9'0
     /// num_y_blocks_remaining
-    input int#(FROM: 0, TO: 1 << 32)              probe19'0
+    input int#(FROM: 0, TO: 1 << 10)              probe10'0
 
     /// unit_may_starts
-    input bool[32]                                probe20'0
+    input bool[32]                                probe11'0
 
     /// may_write
-    input bool                                    probe21'0
+    input bool                                    probe12'0
     /// write
-    input bool                                    probe22'0
+    input bool                                    probe13'0
     /// num_y_values
-    input int#(FROM: 0, TO: 17)                   probe23'0
+    input int#(FROM: 0, TO: 17)                   probe14'0
     /// last
-    input bool                                    probe24'0
+    input bool                                    probe15'0
 }
 
 module YVectorWriter#(int NUM_KERNELS, int MAY_PUSH_LATENCY) {
@@ -326,7 +326,7 @@ module YVectorWriter#(int NUM_KERNELS, int MAY_PUSH_LATENCY) {
     y_vec_writer_ila y_vec_ila
     domain write_side
     output bool may_write'-MAY_PUSH_LATENCY = writer.may_write
-    y_vec_ila.probe21 = may_write
+    y_vec_ila.probe12 = may_write
     action write'-3 : float[16] y_values'0, int#(FROM: 0, TO: 17) num_y_values'0, bool last'0 {
         bool[32][16] write_elements
         
@@ -351,13 +351,13 @@ module YVectorWriter#(int NUM_KERNELS, int MAY_PUSH_LATENCY) {
         }
         writer.write(write_elements, num_y_values, 0, write_is_true_last)
 
-        y_vec_ila.probe22 = true
-        y_vec_ila.probe23 = num_y_values
-        y_vec_ila.probe24 = last
+        y_vec_ila.probe13 = true
+        y_vec_ila.probe14 = num_y_values
+        y_vec_ila.probe15 = last
     } else {
-        y_vec_ila.probe22 = false
-        y_vec_ila.probe23 = 0
-        y_vec_ila.probe24 = false
+        y_vec_ila.probe13 = false
+        y_vec_ila.probe14 = 0
+        y_vec_ila.probe15 = false
 
     }
 
@@ -375,25 +375,25 @@ module YVectorWriter#(int NUM_KERNELS, int MAY_PUSH_LATENCY) {
 
     y_vec_ila.probe0 = awvalid
     y_vec_ila.probe1 = awready
-    y_vec_ila.probe2 = awaddr
-    y_vec_ila.probe3 = awlen
-    y_vec_ila.probe4 = awsize
-    y_vec_ila.probe5 = awburst
-    y_vec_ila.probe6 = awprot
-    y_vec_ila.probe7 = awcache
-    y_vec_ila.probe8 = awqos
-    y_vec_ila.probe9 = awlock
-    y_vec_ila.probe10 = awregion
-    y_vec_ila.probe11 = wvalid
-    y_vec_ila.probe12 = wready
-    y_vec_ila.probe13 = wstrb
-    y_vec_ila.probe14 = wlast
-    y_vec_ila.probe15 = bvalid
-    y_vec_ila.probe16 = bready
-    y_vec_ila.probe17 = bresp
-    y_vec_ila.probe18 = unit_holding_y_token
-    y_vec_ila.probe19 = num_y_blocks_remaining
-    y_vec_ila.probe20 = unit_may_starts
+    // y_vec_ila.probe2 = awaddr
+    y_vec_ila.probe2 = awlen
+    // y_vec_ila.probe3 = awsize
+    // y_vec_ila.probe4 = awburst
+    // y_vec_ila.probe5 = awprot
+    // y_vec_ila.probe6 = awcache
+    // y_vec_ila.probe7 = awqos
+    // y_vec_ila.probe8 = awlock
+    // y_vec_ila.probe9 = awregion
+    y_vec_ila.probe3 = wvalid
+    y_vec_ila.probe4 = wready
+    //y_vec_ila.probe12 = wstrb
+    y_vec_ila.probe5 = wlast
+    y_vec_ila.probe6 = bvalid
+    y_vec_ila.probe7 = bready
+    y_vec_ila.probe8 = bresp
+    y_vec_ila.probe9 = unit_holding_y_token
+    y_vec_ila.probe10 = num_y_blocks_remaining mod 1 << 10
+    y_vec_ila.probe11 = unit_may_starts
 }
 
 module BusMerge#(int SIZE) {

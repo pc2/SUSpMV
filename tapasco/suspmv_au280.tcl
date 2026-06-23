@@ -354,14 +354,18 @@ namespace eval suspmv {
 
         create_bd_cell -type ip -vlnv xilinx.com:ip:ila:6.2 ila_cvt_axi4
         set_property CONFIG.C_DATA_DEPTH {1024} [get_bd_cells ila_cvt_axi4]
-        set_property CONFIG.C_INPUT_PIPE_STAGES {2} [get_bd_cells ila_cvt_axi4]
+        set_property CONFIG.C_INPUT_PIPE_STAGES {4} [get_bd_cells ila_cvt_axi4]
         create_bd_cell -type ip -vlnv xilinx.com:ip:ila:6.2 ila_cvt_axi3
         set_property CONFIG.C_DATA_DEPTH {1024} [get_bd_cells ila_cvt_axi3]
-        set_property CONFIG.C_INPUT_PIPE_STAGES {2} [get_bd_cells ila_cvt_axi3]
-        connect_bd_intf_net [get_bd_intf_pins ila_cvt_axi3/SLOT_0_AXI] [get_bd_intf_pins hbm/converter_10/S_AXI]
-        connect_bd_intf_net [get_bd_intf_pins ila_cvt_axi4/SLOT_0_AXI] [get_bd_intf_pins hbm/hbm_0/SAXI_10]
+        set_property CONFIG.C_INPUT_PIPE_STAGES {4} [get_bd_cells ila_cvt_axi3]
+        connect_bd_intf_net [get_bd_intf_pins ila_cvt_axi3/SLOT_0_AXI] [get_bd_intf_pins hbm/hbm_0/SAXI_10]
+        connect_bd_intf_net [get_bd_intf_pins ila_cvt_axi4/SLOT_0_AXI] [get_bd_intf_pins hbm/converter_10/S_AXI]
         connect_bd_net [get_bd_pins clocks_and_resets/design_clk] [get_bd_pins ila_cvt_axi3/clk]
         connect_bd_net [get_bd_pins clocks_and_resets/design_clk] [get_bd_pins ila_cvt_axi4/clk]
+    }
+
+    proc produce_ila_ltx {} {
+        write_debug_probes ila_info.ltx
     }
 }
 
@@ -393,4 +397,5 @@ if {[tapasco::is_feature_enabled "suspmv"]} {
     tapasco::register_plugin "platform::suspmv::aftermath" "pre-wrapper"
     tapasco::register_plugin "platform::suspmv::add_debug_ilas" "pre-wrapper"
     tapasco::register_plugin "platform::suspmv::parse_constraints_file" "pre-arch"
+    tapasco::register_plugin "platform::suspmv::produce_ila_ltx" "post-bitstream"
 }
