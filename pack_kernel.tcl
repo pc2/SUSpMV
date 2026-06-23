@@ -19,6 +19,44 @@ add_files -norecurse \
 import_ip [glob -type f ../../$SUS_FLOAT_LIB_PATH/xci_files/*.xci]
 upgrade_ip -vlnv xilinx.com:ip:floating_point:7.1 [get_ips fp32_*_ip fp64_*_ip] -log ip_upgrade.log
 
+create_ip -name ila -vendor xilinx.com -library ip -version 6.2 -module_name y_vec_writer_ila
+set_property -dict [list \
+  CONFIG.C_ADV_TRIGGER {true} \
+  CONFIG.C_DATA_DEPTH {16384} \
+  CONFIG.C_NUM_OF_PROBES {25} \
+  CONFIG.C_PROBE2_TYPE {1} \
+  CONFIG.C_PROBE2_WIDTH {64} \
+  CONFIG.C_PROBE3_TYPE {1} \
+  CONFIG.C_PROBE3_WIDTH {8} \
+  CONFIG.C_PROBE4_TYPE {1} \
+  CONFIG.C_PROBE4_WIDTH {3} \
+  CONFIG.C_PROBE5_TYPE {1} \
+  CONFIG.C_PROBE5_WIDTH {2} \
+  CONFIG.C_PROBE6_TYPE {1} \
+  CONFIG.C_PROBE6_WIDTH {3} \
+  CONFIG.C_PROBE7_TYPE {1} \
+  CONFIG.C_PROBE7_WIDTH {4} \
+  CONFIG.C_PROBE8_WIDTH {4} \
+  CONFIG.C_PROBE10_TYPE {1} \
+  CONFIG.C_PROBE10_WIDTH {4} \
+  CONFIG.C_PROBE13_TYPE {1} \
+  CONFIG.C_PROBE13_WIDTH {64} \
+  CONFIG.C_PROBE17_WIDTH {2} \
+  CONFIG.C_PROBE18_TYPE {1} \
+  CONFIG.C_PROBE18_WIDTH {5} \
+  CONFIG.C_PROBE19_TYPE {1} \
+  CONFIG.C_PROBE19_WIDTH {32} \
+  CONFIG.C_PROBE20_TYPE {1} \
+  CONFIG.C_PROBE20_WIDTH {32} \
+  CONFIG.C_PROBE23_TYPE {1} \
+  CONFIG.C_PROBE23_WIDTH {5} \
+  CONFIG.C_INPUT_PIPE_STAGES {2} \
+  CONFIG.Component_Name {y_vec_writer_ila} \
+] [get_ips y_vec_writer_ila]
+
+# generate_target all [get_ips y_vec_writer_ila]
+# export_ip_user_files -of_objects [get_ips y_vec_writer_ila] -no_script -sync -force
+
 add_files -fileset constrs_1 -norecurse ${PBLOCK_FILE}
 
 set_property top SUSpMV_Full [current_fileset]
@@ -99,3 +137,4 @@ ipx::save_core [ipx::current_core]
 
 package_xo -xo_path $XO_FILE -kernel_name ${KERNEL_NAME} -ctrl_protocol ap_ctrl_hs -ip_directory ./${KERNEL_NAME}_ip
  # -output_kernel_xml ../../${KERNEL_NAME}.xml
+
