@@ -90,16 +90,9 @@ namespace eval suspmv {
             set hbm_index [format %02s $i]
             if { $i != $hbm_dma_index } {
                 # connect PE and hmb
-                set converter [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_protocol_converter:2.1 converter_${i}]
-                set_property -dict [list CONFIG.SI_PROTOCOL.VALUE_SRC USER CONFIG.MI_PROTOCOL.VALUE_SRC USER] $converter
-                set_property -dict [list \
-                    CONFIG.MI_PROTOCOL {AXI3} \
-                    CONFIG.TRANSLATION_MODE {2} \
-                ] $converter
-                connect_bd_net $aclk [get_bd_pins $converter/aclk] [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
-                connect_bd_net $aresetn [get_bd_pins $converter/aresetn] [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
-                connect_bd_intf_net [get_bd_intf_pins $converter/M_AXI] [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
-                connect_bd_intf_net $master [get_bd_intf_pins $converter/S_AXI]
+                connect_bd_net $aclk [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
+                connect_bd_net $aresetn [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
+                connect_bd_intf_net $master [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
             } else {
                 # connect PE, hmb and dma
                 set converter [tapasco::ip::create_axi_ic converter_ic_dma 2 1]
