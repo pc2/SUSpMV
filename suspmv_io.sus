@@ -274,6 +274,8 @@ extern module y_vec_writer_ila{
     input int#(FROM: 0, TO: 17)                   probe14'0
     /// last
     input bool                                    probe15'0
+    /// write_has_been_committed
+    input bool                                    probe16'0
 }
 
 module YVectorWriter#(int NUM_KERNELS, int MAY_PUSH_LATENCY) {
@@ -365,6 +367,9 @@ module YVectorWriter#(int NUM_KERNELS, int MAY_PUSH_LATENCY) {
     trigger write_has_been_committed
     when writer.write_has_been_committed {
         write_has_been_committed()
+        y_vec_ila.probe16 = true
+    } else {
+        y_vec_ila.probe16 = false
     }
 
     domain reset

@@ -83,6 +83,39 @@ module SUSpMV_SLR#(int LEFT_UNITS, int RIGHT_UNITS, int HBM_MAY_PUSH_LATENCY) {
     }
 }
 
+extern module hbm00_reader_ila{
+    clock clk
+
+    /// arvalid
+    input bool                                    probe0'0
+    /// arready
+    input bool                                    probe1'0
+    /// araddr
+    input int#(FROM: 0, TO: 1 << 64)              probe2'0
+    /// arlen
+    input int#(FROM: 0, TO: 16)                   probe3'0
+    /// arsize
+    input int#(FROM: 0, TO: 8)                    probe4'0
+    /// arburst
+    input bool[2]                                 probe5'0
+    /// arprot
+    input bool[3]                                 probe6'0
+    /// arcache
+    input bool[4]                                 probe7'0
+    /// arlock
+    input bool[2]                                 probe8'0
+
+    /// rvalid
+    input bool                                    probe9'0
+    /// rready
+    input bool                                    probe10'0
+    /// rlast
+    input bool                                    probe11'0
+    /// rresp
+    input bool[2]                                 probe12'0
+}
+
+
 module SUSpMV_Full {
     clock aclk
     input bool aresetn
@@ -529,6 +562,22 @@ module SUSpMV_Full {
     hbm00_reader.rdata =                            maxi_hbm00_rdata
     hbm00_reader.rresp =                            maxi_hbm00_rresp
     hbm00_reader.rlast =                            maxi_hbm00_rlast
+
+    hbm00_reader_ila ila
+    ila.probe0  = maxi_hbm00_arvalid
+    ila.probe1  = maxi_hbm00_arready
+    ila.probe2  = maxi_hbm00_araddr
+    ila.probe3  = maxi_hbm00_arlen
+    ila.probe4  = maxi_hbm00_arsize
+    ila.probe5  = maxi_hbm00_arburst
+    ila.probe6  = maxi_hbm00_arprot
+    ila.probe7  = maxi_hbm00_arcache
+    ila.probe8  = maxi_hbm00_arlock
+
+    ila.probe9  = maxi_hbm00_rvalid
+    ila.probe10 = maxi_hbm00_rready
+    ila.probe11 = maxi_hbm00_rlast
+    ila.probe12 = maxi_hbm00_rresp
 
     when hbm_ctrl_valid[00] {
         hbm00_reader.set_reg(hbm_ctrl_idx[00], hbm_ctrl_data[00])

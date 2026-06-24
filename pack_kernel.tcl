@@ -23,7 +23,7 @@ create_ip -name ila -vendor xilinx.com -library ip -version 6.2 -module_name y_v
 set_property -dict [list \
   CONFIG.C_ADV_TRIGGER {false} \
   CONFIG.C_DATA_DEPTH {65536} \
-  CONFIG.C_NUM_OF_PROBES {16} \
+  CONFIG.C_NUM_OF_PROBES {17} \
   CONFIG.C_PROBE2_WIDTH {8} \
   CONFIG.C_PROBE8_WIDTH {2} \
   CONFIG.C_PROBE9_WIDTH {5} \
@@ -33,6 +33,25 @@ set_property -dict [list \
   CONFIG.C_INPUT_PIPE_STAGES {4} \
   CONFIG.Component_Name {y_vec_writer_ila} \
 ] [get_ips y_vec_writer_ila]
+
+
+create_ip -name ila -vendor xilinx.com -library ip -version 6.2 -module_name hbm00_reader_ila
+set_property -dict [list \
+  CONFIG.C_ADV_TRIGGER {false} \
+  CONFIG.C_DATA_DEPTH {65536} \
+  CONFIG.C_NUM_OF_PROBES {13} \
+  CONFIG.C_PROBE2_WIDTH {64} \
+  CONFIG.C_PROBE3_WIDTH {4} \
+  CONFIG.C_PROBE4_WIDTH {3} \
+  CONFIG.C_PROBE5_WIDTH {2} \
+  CONFIG.C_PROBE6_WIDTH {3} \
+  CONFIG.C_PROBE7_WIDTH {4} \
+  CONFIG.C_PROBE8_WIDTH {2} \
+  CONFIG.C_PROBE12_WIDTH {2} \
+  CONFIG.C_INPUT_PIPE_STAGES {4} \
+  CONFIG.Component_Name {hbm00_reader_ila} \
+] [get_ips hbm00_reader_ila]
+
 
 # generate_target all [get_ips y_vec_writer_ila]
 # export_ip_user_files -of_objects [get_ips y_vec_writer_ila] -no_script -sync -force
