@@ -22,7 +22,7 @@ upgrade_ip -vlnv xilinx.com:ip:floating_point:7.1 [get_ips fp32_*_ip fp64_*_ip] 
 create_ip -name ila -vendor xilinx.com -library ip -version 6.2 -module_name y_vec_writer_ila
 set_property -dict [list \
   CONFIG.C_ADV_TRIGGER {false} \
-  CONFIG.C_DATA_DEPTH {65536} \
+  CONFIG.C_DATA_DEPTH {32768} \
   CONFIG.C_NUM_OF_PROBES {17} \
   CONFIG.C_PROBE2_WIDTH {8} \
   CONFIG.C_PROBE8_WIDTH {2} \
@@ -38,7 +38,7 @@ set_property -dict [list \
 create_ip -name ila -vendor xilinx.com -library ip -version 6.2 -module_name hbm00_reader_ila
 set_property -dict [list \
   CONFIG.C_ADV_TRIGGER {false} \
-  CONFIG.C_DATA_DEPTH {65536} \
+  CONFIG.C_DATA_DEPTH {32768} \
   CONFIG.C_NUM_OF_PROBES {13} \
   CONFIG.C_PROBE2_WIDTH {64} \
   CONFIG.C_PROBE3_WIDTH {4} \
@@ -52,6 +52,20 @@ set_property -dict [list \
   CONFIG.Component_Name {hbm00_reader_ila} \
 ] [get_ips hbm00_reader_ila]
 
+create_ip -name ila -vendor xilinx.com -library ip -version 6.2 -module_name x_vector_ila
+set_property -dict [list \
+  CONFIG.C_ADV_TRIGGER {false} \
+  CONFIG.C_DATA_DEPTH {16384} \
+  CONFIG.C_NUM_OF_PROBES {14} \
+  CONFIG.C_PROBE2_WIDTH {8} \
+  CONFIG.C_PROBE6_WIDTH {2} \
+  CONFIG.C_PROBE8_WIDTH {8} \
+  CONFIG.C_PROBE9_WIDTH {4} \
+  CONFIG.C_PROBE10_WIDTH {32} \
+  CONFIG.C_PROBE13_WIDTH {128} \
+  CONFIG.C_INPUT_PIPE_STAGES {4} \
+  CONFIG.Component_Name {x_vector_ila} \
+] [get_ips x_vector_ila]
 
 # generate_target all [get_ips y_vec_writer_ila]
 # export_ip_user_files -of_objects [get_ips y_vec_writer_ila] -no_script -sync -force

@@ -1,6 +1,7 @@
 
 module SharedAcquireSemaphore#(int MAX, int NUM_SEMAPHORES) {
-    state int#(FROM: 0, TO: MAX+1)[NUM_SEMAPHORES] num_in_uses
+    domain tmp
+    output state int#(FROM: 0, TO: MAX+1)[NUM_SEMAPHORES] num_in_uses
 
     domain default
     input bool[NUM_SEMAPHORES] releases
@@ -30,6 +31,46 @@ module SharedAcquireSemaphore#(int MAX, int NUM_SEMAPHORES) {
     }
 }
 
+extern module x_vector_ila{
+    clock clk
+
+    /// arvalid
+    input bool                                    probe0'0
+    /// arready
+    input bool                                    probe1'0
+    /// arlen
+    input int#(FROM: 0, TO: 256)                  probe2'0
+
+    /// rvalid
+    input bool                                    probe3'0
+    /// rready
+    input bool                                    probe4'0
+    /// rlast
+    input bool                                    probe5'0
+    /// rresp
+    input bool[2]                                 probe6'0
+
+    /// is_active
+    input bool                                    probe7'0
+
+    /// num_x_pages_remaining (8-bit)
+    input int#(FROM: 0, TO: 256)                  probe8'0
+
+    /// num_y_repeats_remaining (4-bit)
+    input int#(FROM: 0, TO: 16)                   probe9'0
+
+    /// x_page_releases
+    input bool[32]                                probe10'0
+
+    /// x_valid
+    input bool                                    probe11'0
+    /// x_last
+    input bool                                    probe12'0
+
+    /// num_in_uses
+    input bool[128]                               probe13'0
+}
+
 /// X vector data loader that keeps track of 
 module XDataLoader#(int NUM_KERNELS) {
     gen int ADDR_WIDTH = 64
@@ -41,6 +82,7 @@ module XDataLoader#(int NUM_KERNELS) {
     gen int NUM_PAGE_TRANSFERS = PAGE_SIZE / PAGE_PARALLEL_FLOATS
 
     axi4_burst_reader#(ADDR_WIDTH, ADDR_ALIGN: DDR_AXI_WIDTH / 8, COUNT_TO: 1 << 32, MAX_IN_FLIGHT: 0) burst_reader
+    x_vector_ila x_vec_ila
 
     domain hbm_read
     output bool                               arvalid'0 = burst_reader.arvalid
@@ -93,6 +135,12 @@ module XDataLoader#(int NUM_KERNELS) {
     trigger x_valid'0 : float[PAGE_PARALLEL_FLOATS] x_values'0, bool x_last'0
     when burst_reader.chunk_valid : bool[DDR_AXI_WIDTH][1] elements, int _chunk_length, int _chunk_offset, bool x_last, bool[0] _extra {
         x_valid(FromBits(elements[0]), x_last)
+
+        x_vec_ila.probe11 = true
+        x_vec_ila.probe12 = x_last
+    } else {
+        x_vec_ila.probe11 = false
+        x_vec_ila.probe12 = false
     }
 
     when cur_page_addr.is_stable : int cur_addr {
@@ -130,6 +178,28 @@ module XDataLoader#(int NUM_KERNELS) {
         num_y_repeats_remaining.rst()
         is_active = false
     }
+
+    x_vec_ila.probe0  = arvalid
+    x_vec_ila.probe1  = arready
+    x_vec_ila.probe2  = arlen
+
+    x_vec_ila.probe3  = rvalid
+    x_vec_ila.probe4  = rready
+    x_vec_ila.probe5  = rlast
+    x_vec_ila.probe6  = rresp
+
+    x_vec_ila.probe7  = is_active
+
+    when num_x_pages_remaining.is_stable : int v {
+        x_vec_ila.probe8  = v mod (1 << 8)
+    }
+    when num_y_repeats_remaining.is_stable : int v {
+        x_vec_ila.probe9  = v mod (1 << 4)
+    }
+
+    x_vec_ila.probe10 = x_page_releases
+
+    x_vec_ila.probe13 = ToBits(x_load_control.num_in_uses)
 }
 
 /*module MatrixDataLoader {
@@ -219,6 +289,66 @@ module XDataLoader#(int NUM_KERNELS) {
 }*/
 
 extern module y_vec_writer_ila{
+    clock clk
+
+    /// awvalid
+    input bool                                    probe0'0
+    /// awready
+    input bool                                    probe1'0
+    /// awaddr
+    // input int#(FROM: 0, TO: 1 << 64)              probe2'0
+    /// awlen
+    input int#(FROM: 0, TO: 256)                  probe2'0
+    /// awsize
+    //input int#(FROM: 0, TO: 8)                    probe3'0
+    /// awburst
+    //input bool[2]                                 probe4'0
+    /// awprot
+    //input bool[3]                                 probe5'0
+    /// awcache
+    //input bool[4]                                 probe6'0
+    /// awqos
+    //input int#(FROM: 0, TO: 16)                   probe7'0
+    /// awlock
+    //input bool                                    probe8'0
+    /// awregion
+    //input int#(FROM: 0, TO: 16)                   probe9'0
+    /// wvalid
+    input bool                                    probe3'0
+    /// wready
+    input bool                                    probe4'0
+    /// wstrb
+    // input bool[512 / 8]                           probe13'0
+    /// wlast
+    input bool                                    probe5'0
+    /// bvalid
+    input bool                                    probe6'0
+    /// bready
+    input bool                                    probe7'0
+    /// bresp
+    input bool[2]                                 probe8'0
+
+    /// unit_holding_y_token
+    input int#(FROM: 0, TO: 32)                   probe9'0
+    /// num_y_blocks_remaining
+    input int#(FROM: 0, TO: 1 << 10)              probe10'0
+
+    /// unit_may_starts
+    input bool[32]                                probe11'0
+
+    /// may_write
+    input bool                                    probe12'0
+    /// write
+    input bool                                    probe13'0
+    /// num_y_values
+    input int#(FROM: 0, TO: 17)                   probe14'0
+    /// last
+    input bool                                    probe15'0
+    /// write_has_been_committed
+    input bool                                    probe16'0
+}
+
+extern module x_vec_reader_ila{
     clock clk
 
     /// awvalid
