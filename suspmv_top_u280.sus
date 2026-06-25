@@ -90,8 +90,8 @@ extern module hbm00_reader_ila{
     input bool                                    probe0'0
     /// arready
     input bool                                    probe1'0
-    /// araddr
-    input int#(FROM: 0, TO: 1 << 64)              probe2'0
+    /// araddr (unused)
+    input int#(FROM: 0, TO: 2)                    probe2'0
     /// arlen
     input int#(FROM: 0, TO: 16)                   probe3'0
     /// arsize
@@ -563,21 +563,21 @@ module SUSpMV_Full {
     hbm00_reader.rresp =                            maxi_hbm00_rresp
     hbm00_reader.rlast =                            maxi_hbm00_rlast
 
-    hbm00_reader_ila ila
-    ila.probe0  = maxi_hbm00_arvalid
-    ila.probe1  = maxi_hbm00_arready
-    ila.probe2  = maxi_hbm00_araddr
-    ila.probe3  = maxi_hbm00_arlen
-    ila.probe4  = maxi_hbm00_arsize
-    ila.probe5  = maxi_hbm00_arburst
-    ila.probe6  = maxi_hbm00_arprot
-    ila.probe7  = maxi_hbm00_arcache
-    ila.probe8  = maxi_hbm00_arlock
+    hbm00_reader_ila hbm00_ila
+    hbm00_ila.probe0  = maxi_hbm00_arvalid
+    hbm00_ila.probe1  = maxi_hbm00_arready
+    //ila.probe2  = maxi_hbm00_araddr
+    hbm00_ila.probe3  = maxi_hbm00_arlen
+    hbm00_ila.probe4  = maxi_hbm00_arsize
+    hbm00_ila.probe5  = maxi_hbm00_arburst
+    hbm00_ila.probe6  = maxi_hbm00_arprot
+    hbm00_ila.probe7  = maxi_hbm00_arcache
+    hbm00_ila.probe8  = maxi_hbm00_arlock
 
-    ila.probe9  = maxi_hbm00_rvalid
-    ila.probe10 = maxi_hbm00_rready
-    ila.probe11 = maxi_hbm00_rlast
-    ila.probe12 = maxi_hbm00_rresp
+    hbm00_ila.probe9  = maxi_hbm00_rvalid
+    hbm00_ila.probe10 = maxi_hbm00_rready
+    hbm00_ila.probe11 = maxi_hbm00_rlast
+    hbm00_ila.probe12 = maxi_hbm00_rresp
 
     when hbm_ctrl_valid[00] {
         hbm00_reader.set_reg(hbm_ctrl_idx[00], hbm_ctrl_data[00])

@@ -67,8 +67,10 @@ extern module x_vector_ila{
     /// x_last
     input bool                                    probe12'0
 
-    /// num_in_uses
-    input bool[128]                               probe13'0
+    /// selected_num_in_uses
+    input int#(FROM: 0, TO: 9)                    probe13'0
+    /// cur_unit_selected
+    input int#(FROM: 0, TO: 32)                   probe14'0
 }
 
 /// X vector data loader that keeps track of 
@@ -199,7 +201,11 @@ module XDataLoader#(int NUM_KERNELS) {
 
     x_vec_ila.probe10 = x_page_releases
 
-    x_vec_ila.probe13 = ToBits(x_load_control.num_in_uses)
+    state int#(FROM: 0, TO: 32) num_in_uses_selector
+    initial num_in_uses_selector = 0
+    num_in_uses_selector = num_in_uses_selector + 1 mod 32
+    x_vec_ila.probe13 = x_load_control.num_in_uses[num_in_uses_selector]
+    x_vec_ila.probe14 = num_in_uses_selector
 }
 
 /*module MatrixDataLoader {
