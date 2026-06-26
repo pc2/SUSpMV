@@ -95,12 +95,14 @@ int main(int argc, char **argv) {
         m = make_chunky_nasty_matrix();
     } else {
         m = Matrix::load(path);
-        //m.cut_to_range(0, 100000000, 000000, 100000000);
+        // m.evenly_cut(0.1);
+        // m.cut_to_range(0, 100000000, 000000, 27808);
     }
     std::cout << "Shuffle" << std::endl;
 //    m.shuffle_random();
     std::cout << "Constructing ComputeUnitData..." << std::endl;
     ComputeUnitData data = m.get_compute_unit_data();
+    //std::swap(data.hbm_buffers[0], data.hbm_buffers[1]);
     std::cout << "ComputeUnitData done" << std::endl;
 
     if(iterations == 0) {

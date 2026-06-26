@@ -114,6 +114,7 @@ struct Matrix {
     std::vector<size_t> get_count_per_col();
     std::vector<size_t> get_count_per_row();
     void cut_to_range(size_t from_x, size_t from_y, size_t to_x, size_t to_y);
+    void evenly_cut(double cut_fraction);
 };
 
 struct Shuffler {
