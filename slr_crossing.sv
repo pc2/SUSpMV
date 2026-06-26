@@ -175,7 +175,7 @@ end
 /*mux_wire*/ logic[7:0] space_remaining;
 assign space_remaining = read_addr - write_addr - 1;
 always_ff @(posedge clk) begin
-	may_push <= space_remaining > MAY_PUSH_LATENCY - 2;
+	may_push <= space_remaining > MAY_PUSH_LATENCY + 1;
 end
 endmodule
 
