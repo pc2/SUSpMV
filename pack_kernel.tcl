@@ -54,8 +54,8 @@ set_property -dict [list \
 create_ip -name ila -vendor xilinx.com -library ip -version 6.2 -module_name x_vector_ila
 set_property -dict [list \
   CONFIG.C_ADV_TRIGGER {false} \
-  CONFIG.C_DATA_DEPTH {65536} \
-  CONFIG.C_NUM_OF_PROBES {14} \
+  CONFIG.C_DATA_DEPTH {32768} \
+  CONFIG.C_NUM_OF_PROBES {15} \
   CONFIG.C_PROBE2_WIDTH {8} \
   CONFIG.C_PROBE6_WIDTH {2} \
   CONFIG.C_PROBE8_WIDTH {8} \

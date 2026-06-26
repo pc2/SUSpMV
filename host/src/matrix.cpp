@@ -645,6 +645,22 @@ void Matrix::cut_to_range(size_t from_x, size_t to_x, size_t from_y, size_t to_y
     this->height = to_y - from_y;
 }
 
+void Matrix::evenly_cut(double fraction) {
+    std::cout << "Evenly reducing by fraction " << fraction << std::endl;
+    size_t new_size = 0;
+    double total = 0.0;
+    for(size_t i = 0; i < this->entries.size(); i++) {
+        Entry e = this->entries[i];
+        total += fraction;
+        if(total >= 1.0) {
+            this->entries[new_size++] = e;
+            total -= 1.0;
+        }
+    }
+    std::cout << "Old size: " << this->entries.size() << ", new size: " << new_size << std::endl;
+    this->entries.resize(new_size);
+}
+
 bool Matrix::compare(Matrix &m) {
 	bool equal = true;
 	if (entries.size() != m.entries.size()) {

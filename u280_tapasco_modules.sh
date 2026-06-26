@@ -12,3 +12,6 @@ ml tools/Zip/3.0-GCCcore-14.3.0
 # ml fpga/xilinx/vivado/22.2
 export XILINXD_LICENSE_FILE=27000@kiso.uni-paderborn.de
 export LM_LICENSE_FILE=27000@kiso.uni-paderborn.de
+
+source ../otus/tapasco-workdir/tapasco-setup.sh
+

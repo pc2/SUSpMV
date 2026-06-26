@@ -4827,34 +4827,51 @@ module simple_axi3_mem #(
     logic                  wr_active;
 
     // ============================================================
-    // READ STATE
-    // ============================================================
-
-    logic [ADDR_WIDTH-1:0] rd_addr;
-    integer                rd_beats_left;
-    logic                  rd_active;
-
-    // ============================================================
     // MAIN LOGIC
     // ============================================================
 
-	assign arready = !rd_active & aresetn;
 	assign awready = !wr_active & !bvalid & aresetn;
 
-	logic nope = 0;
-	always_ff@(posedge aclk) nope <= !nope;
-	assign rvalid = rd_active & nope & aresetn;
+	logic nope = 1;
+	//always_ff@(posedge aclk) nope <= !nope;
 	assign wready = wr_active & nope & aresetn;
 
-	always_comb begin
-		if(rvalid) begin
-			// build read data
-			for (int i = 0; i < DATA_WIDTH / 8; i++) begin
-				rdata[i*8 +: 8] = mem[rd_addr][i*8 +: 8];
-			end
+	typedef struct {
+	int addr;
+	int len;
+	} burst_t;
 
-			rlast = rd_beats_left == 1;			
+	burst_t burst_q[$];
+
+	initial forever begin
+		automatic burst_t b;
+
+		rdata <= 'x;
+		rlast <= 'x;
+		rvalid <= 0;
+		while(burst_q.size() == 0) begin
+			@(posedge aclk);
 		end
+		b = burst_q.pop_front();
+		//$display("Popped burst_q: addr: %d, len: %d, new_depth: %d", b.addr, b.len, burst_q.size());
+		for(int i = 0; i <= b.len; i = i + 1) begin
+			rvalid <= 1;
+			rdata <= mem[b.addr / (DATA_WIDTH / 8) + i];
+			rlast <= i == b.len;
+			@(posedge aclk);
+			while(!rready) begin
+				@(posedge aclk);
+			end
+		end
+	end
+
+	int max_bursts_in_flight = 20;
+	always @(posedge aclk) begin
+		if (arvalid & arready) begin
+			burst_q.push_back('{addr: araddr, len: arlen});
+			//$display("Pushed back burst_q: addr: %d, len: %d, new_depth: %d", araddr, arlen, burst_q.size());
+		end
+		arready <= burst_q.size() < max_bursts_in_flight;
 	end
 
     always_ff @(posedge aclk or negedge aresetn) begin
@@ -4862,11 +4879,7 @@ module simple_axi3_mem #(
             bvalid  <= 1'b0;
             bresp   <= 2'b00;
 
-            rresp   <= 2'b00;
-            rlast   <= 1'b0;
-
             wr_active <= 1'b0;
-            rd_active <= 1'b0;
         end else begin
 
             // ====================================================
@@ -4915,37 +4928,8 @@ module simple_axi3_mem #(
             if (bvalid && bready) begin
                 bvalid <= 1'b0;
             end
-
-            // ====================================================
-            // READ ADDRESS HANDSHAKE
-            // ====================================================
-
-            if (arvalid && arready) begin
-                rd_addr       <= araddr / (DATA_WIDTH / 8);
-                rd_beats_left <= arlen+1;
-                rd_active     <= 1'b1;
-
-                rvalid <= 1'b1;
-                rresp  <= 2'b00;
-            end
-
-            // ====================================================
-            // READ DATA CHANNEL
-            // ====================================================
-
-			if(rready && rvalid) begin
-                // advance burst
-                rd_addr <= rd_addr + 1;
-
-                if (rlast) begin
-                    rd_active <= 1'b0;
-                end else begin
-                    rd_beats_left <= rd_beats_left - 1;
-                end
-			end
         end
     end
-
 endmodule
 
 module simple_axi4_mem #(
@@ -5022,34 +5006,51 @@ module simple_axi4_mem #(
     logic                  wr_active;
 
     // ============================================================
-    // READ STATE
-    // ============================================================
-
-    logic [ADDR_WIDTH-1:0] rd_addr;
-    integer                rd_beats_left;
-    logic                  rd_active;
-
-    // ============================================================
     // MAIN LOGIC
     // ============================================================
 
-	assign arready = !rd_active & aresetn;
 	assign awready = !wr_active & !bvalid & aresetn;
 
-	logic nope = 0;
-	always_ff@(posedge aclk) nope <= !nope;
-	assign rvalid = rd_active & nope & aresetn;
+	logic nope = 1;
+	//always_ff@(posedge aclk) nope <= !nope;
 	assign wready = wr_active & nope & aresetn;
 
-	always_comb begin
-		if(rvalid) begin
-			// build read data
-			for (int i = 0; i < DATA_WIDTH / 8; i++) begin
-				rdata[i*8 +: 8] = mem[rd_addr][i*8 +: 8];
-			end
+	typedef struct {
+	int addr;
+	int len;
+	} burst_t;
 
-			rlast = rd_beats_left == 1;			
+	burst_t burst_q[$];
+
+	initial forever begin
+		automatic burst_t b;
+
+		rdata <= 'x;
+		rlast <= 'x;
+		rvalid <= 0;
+		while(burst_q.size() == 0) begin
+			@(posedge aclk);
 		end
+		b = burst_q.pop_front();
+		//$display("Popped burst_q: addr: %d, len: %d, new_depth: %d", b.addr, b.len, burst_q.size());
+		for(int i = 0; i <= b.len; i = i + 1) begin
+			rvalid <= 1;
+			rdata <= mem[b.addr / (DATA_WIDTH / 8) + i];
+			rlast <= i == b.len;
+			@(posedge aclk);
+			while(!rready) begin
+				@(posedge aclk);
+			end
+		end
+	end
+
+	int max_bursts_in_flight = 20;
+	always @(posedge aclk) begin
+		if (arvalid & arready) begin
+			burst_q.push_back('{addr: araddr, len: arlen});
+			//$display("Pushed back burst_q: addr: %d, len: %d, new_depth: %d", araddr, arlen, burst_q.size());
+		end
+		arready <= burst_q.size() < max_bursts_in_flight;
 	end
 
     always_ff @(posedge aclk or negedge aresetn) begin
@@ -5057,11 +5058,7 @@ module simple_axi4_mem #(
             bvalid  <= 1'b0;
             bresp   <= 2'b00;
 
-            rresp   <= 2'b00;
-            rlast   <= 1'b0;
-
             wr_active <= 1'b0;
-            rd_active <= 1'b0;
         end else begin
 
             // ====================================================
@@ -5110,35 +5107,6 @@ module simple_axi4_mem #(
             if (bvalid && bready) begin
                 bvalid <= 1'b0;
             end
-
-            // ====================================================
-            // READ ADDRESS HANDSHAKE
-            // ====================================================
-
-            if (arvalid && arready) begin
-                rd_addr       <= araddr / (DATA_WIDTH / 8);
-                rd_beats_left <= arlen+1;
-                rd_active     <= 1'b1;
-
-                rvalid <= 1'b1;
-                rresp  <= 2'b00;
-            end
-
-            // ====================================================
-            // READ DATA CHANNEL
-            // ====================================================
-
-			if(rready && rvalid) begin
-                // advance burst
-                rd_addr <= rd_addr + 1;
-
-                if (rlast) begin
-                    rd_active <= 1'b0;
-                end else begin
-                    rd_beats_left <= rd_beats_left - 1;
-                end
-			end
         end
     end
-
 endmodule
