@@ -1,6 +1,7 @@
 
 module SharedAcquireSemaphore#(int MAX, int NUM_SEMAPHORES) {
-    state int#(FROM: 0, TO: MAX+1)[NUM_SEMAPHORES] num_in_uses
+    domain tmp
+    output state int#(FROM: 0, TO: MAX+1)[NUM_SEMAPHORES] num_in_uses
 
     domain default
     input bool[NUM_SEMAPHORES] releases
@@ -30,6 +31,48 @@ module SharedAcquireSemaphore#(int MAX, int NUM_SEMAPHORES) {
     }
 }
 
+extern module x_vector_ila{
+    clock clk
+
+    /// arvalid
+    input bool                                    probe0'0
+    /// arready
+    input bool                                    probe1'0
+    /// arlen
+    input int#(FROM: 0, TO: 256)                  probe2'0
+
+    /// rvalid
+    input bool                                    probe3'0
+    /// rready
+    input bool                                    probe4'0
+    /// rlast
+    input bool                                    probe5'0
+    /// rresp
+    input bool[2]                                 probe6'0
+
+    /// is_active
+    input bool                                    probe7'0
+
+    /// num_x_pages_remaining (8-bit)
+    input int#(FROM: 0, TO: 256)                  probe8'0
+
+    /// num_y_repeats_remaining (4-bit)
+    input int#(FROM: 0, TO: 16)                   probe9'0
+
+    /// x_page_releases
+    input bool[32]                                probe10'0
+
+    /// x_valid
+    input bool                                    probe11'0
+    /// x_last
+    input bool                                    probe12'0
+
+    /// selected_num_in_uses
+    input int#(FROM: 0, TO: 9)                    probe13'0
+    /// cur_unit_selected
+    input int#(FROM: 0, TO: 32)                   probe14'0
+}
+
 /// X vector data loader that keeps track of 
 module XDataLoader#(int NUM_KERNELS) {
     gen int ADDR_WIDTH = 64
@@ -41,6 +84,7 @@ module XDataLoader#(int NUM_KERNELS) {
     gen int NUM_PAGE_TRANSFERS = PAGE_SIZE / PAGE_PARALLEL_FLOATS
 
     axi4_burst_reader#(ADDR_WIDTH, ADDR_ALIGN: DDR_AXI_WIDTH / 8, COUNT_TO: 1 << 32, MAX_IN_FLIGHT: 0) burst_reader
+    x_vector_ila x_vec_ila
 
     domain hbm_read
     output bool                               arvalid'0 = burst_reader.arvalid
@@ -93,6 +137,12 @@ module XDataLoader#(int NUM_KERNELS) {
     trigger x_valid'0 : float[PAGE_PARALLEL_FLOATS] x_values'0, bool x_last'0
     when burst_reader.chunk_valid : bool[DDR_AXI_WIDTH][1] elements, int _chunk_length, int _chunk_offset, bool x_last, bool[0] _extra {
         x_valid(FromBits(elements[0]), x_last)
+
+        x_vec_ila.probe11 = true
+        x_vec_ila.probe12 = x_last
+    } else {
+        x_vec_ila.probe11 = false
+        x_vec_ila.probe12 = false
     }
 
     when cur_page_addr.is_stable : int cur_addr {
@@ -130,6 +180,32 @@ module XDataLoader#(int NUM_KERNELS) {
         num_y_repeats_remaining.rst()
         is_active = false
     }
+
+    x_vec_ila.probe0  = arvalid
+    x_vec_ila.probe1  = arready
+    x_vec_ila.probe2  = arlen
+
+    x_vec_ila.probe3  = rvalid
+    x_vec_ila.probe4  = rready
+    x_vec_ila.probe5  = rlast
+    x_vec_ila.probe6  = rresp
+
+    x_vec_ila.probe7  = is_active
+
+    when num_x_pages_remaining.is_stable : int v {
+        x_vec_ila.probe8  = v mod (1 << 8)
+    }
+    when num_y_repeats_remaining.is_stable : int v {
+        x_vec_ila.probe9  = v mod (1 << 4)
+    }
+
+    x_vec_ila.probe10 = x_page_releases
+
+    state int#(FROM: 0, TO: 32) num_in_uses_selector
+    initial num_in_uses_selector = 0
+    num_in_uses_selector = num_in_uses_selector + 1 mod 32
+    x_vec_ila.probe13 = x_load_control.num_in_uses[num_in_uses_selector]
+    x_vec_ila.probe14 = num_in_uses_selector
 }
 
 /*module MatrixDataLoader {
@@ -218,6 +294,66 @@ module XDataLoader#(int NUM_KERNELS) {
     }
 }*/
 
+extern module y_vec_writer_ila{
+    clock clk
+
+    /// awvalid
+    input bool                                    probe0'0
+    /// awready
+    input bool                                    probe1'0
+    /// awaddr
+    // input int#(FROM: 0, TO: 1 << 64)              probe2'0
+    /// awlen
+    input int#(FROM: 0, TO: 256)                  probe2'0
+    /// awsize
+    //input int#(FROM: 0, TO: 8)                    probe3'0
+    /// awburst
+    //input bool[2]                                 probe4'0
+    /// awprot
+    //input bool[3]                                 probe5'0
+    /// awcache
+    //input bool[4]                                 probe6'0
+    /// awqos
+    //input int#(FROM: 0, TO: 16)                   probe7'0
+    /// awlock
+    //input bool                                    probe8'0
+    /// awregion
+    //input int#(FROM: 0, TO: 16)                   probe9'0
+    /// wvalid
+    input bool                                    probe3'0
+    /// wready
+    input bool                                    probe4'0
+    /// wstrb
+    // input bool[512 / 8]                           probe13'0
+    /// wlast
+    input bool                                    probe5'0
+    /// bvalid
+    input bool                                    probe6'0
+    /// bready
+    input bool                                    probe7'0
+    /// bresp
+    input bool[2]                                 probe8'0
+
+    /// unit_holding_y_token
+    input int#(FROM: 0, TO: 32)                   probe9'0
+    /// num_y_blocks_remaining
+    input int#(FROM: 0, TO: 1 << 10)              probe10'0
+
+    /// unit_may_starts
+    input bool[32]                                probe11'0
+
+    /// may_write
+    input bool                                    probe12'0
+    /// write
+    input bool                                    probe13'0
+    /// num_y_values
+    input int#(FROM: 0, TO: 17)                   probe14'0
+    /// last
+    input bool                                    probe15'0
+    /// write_has_been_committed
+    input bool                                    probe16'0
+}
+
 module YVectorWriter#(int NUM_KERNELS, int MAY_PUSH_LATENCY) {
     gen int DDR_AXI_WRITE_WIDTH = 512
     gen int MEM_ADDR_WIDTH = 64
@@ -265,8 +401,10 @@ module YVectorWriter#(int NUM_KERNELS, int MAY_PUSH_LATENCY) {
         num_y_blocks_remaining = num_y_blocks - 1 mod 1 << 32
     }
 
+    y_vec_writer_ila y_vec_ila
     domain write_side
     output bool may_write'-MAY_PUSH_LATENCY = writer.may_write
+    y_vec_ila.probe12 = may_write
     action write'-3 : float[16] y_values'0, int#(FROM: 0, TO: 17) num_y_values'0, bool last'0 {
         bool[32][16] write_elements
         
@@ -290,18 +428,53 @@ module YVectorWriter#(int NUM_KERNELS, int MAY_PUSH_LATENCY) {
             unit_holding_y_token = next_token_holding_unit
         }
         writer.write(write_elements, num_y_values, 0, write_is_true_last)
+
+        y_vec_ila.probe13 = true
+        y_vec_ila.probe14 = num_y_values
+        y_vec_ila.probe15 = last
+    } else {
+        y_vec_ila.probe13 = false
+        y_vec_ila.probe14 = 0
+        y_vec_ila.probe15 = false
+
     }
 
     domain writing_finished_dom
     trigger write_has_been_committed
     when writer.write_has_been_committed {
         write_has_been_committed()
+        y_vec_ila.probe16 = true
+    } else {
+        y_vec_ila.probe16 = false
     }
 
     domain reset
     action rst {
         writer.rst()
     }
+
+
+    y_vec_ila.probe0 = awvalid
+    y_vec_ila.probe1 = awready
+    // y_vec_ila.probe2 = awaddr
+    y_vec_ila.probe2 = awlen
+    // y_vec_ila.probe3 = awsize
+    // y_vec_ila.probe4 = awburst
+    // y_vec_ila.probe5 = awprot
+    // y_vec_ila.probe6 = awcache
+    // y_vec_ila.probe7 = awqos
+    // y_vec_ila.probe8 = awlock
+    // y_vec_ila.probe9 = awregion
+    y_vec_ila.probe3 = wvalid
+    y_vec_ila.probe4 = wready
+    //y_vec_ila.probe12 = wstrb
+    y_vec_ila.probe5 = wlast
+    y_vec_ila.probe6 = bvalid
+    y_vec_ila.probe7 = bready
+    y_vec_ila.probe8 = bresp
+    y_vec_ila.probe9 = unit_holding_y_token
+    y_vec_ila.probe10 = num_y_blocks_remaining mod 1 << 10
+    y_vec_ila.probe11 = unit_may_starts
 }
 
 module BusMerge#(int SIZE) {
@@ -465,18 +638,16 @@ module HBMReader#(int START_REG, int ADDR_REG, int COUNT_REG) {
     gen int NUM_CTRL_REGS = 256
 
     domain axi4
-    axi4_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) reader
-    axi4_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) writer_tie_off
+    axi3_burst_reader#(MAX_IN_FLIGHT: 192, ADDR_WIDTH: 64, ADDR_ALIGN: 32) reader
+    axi3_writer_tie_off#(ADDR_WIDTH: MEM_ADDR_WIDTH) writer_tie_off
     output bool                                     awvalid  = writer_tie_off.awvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   awaddr   = writer_tie_off.awaddr
-    output int#(FROM: 0, TO: 256)                   awlen    = writer_tie_off.awlen
+    output int#(FROM: 0, TO: 16)                    awlen    = writer_tie_off.awlen
     output int#(FROM: 0, TO: 8)                     awsize   = writer_tie_off.awsize
     output bool[2]                                  awburst  = writer_tie_off.awburst
     output bool[3]                                  awprot   = writer_tie_off.awprot
     output bool[4]                                  awcache  = writer_tie_off.awcache
-    output int#(FROM: 0, TO: 16)                    awqos    = writer_tie_off.awqos
-    output bool                                     awlock   = writer_tie_off.awlock
-    output int#(FROM: 0, TO: 16)                    awregion = writer_tie_off.awregion
+    output bool[2]                                  awlock   = writer_tie_off.awlock
     output bool                                     wvalid   = writer_tie_off.wvalid
     output bool[HBM_AXI_WIDTH]                      wdata    = writer_tie_off.wdata
     output bool[HBM_AXI_WIDTH / 8]                  wstrb    = writer_tie_off.wstrb
@@ -492,14 +663,12 @@ module HBMReader#(int START_REG, int ADDR_REG, int COUNT_REG) {
     writer_tie_off.bresp =                          bresp
     output bool                                     arvalid  = reader.arvalid
     output int#(FROM: 0, TO: 1 << MEM_ADDR_WIDTH)   araddr   = reader.araddr
-    output int#(FROM: 0, TO: 256)                   arlen    = reader.arlen
+    output int#(FROM: 0, TO: 16)                    arlen    = reader.arlen
     output int#(FROM: 0, TO: 8)                     arsize   = reader.arsize
     output bool[2]                                  arburst  = reader.arburst
     output bool[3]                                  arprot   = reader.arprot
     output bool[4]                                  arcache  = reader.arcache
-    output int#(FROM: 0, TO: 16)                    arqos    = reader.arqos
-    output bool                                     arlock   = reader.arlock
-    output int#(FROM: 0, TO: 16)                    arregion = reader.arregion
+    output bool[2]                                  arlock   = reader.arlock
     output bool                                     rready   = reader.rready
     input  bool                                     arready'0
     input  bool                                     rvalid

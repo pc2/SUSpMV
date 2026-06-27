@@ -90,16 +90,9 @@ namespace eval suspmv {
             set hbm_index [format %02s $i]
             if { $i != $hbm_dma_index } {
                 # connect PE and hmb
-                set converter [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_protocol_converter:2.1 converter_${i}]
-                set_property -dict [list CONFIG.SI_PROTOCOL.VALUE_SRC USER CONFIG.MI_PROTOCOL.VALUE_SRC USER] $converter
-                set_property -dict [list \
-                    CONFIG.MI_PROTOCOL {AXI3} \
-                    CONFIG.TRANSLATION_MODE {2} \
-                ] $converter
-                connect_bd_net $aclk [get_bd_pins $converter/aclk] [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
-                connect_bd_net $aresetn [get_bd_pins $converter/aresetn] [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
-                connect_bd_intf_net [get_bd_intf_pins $converter/M_AXI] [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
-                connect_bd_intf_net $master [get_bd_intf_pins $converter/S_AXI]
+                connect_bd_net $aclk [get_bd_pins $hbm/AXI_${hbm_index}_ACLK]
+                connect_bd_net $aresetn [get_bd_pins $hbm/AXI_${hbm_index}_ARESET_N]
+                connect_bd_intf_net $master [get_bd_intf_pins $hbm/SAXI_${hbm_index}]
             } else {
                 # connect PE, hmb and dma
                 set converter [tapasco::ip::create_axi_ic converter_ic_dma 2 1]
@@ -348,6 +341,20 @@ namespace eval suspmv {
         save_bd_design
     }
 
+
+    proc add_debug_ilas {} {
+        puts "suspmv::add_debug_ilas"
+
+        # create_bd_cell -type ip -vlnv xilinx.com:ip:ila:6.2 ila_hbm_axi3
+        # set_property CONFIG.C_DATA_DEPTH {1024} [get_bd_cells ila_hbm_axi3]
+        # set_property CONFIG.C_INPUT_PIPE_STAGES {4} [get_bd_cells ila_hbm_axi3]
+        # connect_bd_intf_net [get_bd_intf_pins ila_hbm_axi3/SLOT_0_AXI] [get_bd_intf_pins hbm/hbm_0/SAXI_10]
+        # connect_bd_net [get_bd_pins clocks_and_resets/design_clk] [get_bd_pins ila_hbm_axi3/clk]
+    }
+
+    proc produce_ila_ltx {} {
+        write_debug_probes ila_info.ltx
+    }
 }
 
 if {[tapasco::is_feature_enabled "suspmv"]} {
@@ -376,5 +383,7 @@ if {[tapasco::is_feature_enabled "suspmv"]} {
     tapasco::register_plugin "platform::suspmv::remove_ports" "post-pe-create"
     tapasco::register_plugin "platform::suspmv::addressmap" "post-address-map"
     tapasco::register_plugin "platform::suspmv::aftermath" "pre-wrapper"
+    tapasco::register_plugin "platform::suspmv::add_debug_ilas" "pre-wrapper"
     tapasco::register_plugin "platform::suspmv::parse_constraints_file" "pre-arch"
+    tapasco::register_plugin "platform::suspmv::produce_ila_ltx" "post-bitstream"
 }
