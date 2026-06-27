@@ -15,14 +15,14 @@ cd fpga_builds
 
 # List of design frequencies (one per array task)
 FREQUENCIES=(
-     50
-    100
-    200
     250
     300
     350
     375
+    390
     400
+    410
+    420
     425
     450
 )
