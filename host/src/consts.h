@@ -14,6 +14,7 @@ const uint64_t MAX_TILE_Y_HEIGHT = 2048 * NUM_Y_BANKS;
 // benchmark config
 const bool ENABLE_FLOAT6 = true;
 const uint64_t ACC_ROWS = 6;
+const uint64_t EXTRA_YREPEATS = 0;
 
 // memory layout
 const uint64_t HBM_BASE   = 0x400000000;

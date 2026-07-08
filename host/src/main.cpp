@@ -38,46 +38,17 @@ void check_mul(Matrix& m, ComputeUnitData& data, std::vector<float>& x_vec) {
 
     assert(y_vec_m.size() == y_vec_data.size());
 
-	uint64_t errors = 0;
+    uint64_t errors = 0;
     for(size_t i = 0; i < y_vec_m.size(); i++) {
         if(!are_equalish(y_vec_m[i], y_vec_data[i])) {
             errors++;
-            if (errors < 16) {
-	            std::cout << std::format("Y: {}, Mat.mul: {}\tData.mul: {}", i, y_vec_m[i], y_vec_data[i]) << std::endl;
-            }        
+            if (errors < 16)
+            std::cout << std::format("Y: {}, Mat.mul: {}\tData.mul: {}", i, y_vec_m[i], y_vec_data[i]) << std::endl;
         }
     }
     if(errors) {
         std::cout << "DISCREPANCY BETWEEN Mat.mul and Data.mul FOUND! Errors: " << errors << std::endl;
     }
-}
-
-Matrix make_chunky_nasty_matrix() {
-    size_t num_chunks = 128;
-    size_t chunk_width = 100;
-    size_t chunk_height = 100;
-    size_t chunk_x_offset = 1024*7;
-
-    Matrix result {
-        .width = chunk_x_offset * num_chunks,
-        .height = chunk_height * num_chunks
-    };
-
-    float val = 1.0;
-    for(size_t chunk_i = 0; chunk_i < num_chunks; chunk_i++) {
-        for(size_t y = 0; y < chunk_height; y++) {
-            for(size_t x = 0; x < chunk_width; x++) {
-                result.entries.push_back(Entry{
-                    .x = chunk_i * chunk_x_offset + x,
-                    .y = chunk_i * chunk_height + y,
-                    val: val
-                });
-                val += 1.0;
-            }
-        }
-    }
-
-    return result;
 }
 
 int main(int argc, char **argv) {
@@ -90,13 +61,7 @@ int main(int argc, char **argv) {
 
     // load matrix from file
     std::cout << "Loading " << path << std::endl;
-    Matrix m;
-    if(path == "_") {
-        m = make_chunky_nasty_matrix();
-    } else {
-        m = Matrix::load(path);
-        //m.cut_to_range(0, 100000000, 000000, 100000000);
-    }
+    Matrix m = Matrix::load(path);
     std::cout << "Shuffle" << std::endl;
 //    m.shuffle_random();
     std::cout << "Constructing ComputeUnitData..." << std::endl;
@@ -109,9 +74,9 @@ int main(int argc, char **argv) {
         std::cout << "check mul" << std::endl;
         check_mul(m, data, x_vec);
         std::cout << "convert back" << std::endl;
-		Matrix m2 = data.convert();
+        Matrix m2 = data.convert();
         std::cout << "compare" << std::endl;
-		m.compare(m2);
+        m.compare(m2);
         std::cout << "dump" << std::endl;
         dump_hex(m, data, x_vec);
         return 0;
@@ -127,40 +92,33 @@ int main(int argc, char **argv) {
         uint8_t* hbm_data_ptr = reinterpret_cast<uint8_t*>(data.hbm_buffers[i].data());
         size_t hbm_data_size = data.hbm_buffers[i].size() * sizeof(MatrixDataBlock);
         tapasco.copy_to(hbm_data_ptr, hbm_addr, hbm_data_size);
-	std::vector<uint8_t> hbm_data2(hbm_data_size, 0);
-	tapasco.copy_from(hbm_addr, (uint8_t*) hbm_data2.data(), hbm_data_size);
-	for (uint64_t j = 0; j < data.hbm_buffers[i].size(); j++) {
-		assert(hbm_data2[j] == hbm_data_ptr[j]);
-	}
+        std::vector<uint8_t> hbm_data2(hbm_data_size, 0);
+        tapasco.copy_from(hbm_addr, (uint8_t*) hbm_data2.data(), hbm_data_size);
+        for (uint64_t j = 0; j < data.hbm_buffers[i].size(); j++) {
+            assert(hbm_data2[j] == hbm_data_ptr[j]);
+        }
     }
-
-//  std::vector<float> x_vec = random_x_vec(m.width);
-    std::vector<float> x_vec(m.width, 1.0);
-    std::vector<float> extended_x_vec(((x_vec.size() + 4095) / 4096) * 4096, 0.0);
-    for (uint64_t i = 0; i < m.width; i++) {
-        extended_x_vec[i] = x_vec[i];
-    }
-    
-    // reference CPU implementation
-    auto cpu_start = std::chrono::steady_clock::now();
-    std::vector<float> reference = data.mul(x_vec);
-    auto cpu_end = std::chrono::steady_clock::now();
-    auto cpu_duration = std::chrono::duration_cast<std::chrono::microseconds>(cpu_end - cpu_start);
 
     std::cout << "start runs" << std::endl;
     for (uint64_t iter = 0; iter < iterations; iter++) {
         // generate & upload test vector
+//        std::vector<float> x_vec = random_x_vec(m.width);
+        std::vector<float> x_vec(m.width, 1.0);
+        std::vector<float> extended_x_vec(((x_vec.size() + 4095) / 4096) * 4096, 0.0);
+        for (uint64_t i = 0; i < m.width; i++) {
+            extended_x_vec[i] = x_vec[i];
+        }
         std::vector<float> y_vec(m.height, 10.0);
 
 //        auto tapasco_start = std::chrono::steady_clock::now();
 //        auto device_x_vec = tapasco::makeInOnly(tapasco::makeWrappedPointer(extended_x_vec.data(), extended_x_vec.size() * sizeof(float)));
 //        auto device_y_vec = tapasco::makeOutOnly(tapasco::makeWrappedPointer(y_vec.data(), y_vec.size() * sizeof(float)));
 //        auto device_y_vec = tapasco::makeWrappedPointer(y_vec.data(), y_vec.size() * sizeof(float));
-	std::cout << "copy x_vec" << std::endl;
-	tapasco.copy_to((uint8_t*)extended_x_vec.data(), 0, extended_x_vec.size() * sizeof(float));
-	tapasco.copy_to((uint8_t*)y_vec.data(), 0x10000000, y_vec.size() * sizeof(float));
-	//std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	std::cout << "launch: " << iter << std::endl;
+        std::cout << "copy x_vec" << std::endl;
+        tapasco.copy_to((uint8_t*)extended_x_vec.data(), 0, extended_x_vec.size() * sizeof(float));
+        tapasco.copy_to((uint8_t*)y_vec.data(), 0x10000000, y_vec.size() * sizeof(float));
+//        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::cout << "launch: " << iter << std::endl;
         auto tapasco_start = std::chrono::steady_clock::now();
 
         // launch SUSpMV
@@ -170,48 +128,36 @@ int main(int argc, char **argv) {
             SUSPMV_PE_ID,
             ret_val,
 //            device_x_vec, device_y_vec,
-		0, 0x10000000,
+            0, 0x10000000,
             data.x_tiles, data.y_repeats,
             HBM_ARG( 0), HBM_ARG( 1), HBM_ARG( 2), HBM_ARG( 3), HBM_ARG( 4), HBM_ARG( 5), HBM_ARG( 6), HBM_ARG( 7),
-//            HBM_ARG( 0), HBM_ARG( 1), HBM_ARG( 2), HBM_ARG( 3), HBM_ARG( 4), HBM_ARG( 5), HBM_ARG( 6), HBM_ARG( 7),
-//            HBM_ARG( 0), HBM_ARG( 1), HBM_ARG( 2), HBM_ARG( 3), HBM_ARG( 4), HBM_ARG( 5), HBM_ARG( 6), HBM_ARG( 7),
-//            HBM_ARG( 0), HBM_ARG( 1), HBM_ARG( 2), HBM_ARG( 3), HBM_ARG( 4), HBM_ARG( 5), HBM_ARG( 6), HBM_ARG( 7)
             HBM_ARG( 8), HBM_ARG( 9), HBM_ARG(10), HBM_ARG(11), HBM_ARG(12), HBM_ARG(13), HBM_ARG(14), HBM_ARG(15),
             HBM_ARG(16), HBM_ARG(17), HBM_ARG(18), HBM_ARG(19), HBM_ARG(20), HBM_ARG(21), HBM_ARG(22), HBM_ARG(23),
             HBM_ARG(24), HBM_ARG(25), HBM_ARG(26), HBM_ARG(27), HBM_ARG(28), HBM_ARG(29), HBM_ARG(30), HBM_ARG(31)
         );
         job();
-	    //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+//      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         auto tapasco_end = std::chrono::steady_clock::now();
-        auto tapasco_duration = std::chrono::duration_cast<std::chrono::microseconds>(tapasco_end - tapasco_start);
-        std::cout << "Done. Cycles: " << cycles << std::endl;
-        std::cout << "SUSpMV: " << tapasco_duration << ", CPU: " << cpu_duration << std::endl;
-        
-	    tapasco.copy_from(0x10000000, (uint8_t*)y_vec.data(), y_vec.size() * sizeof(float));
+        tapasco.copy_from(0x10000000, (uint8_t*)y_vec.data(), y_vec.size() * sizeof(float));
+
 
 //        auto tapasco_end = std::chrono::steady_clock::now();
+        auto tapasco_duration = std::chrono::duration_cast<std::chrono::microseconds>(tapasco_end - tapasco_start);
+        std::cout << "Cycles: " << cycles << std::endl;
 
-        for (int64_t i = m.height-1; i >= 0; i--) {
-            if (y_vec[i] != 10.0) {
-                if(i == m.height-1) {
-                    break;
-                }
-                std::cout << "Written to data ends prematurely at Y " << i << std::endl;
-                int64_t from = std::max(int64_t(0), i - 16);
-                int64_t to = std::min(i + 16, int64_t(m.height) - 1);
+        // reference CPU implementation
+        auto cpu_start = std::chrono::steady_clock::now();
+        std::vector<float> reference = data.mul(x_vec);
+        auto cpu_end = std::chrono::steady_clock::now();
+        auto cpu_duration = std::chrono::duration_cast<std::chrono::microseconds>(cpu_end - cpu_start);
 
-                for(int64_t j = from; j <= to; j++) {
-                    std::cout << "Y " << j << ": " << y_vec[j] << std::endl;
-                }
-                break;
-            }
-        }
+        std::cout << "SUSpMV: " << tapasco_duration << ", CPU: " << cpu_duration << std::endl;
 
         // check result integrity
         uint64_t errors = 0;
         for (uint64_t i = 0; i < m.height; i++) {
             if (!are_equalish(y_vec[i], reference[i])) {
-		if (errors < 16)
+                if (errors < 16)
                 std::cout << i << ": " << y_vec[i] << " " <<  reference[i] << std::endl;
                 errors += 1;
             }

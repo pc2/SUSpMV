@@ -71,6 +71,12 @@ struct Builder {
     uint64_t y_max_tile_idx;
     uint64_t failed_float6_due_to_last_map;
     uint64_t float6_count;
+    uint64_t bank_conflicts;
+    uint64_t bank_conflict_zeroes;
+    uint64_t y_conflicts;
+    uint64_t y_conflict_zeroes;
+    uint64_t trampolin_zeroes;
+    uint64_t endoftile_zeroes;
 
     Builder();
     void add(Entry entry, bool last_in_tile, bool last_in_y);
