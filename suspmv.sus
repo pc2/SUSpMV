@@ -443,7 +443,7 @@ module YCollector {
         joining_fifo.rst()
         y_ends_fifo.rst()
     }
-
+    
     domain long_reset
     action long_rst {
         is_long_rst = true
@@ -603,7 +603,7 @@ module DecompressCommand {
         }
 
         when is_5_float_mode {
-            // In 5-float mode, is_last values are purely 
+            // In 5-float mode, is_last values are purely computed from the dys
 
             for int I in 0..5 {
                 y_steps[I] = BitsToUInt(bits[160 + 8 * I +: 8])

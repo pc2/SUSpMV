@@ -33,6 +33,7 @@ v80/%: PART := xcv80-lsva4737-2MHP-e-S
 v80/%: SUS_FLOAT_LIB_PATH := sus-float/Versal
 v80/%: FILES += sus-float/Versal/fp_wrappers.sus
 v80/%: FILES += sus-float/Versal/extensions.sus
+v80/%: FILES += suspmv_top_u280.sus
 
 U280/sus_codegen.sv: $(FILES) suspmv_top_u280.sus
 	mkdir -p $(BIN_DIR)
