@@ -1,7 +1,7 @@
 [{
     "Job": "Compose",
     "Design Frequency": 400,
-    "SkipSynthesis": false,
+    "SkipSynthesis": true,
     "DeleteProjects": false,
     "Platforms": [
       "v80"

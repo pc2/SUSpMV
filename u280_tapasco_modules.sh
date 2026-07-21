@@ -14,4 +14,3 @@ export XILINXD_LICENSE_FILE=27000@kiso.uni-paderborn.de
 export LM_LICENSE_FILE=27000@kiso.uni-paderborn.de
 
 source ../otus/tapasco-workdir/tapasco-setup.sh
-

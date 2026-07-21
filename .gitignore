@@ -24,6 +24,7 @@ tests/*/VCK5000*/
 tests/*/U280*/
 VCK5000*/
 U280*/
+v80*/
 .vscode/
 !.vscode/settings.json
 host/CMakeFiles
