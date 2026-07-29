@@ -16,20 +16,20 @@ class Entry:
         self.width = 1
         self.height = 1
         self.nnz = 1
-        self.cycles = 0
-        self.time = 0
-        self.gflops = 0
-        self.blocks = 0
-        self.float5 = 0
-        self.float6 = 0
-        self.float6lastfail = 0
-        self.bank_conflicts = 0
-        self.bank_conflict_zeroes = 0
-        self.y_conflicts = 0
-        self.y_conflict_zeroes = 0
-        self.trampolin_zeroes = 0
-        self.endoftile_zeroes = 0
-        self.dummyzeroes = 0
+        self.cycles = 1
+        self.time = 1
+        self.gflops = 1
+        self.blocks = 1
+        self.float5 = 1
+        self.float6 = 1
+        self.float6lastfail = 1
+        self.bank_conflicts = 1
+        self.bank_conflict_zeroes = 1
+        self.y_conflicts = 1
+        self.y_conflict_zeroes = 1
+        self.trampolin_zeroes = 1
+        self.endoftile_zeroes = 1
+        self.dummyzeroes = 1
 
     def set(self, width, height, nnz, cycles, time, gflops, blocks, float5, float6, float6lastfail,
             bank_conflicts, bank_conflict_zeroes, y_conflicts, y_conflict_zeroes, trampolin_zeroes, endoftile_zeroes, dummyzeroes):

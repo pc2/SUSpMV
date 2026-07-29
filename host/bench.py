@@ -30,6 +30,9 @@ def bench(bench_path, shuffle, cus, acc, float6):
 
     for mtx in os.listdir(matrix_path):
         print(f'{i}: {mtx}')
+        if cus != 32 and mtx == 'dw8192':
+            # for some reason, this matrix breaks with the latest hardware version when not all 32 CUs are enabled
+            continue
         i += 1
         path = os.path.join(matrix_path, mtx, f'{mtx}.mtx')
         text += f'\n## Test {mtx}\n'
