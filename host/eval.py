@@ -66,41 +66,42 @@ def read(path):
     dummyzeroes_list = list()
     gflops_percent_list = list()
     gflops_dict = dict()
-    for line in file:
-        if line.startswith('## Test'):
-            mtx = line.split(' ')[-1][0:-1]
-            idx = order.index(mtx)
-            valid = True
-        if line.startswith('Matrix'):
-            width = int(line.split(' ')[1][0:-1])
-            height = int(line.split(' ')[3][0:-1])
-            nnz = int(line.split(' ')[5][0:-2])
-        if line.startswith('SUSpMV:'):
-            time = (int(line.split(' ')[1][0:-3])) / 1000000
-        if line.startswith('Cycles:'):
-            cycles.append(int(line.split(' ')[1]))
-        if line.startswith('blocks:'):
-            split = line.split(' ')
-            blocks = int(split[1])
-            float5 = int(split[3])
-            float6 = int(split[5])
-            float6lastfail = int(split[7])
-            bank_conflicts = int(split[9])
-            bank_conflict_zeroes = int(split[11])
-            y_conflicts = int(split[13])
-            y_conflict_zeroes = int(split[15])
-            trampolin_zeroes = int(split[17])
-            endoftile_zeroes = int(split[19])
-            dummyzeroes = int(split[21])
-            float6lastfail_list.append(float6lastfail / max(1, float6 + float6lastfail))
-            dummyzeroes_list.append(dummyzeroes / (nnz + dummyzeroes))
-        if line.startswith('Endtest'):
-            cycles = sum(cycles) / len(cycles)
-            time = cycles / frequency / 1000000
-            suspmv_gflops = 2*nnz/time/1000000000
-            entries[idx].set(width, height, nnz, cycles, time, suspmv_gflops, blocks, float5, float6, float6lastfail,
-                            bank_conflicts, bank_conflict_zeroes, y_conflicts, y_conflict_zeroes, trampolin_zeroes, endoftile_zeroes, dummyzeroes)
-            cycles = list()
+    with open(path, 'r') as file:
+        for line in file:
+            if line.startswith('## Test'):
+                mtx = line.split(' ')[-1][0:-1]
+                idx = order.index(mtx)
+                valid = True
+            if line.startswith('Matrix'):
+                width = int(line.split(' ')[1][0:-1])
+                height = int(line.split(' ')[3][0:-1])
+                nnz = int(line.split(' ')[5][0:-2])
+            if line.startswith('SUSpMV:'):
+                time = (int(line.split(' ')[1][0:-3])) / 1000000
+            if line.startswith('Cycles:'):
+                cycles.append(int(line.split(' ')[1]))
+            if line.startswith('blocks:'):
+                split = line.split(' ')
+                blocks = int(split[1])
+                float5 = int(split[3])
+                float6 = int(split[5])
+                float6lastfail = int(split[7])
+                bank_conflicts = int(split[9])
+                bank_conflict_zeroes = int(split[11])
+                y_conflicts = int(split[13])
+                y_conflict_zeroes = int(split[15])
+                trampolin_zeroes = int(split[17])
+                endoftile_zeroes = int(split[19])
+                dummyzeroes = int(split[21])
+                float6lastfail_list.append(float6lastfail / max(1, float6 + float6lastfail))
+                dummyzeroes_list.append(dummyzeroes / (nnz + dummyzeroes))
+            if line.startswith('Endtest'):
+                cycles = sum(cycles) / len(cycles)
+                time = cycles / frequency / 1000000
+                suspmv_gflops = 2*nnz/time/1000000000
+                entries[idx].set(width, height, nnz, cycles, time, suspmv_gflops, blocks, float5, float6, float6lastfail,
+                                bank_conflicts, bank_conflict_zeroes, y_conflicts, y_conflict_zeroes, trampolin_zeroes, endoftile_zeroes, dummyzeroes)
+                cycles = list()
     return entries
 
 def print_latex(values):

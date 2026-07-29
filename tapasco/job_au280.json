@@ -1,6 +1,6 @@
 [{
     "Job": "Compose",
-    "Design Frequency": 450,
+    "Design Frequency": 400,
     "SkipSynthesis": false,
     "DeleteProjects": false,
     "Platforms": [

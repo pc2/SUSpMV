@@ -1,6 +1,6 @@
 
 #define SUSPMV_PE_ID 100
-#define TAPASCO_DEVICE_IDX 1
+#define TAPASCO_DEVICE_IDX 0
 
 const size_t TILE_X_WIDTH = 1024;
 const size_t MIN_BLOCKS_PER_TILE = 18;
