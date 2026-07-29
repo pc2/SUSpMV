@@ -142,22 +142,27 @@ cu32 = v400
 
 print()
 print('#######')
-print('# main:')
+print('# main (Table II):')
 print_latex_table(order, hihispmv, [e.gflops for e in v400], [e.gflops for e in v400s])
 
+ratio = [e.gflops / h for e, h in zip(v400, hihispmv)]
+print(f"speedup                    : {sum(ratio)/len(ratio):.4f} (geomean), {max(ratio):.4f} (max)")
+ratio = [e.gflops / h for e, h in zip(v400s, hihispmv)]
+print(f"speedup shuffle            : {sum(ratio)/len(ratio):.4f} (geomean), {max(ratio):.4f} (max)")
+
 ratio = [e.blocks * 32 / e.time / 1000000000 for e in v400s]
-print(f"block  bandwidth shuffle   : {sum(ratio)/len(ratio):.3f} GB/s {max(ratio):.3f} GB/s")
+print(f"block  bandwidth shuffle   : {sum(ratio)/len(ratio):.4f} GB/s (geomean), {max(ratio):.4f} GB/s (max)")
 ratio = [e.nnz * 4 / e.time / 1000000000 for e in v400s]
-print(f"matrix bandwidth shuffle   : {sum(ratio)/len(ratio):.3f} GB/s {max(ratio):.3f} GB/s")
+print(f"matrix bandwidth shuffle   : {sum(ratio)/len(ratio):.4f} GB/s (geomean), {max(ratio):.4f} GB/s (max)")
 
 ratio = [e.blocks * 32 / e.time / 1000000000 for e in v400]
-print(f"block  bandwidth no-shuffle: {sum(ratio)/len(ratio):.3f} GB/s {max(ratio):.3f} GB/s")
+print(f"block  bandwidth no-shuffle: {sum(ratio)/len(ratio):.4f} GB/s (geomean), {max(ratio):.4f} GB/s (max)")
 ratio = [e.nnz * 4 / e.time / 1000000000 for e in v400]
-print(f"matrix bandwidth no-shuffle: {sum(ratio)/len(ratio):.3f} GB/s {max(ratio):.3f} GB/s")
+print(f"matrix bandwidth no-shuffle: {sum(ratio)/len(ratio):.4f} GB/s (geomean), {max(ratio):.4f} GB/s (max)")
 
 print()
 print('##########')
-print('# scaling:')
+print('# scaling (Fig.7):')
 print_latex([e.gflops / b.gflops for b, e in zip(cu1, cu2)])
 print_latex([e.gflops / b.gflops for b, e in zip(cu1, cu4)])
 print_latex([e.gflops / b.gflops for b, e in zip(cu1, cu8)])
@@ -166,36 +171,36 @@ print_latex([e.gflops / b.gflops for b, e in zip(cu1, cu32)])
 
 print()
 print('#########')
-print('# float6:')
+print('# float6 (Fig.8):')
 print_latex([e.gflops / b.gflops for b, e in zip(nofloat6, full)])
 
 blockratio = [e.blocks / b.blocks for b, e in zip(nofloat6, full)]
-print(f"blockratio: {1-sum(blockratio)/len(blockratio)} {max(blockratio)}")
+print(f"blockratio          : {1-sum(blockratio)/len(blockratio):.4f} (geomean), {max(blockratio):.4f} (max)")
 gflopsratio = [e.gflops / b.gflops for b, e in zip(nofloat6, full)]
-print(f"gflopsratio: {sum(gflopsratio)/len(gflopsratio)} {max(gflopsratio)}")
+print(f"gflopsratio         : {sum(gflopsratio)/len(gflopsratio):.4f} (geomean), {max(gflopsratio):.4f} (max)")
 print('')
 ratio = [e.float6lastfail / (e.float6 + e.float6lastfail) for e in full]
-print(f'float6lastfail: {sum(ratio)/len(ratio)} {max(ratio)}')
+print(f'float6lastfail      : {sum(ratio)/len(ratio):.4f} (geomean), {max(ratio):.4f} (max)')
 ratio = [e.bank_conflicts / e.nnz for e in v400]
-print(f"bank_conflicts: {sum(ratio)/len(ratio):.4f} {max(ratio):.4f}")
+print(f"bank_conflicts      : {sum(ratio)/len(ratio):.4f} (geomean), {max(ratio):.4f} (max)")
 ratio = [e.y_conflicts / e.nnz for e in v400]
-print(f"y_conflicts: {sum(ratio)/len(ratio):.4f} {max(ratio):.4f}")
+print(f"y_conflicts         : {sum(ratio)/len(ratio):.4f} (geomean), {max(ratio):.4f} (max)")
 ratio = [e.bank_conflict_zeroes / e.values for e in v400]
-print(f"bank_conflict_zeroes: {sum(ratio)/len(ratio):.4f} {max(ratio):.4f}")
+print(f"bank_conflict_zeroes: {sum(ratio)/len(ratio):.4f} (geomean), {max(ratio):.4f} (max)")
 ratio = [e.y_conflict_zeroes / e.values for e in v400]
-print(f"y_conflict_zeroes: {sum(ratio)/len(ratio):.4f} {max(ratio):.4f}")
+print(f"y_conflict_zeroes   : {sum(ratio)/len(ratio):.4f} (geomean), {max(ratio):.4f} (max)")
 ratio = [e.trampolin_zeroes / e.values for e in v400]
-print(f"trampolin_zeroes: {sum(ratio)/len(ratio):.4f} {max(ratio):.4f}")
+print(f"trampolin_zeroes    : {sum(ratio)/len(ratio):.4f} (geomean), {max(ratio):.4f} (max)")
 ratio = [e.endoftile_zeroes / e.values for e in v400]
-print(f"endoftile_zeroes: {sum(ratio)/len(ratio):.4f} {max(ratio):.4f}")
+print(f"endoftile_zeroes    : {sum(ratio)/len(ratio):.4f} (geomean), {max(ratio):.4f} (max)")
 ratio = [e.dummyzeroes / e.values for e in v400]
-print(f"dummyzeroes: {sum(ratio)/len(ratio):.4f} {max(ratio):.4f}")
+print(f"dummyzeroes (total) : {sum(ratio)/len(ratio):.4f} (geomean), {max(ratio):.4f} (max)")
 
 print()
 print('#######')
-print('# acc6:')
+print('# acc6 (Fig.9):')
 print_latex([e.gflops / b.gflops for b, e in zip(acc1, full)])
 blockratio = [e.blocks / b.blocks for b, e in zip(acc1, full)]
-print(f"blockratio: {1-sum(blockratio)/len(blockratio)} {max(blockratio)}")
+print(f"blockratio : {1-sum(blockratio)/len(blockratio):.4f} (geomean), {max(blockratio):.4f} (max)")
 gflopsratio = [e.gflops / b.gflops for b, e in zip(acc1, full)]
-print(f"gflopsratio: {sum(gflopsratio)/len(gflopsratio)} {max(gflopsratio)}")
+print(f"gflopsratio: {sum(gflopsratio)/len(gflopsratio):.4f} (geomean), {max(gflopsratio):.4f} (max)")
