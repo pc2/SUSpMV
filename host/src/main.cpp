@@ -102,8 +102,8 @@ int main(int argc, char **argv) {
     std::cout << "start runs" << std::endl;
     for (uint64_t iter = 0; iter < iterations; iter++) {
         // generate & upload test vector
-//        std::vector<float> x_vec = random_x_vec(m.width);
-        std::vector<float> x_vec(m.width, 1.0);
+        std::vector<float> x_vec = random_x_vec(m.width);
+//        std::vector<float> x_vec(m.width, 1.0);
         std::vector<float> extended_x_vec(((x_vec.size() + 4095) / 4096) * 4096, 0.0);
         for (uint64_t i = 0; i < m.width; i++) {
             extended_x_vec[i] = x_vec[i];
