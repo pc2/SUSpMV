@@ -12,7 +12,7 @@ def bench(bench_path, shuffle, cus, acc, float6):
 
     lines_a[9] = f'const uint64_t COMPUTE_UNITS = {cus};\n'
     lines_a[14] = f'const bool ENABLE_FLOAT6 = {float6};\n'
-    lines_a[15] = f'const uint64_t ACC_ROWS = {acc}\n;'
+    lines_a[15] = f'const uint64_t ACC_ROWS = {acc};\n'
     lines_b[65] = f'{"" if shuffle else "//"} m.shuffle_random();\n'
 
     with open('src/consts.h', 'w') as fa, open('src/main.cpp', 'w') as fb:
