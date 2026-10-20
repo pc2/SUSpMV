@@ -109,3 +109,20 @@ struct Float5 {
 ## Authors
 - Lennart Van Hirtum
 - David Volz
+
+## Citation
+```bib
+@inproceedings{SUSpMV,
+  author        = {Van Hirtum, Lennart and Volz, David and Koch, Andreas and Plessl, Christian},
+  title         = {{SUSpMV}: A High Frequency Sparse Matrix Vector Multiplier on {HBM} Enabled {FPGA} written in {SUS}},
+  booktitle     = {Proceedings of the International Conference on Field-Programmable Technology (FPT)},
+  year          = {2026},
+  month         = dec,
+  address       = {Honolulu, HI, USA},
+  publisher     = {IEEE},
+  note          = {To appear, FPT'26},
+  eprint        = {2610.10403},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.AR},
+}
+```
